@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.srizwan.win11"
         minSdk = 24
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 101
         versionName = "2.0.0"
 
