@@ -165,13 +165,24 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       # The engine has native code (ndkBuild) and needs this exact NDK.
-      - name: Install NDK
+      # compileSdk/targetSdk 37 may not be preinstalled on the runner's image,
+      # and AGP 8.2.2 predates API 37 (hence suppressUnsupportedCompileSdk
+      # in gradle.properties) - install the platform explicitly so the build
+      # doesn't fail with "Failed to find target android-37".
+      - name: Install NDK and SDK Platform
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${NDK_VERSION}"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${NDK_VERSION}" "platforms;android-37" "build-tools;35.0.0"
 
+      # If gradlew is missing from the repo, regenerate it from the committed
+      # wrapper properties instead of failing with "No such file or directory".
       - name: Make gradlew executable
-        run: chmod +x ./gradlew
+        run: |
+          if [ ! -f ./gradlew ]; then
+            echo "::warning::gradlew not found - generating wrapper (Gradle 8.14.3)"
+            gradle wrapper --gradle-version 8.14.3 --no-validate-url
+          fi
+          chmod +x ./gradlew
 
       - name: Verify Gradle Version
         run: ./gradlew --version
