@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Policy set is intentionally empty: this admin is requested only so Android
+  requires an explicit deactivation step (Settings → Security → Device admin
+  apps → Deactivate) before the app can be uninstalled. It does not lock
+  passwords, wipe data, disable the camera or anything else.
+-->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android" />
+

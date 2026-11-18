@@ -3,7 +3,6 @@ package com.srizwan.win11
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.Dialog
 import android.app.role.RoleManager
 import android.app.DownloadManager
@@ -53,6 +52,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -320,6 +321,10 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) { }
         unregisterChatReceiver()
         try { DlEngine.removeListener(dlListener); if (::downloadsUi.isInitialized) downloadsUi.onHide() } catch (e: Exception) { }
+        try {
+            smsSearchRunnable?.let { smsMain.removeCallbacks(it) }
+            smsExec.shutdownNow()
+        } catch (e: Exception) { }
         releaseTorch()
         pipHideHandler?.removeCallbacks(pipHideRunnable ?: Runnable { })
         super.onDestroy()
@@ -408,7 +413,7 @@ class MainActivity : AppCompatActivity() {
     // =====================================================================
 
     private fun requestNotificationAccess() {
-        AlertDialog.Builder(this)
+        W11Dialog.Builder(this)
             .setTitle("📱 Notification Access")
             .setMessage("WhatsApp ও Messenger মেসেজের Toast দেখাতে হলে Notification Access অনুমতি দিতে হবে।\n\nSettings → Notification Access → এই অ্যাপ চালু করুন।")
             .setPositiveButton("Settings খুলুন") { _, _ ->
@@ -1184,7 +1189,7 @@ class MainActivity : AppCompatActivity() {
 
         var currentList = contacts.toMutableList()
         listView.adapter = makeAdapter(currentList)
-        val dialog = AlertDialog.Builder(this).setTitle("👤 Contacts").setView(dialogView)
+        val dialog = W11Dialog.Builder(this).setTitle("👤 Contacts").setView(dialogView)
             .setNegativeButton("Cancel", null).create()
         listView.setOnItemClickListener { _, _, pos, _ ->
             val pair = currentList.getOrNull(pos) ?: return@setOnItemClickListener
@@ -1335,7 +1340,6 @@ class MainActivity : AppCompatActivity() {
     // ██████████  SMS SECTION  ██████████
     // =====================================================================
 
-    private var smsListContainer: LinearLayout? = null
     private var smsSearchEdit: EditText? = null
 
     // PC-style two-pane state (list on the left, thread on the right)
@@ -1470,7 +1474,13 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(8), 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
             addTextChangedListener(object : android.text.TextWatcher {
-                override fun afterTextChanged(s: android.text.Editable?) { refreshSmsView() }
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    // debounce: don't re-query the SMS database on every keystroke
+                    smsSearchRunnable?.let { smsMain.removeCallbacks(it) }
+                    val r = Runnable { refreshSmsView() }
+                    smsSearchRunnable = r
+                    smsMain.postDelayed(r, 250)
+                }
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             })
@@ -1485,14 +1495,31 @@ class MainActivity : AppCompatActivity() {
         toolbar.addView(composeBtn)
         listPane.addView(toolbar)
 
-        val scroll = ScrollView(a)
-        scroll.layoutParams = LinearLayout.LayoutParams(mp, 0, 1f)
-        scroll.isVerticalScrollBarEnabled = false
-        smsListContainer = LinearLayout(a).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        scroll.addView(smsListContainer)
-        listPane.addView(scroll)
+        val listFrame = FrameLayout(a)
+        listFrame.layoutParams = LinearLayout.LayoutParams(mp, 0, 1f)
+        val listRv = RecyclerView(a)
+        listRv.layoutManager = LinearLayoutManager(a)
+        listRv.layoutParams = FrameLayout.LayoutParams(mp, mp)
+        listRv.itemAnimator = null
+        listRv.setHasFixedSize(true)
+        listRv.setItemViewCacheSize(10)
+        listRv.isVerticalScrollBarEnabled = false
+        listRv.overScrollMode = View.OVER_SCROLL_NEVER
+        val listAdapter = SmsListAdapter()
+        listRv.adapter = listAdapter
+        smsListRv = listRv
+        smsListAdapter = listAdapter
+        listFrame.addView(listRv)
+        val listEmpty = TextView(a)
+        listEmpty.textSize = 14f
+        listEmpty.gravity = Gravity.CENTER
+        listEmpty.setTextColor(W11.TEXT_DIM)
+        listEmpty.setPadding(dp(20), dp(40), dp(20), dp(40))
+        listEmpty.visibility = View.GONE
+        listEmpty.layoutParams = FrameLayout.LayoutParams(mp, wc)
+        smsListEmpty = listEmpty
+        listFrame.addView(listEmpty)
+        listPane.addView(listFrame)
         body.addView(listPane)
         smsListPane = listPane
 
@@ -1553,6 +1580,7 @@ class MainActivity : AppCompatActivity() {
     /** Closes the open conversation (narrow: back to the list; wide: show the placeholder). */
     private fun smsCloseThread() {
         smsCurrentAddress = null
+        smsListAdapter?.selected = null
         smsThreadContent?.visibility = View.GONE
         if (smsWide) {
             smsThreadPlaceholder?.visibility = View.VISIBLE
@@ -1563,9 +1591,64 @@ class MainActivity : AppCompatActivity() {
         refreshSmsView()
     }
 
+    // ── SMS engine state (all heavy work runs off the UI thread) ─────────
+    private val smsExec = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val smsMain = Handler(Looper.getMainLooper())
+    private val contactNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private var smsListRv: RecyclerView? = null
+    private var smsListEmpty: TextView? = null
+    private var smsListAdapter: SmsListAdapter? = null
+    private var smsListGen = 0
+    private var smsThreadGen = 0
+    private var smsSearchRunnable: Runnable? = null
+
+    // Conversation (right pane) views – built once, re-bound on every open
+    private var smsThreadRv: RecyclerView? = null
+    private var smsThreadAdapter: SmsThreadAdapter? = null
+    private var smsHeaderAvatarHost: LinearLayout? = null
+    private var smsHeaderName: TextView? = null
+    private var smsHeaderSub: TextView? = null
+    private var smsBackBtn: View? = null
+    private var smsReplyEdit: EditText? = null
+
+    private val SMS_THREAD_LIMIT = 500
+
+    data class SmsConversation(
+        val address: String,
+        val snippet: String,
+        val date: Long,
+        val type: Int,
+        var unreadCount: Int,
+        var name: String = address
+    )
+
+    /** Item of the conversation list: either a day separator or a message. */
+    sealed class SmsItem {
+        data class Day(val label: String) : SmsItem()
+        data class Msg(val msg: SmsMessage) : SmsItem()
+    }
+
+    /** Bubble that never grows wider than [ratio] of the space its parent offers. */
+    private class SmsBubbleLayout(ctx: Context, private val ratio: Float) : LinearLayout(ctx) {
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val parentW = MeasureSpec.getSize(widthMeasureSpec)
+            val spec = if (parentW > 0)
+                MeasureSpec.makeMeasureSpec((parentW * ratio).toInt(), MeasureSpec.AT_MOST)
+            else widthMeasureSpec
+            super.onMeasure(spec, heightMeasureSpec)
+        }
+    }
+
+    private fun smsDisplayName(address: String): String {
+        contactNameCache[address]?.let { return it }
+        val name = getContactName(address)
+        contactNameCache[address] = name
+        return name
+    }
+
     private fun refreshSmsView() {
-        val container = smsListContainer ?: return
-        container.removeAllViews()
+        val rv = smsListRv ?: return
+        val empty = smsListEmpty ?: return
 
         if (ContextCompat.checkSelfPermission(
                 this, PERM_SMS_R
@@ -1574,162 +1657,135 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(
                 this, arrayOf(PERM_SMS_R, PERM_SMS_S, PERM_SMS_R2), REQ_SMS
             )
-            container.addView(TextView(this).apply {
-                text = "SMS permission required.\nTap to grant."
-                setTextColor(Color.WHITE)
-                textSize = 14f
-                setPadding(dp(20), dp(20), dp(20), dp(20))
-                gravity = Gravity.CENTER
-                setOnClickListener {
-                    ActivityCompat.requestPermissions(
-                        this@MainActivity,
-                        arrayOf(PERM_SMS_R, PERM_SMS_S, PERM_SMS_R2),
-                        REQ_SMS
-                    )
-                }
-            })
+            smsListAdapter?.submit(emptyList())
+            empty.text = "SMS permission required.\nTap to grant."
+            empty.setTextColor(Color.WHITE)
+            empty.visibility = View.VISIBLE
+            empty.setOnClickListener {
+                ActivityCompat.requestPermissions(
+                    this, arrayOf(PERM_SMS_R, PERM_SMS_S, PERM_SMS_R2), REQ_SMS
+                )
+            }
             return
         }
+        empty.setOnClickListener(null)
+        empty.isClickable = false
 
         val query = smsSearchEdit?.text?.toString()?.lowercase() ?: ""
-        val conversations = mutableMapOf<String, SmsConversation>()
-
-        try {
-            val uri = Uri.parse("content://sms/")
-            val cursor = contentResolver.query(
-                uri,
-                arrayOf("_id", "address", "body", "date", "type", "read", "thread_id"),
-                null, null, "date DESC"
-            )
-            cursor?.use {
-                val addrIdx = it.getColumnIndex("address")
-                val bodyIdx = it.getColumnIndex("body")
-                val dateIdx = it.getColumnIndex("date")
-                val typeIdx = it.getColumnIndex("type")
-                val readIdx = it.getColumnIndex("read")
-                while (it.moveToNext()) {
-                    val addr =
-                        if (addrIdx >= 0) it.getString(addrIdx) ?: "Unknown" else "Unknown"
-                    val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
-                    val date = if (dateIdx >= 0) it.getLong(dateIdx) else 0L
-                    val type = if (typeIdx >= 0) it.getInt(typeIdx) else 1
-                    val isRead = if (readIdx >= 0) it.getInt(readIdx) == 1 else true
-
-                    if (query.isNotEmpty() && !addr.contains(query) && !body.lowercase()
-                            .contains(query)
-                    ) continue
-
-                    if (!conversations.containsKey(addr)) {
-                        conversations[addr] =
-                            SmsConversation(addr, body, date, type, if (isRead) 0 else 1)
-                    } else if (!isRead) {
-                        conversations[addr]!!.unreadCount++
+        val gen = ++smsListGen
+        smsExec.execute {
+            var error: String? = null
+            val conversations = LinkedHashMap<String, SmsConversation>()
+            try {
+                val cursor = contentResolver.query(
+                    Uri.parse("content://sms/"),
+                    arrayOf("address", "body", "date", "type", "read"),
+                    null, null, "date DESC"
+                )
+                cursor?.use {
+                    val addrIdx = it.getColumnIndex("address")
+                    val bodyIdx = it.getColumnIndex("body")
+                    val dateIdx = it.getColumnIndex("date")
+                    val typeIdx = it.getColumnIndex("type")
+                    val readIdx = it.getColumnIndex("read")
+                    while (it.moveToNext()) {
+                        if (gen != smsListGen) return@execute // a newer load superseded this one
+                        val addr =
+                            if (addrIdx >= 0) it.getString(addrIdx) ?: "Unknown" else "Unknown"
+                        val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
+                        val isRead = if (readIdx >= 0) it.getInt(readIdx) == 1 else true
+                        if (query.isNotEmpty() &&
+                            !addr.lowercase().contains(query) &&
+                            !body.lowercase().contains(query)
+                        ) continue
+                        val existing = conversations[addr]
+                        if (existing == null) {
+                            conversations[addr] = SmsConversation(
+                                addr, body,
+                                if (dateIdx >= 0) it.getLong(dateIdx) else 0L,
+                                if (typeIdx >= 0) it.getInt(typeIdx) else 1,
+                                if (isRead) 0 else 1
+                            )
+                        } else if (!isRead) existing.unreadCount++
                     }
                 }
+            } catch (e: Exception) {
+                error = "SMS load error: ${e.message}"
             }
-        } catch (e: Exception) {
-            container.addView(TextView(this).apply {
-                text = "SMS load error: ${e.message}"
-                setTextColor(Color.parseColor("#FF4444"))
-                textSize = 12f
-                setPadding(dp(16), dp(16), dp(16), dp(16))
-            })
-            return
-        }
-
-        if (conversations.isEmpty()) {
-            container.addView(TextView(this).apply {
-                text =
-                    if (query.isEmpty()) "No messages found" else "No results for \"$query\""
-                setTextColor(W11.TEXT_DIM)
-                textSize = 14f
-                gravity = Gravity.CENTER
-                setPadding(dp(20), dp(40), dp(20), dp(40))
-            })
-            return
-        }
-
-        for ((_, conv) in conversations.entries.take(200)) {
-            container.addView(buildSmsRow(conv))
+            val list = conversations.values.take(200).toList()
+            list.forEach { c -> c.name = smsDisplayName(c.address) }
+            smsMain.post {
+                if (gen != smsListGen) return@post
+                if (error != null) {
+                    smsListAdapter?.submit(emptyList())
+                    empty.text = error
+                    empty.setTextColor(Color.parseColor("#FF4444"))
+                    empty.visibility = View.VISIBLE
+                } else if (list.isEmpty()) {
+                    smsListAdapter?.submit(emptyList())
+                    empty.text =
+                        if (query.isEmpty()) "No messages found" else "No results for \"$query\""
+                    empty.setTextColor(W11.TEXT_DIM)
+                    empty.visibility = View.VISIBLE
+                } else {
+                    empty.visibility = View.GONE
+                    smsListAdapter?.submit(list)
+                }
+            }
         }
     }
 
-    data class SmsConversation(
-        val address: String,
-        val snippet: String,
-        val date: Long,
-        val type: Int,
-        var unreadCount: Int
-    )
+    // ── Conversation list (RecyclerView – rows are recycled, never rebuilt) ──
+    private inner class SmsRowHolder(val row: LinearLayout) : RecyclerView.ViewHolder(row) {
+        val indicator = View(row.context)
+        val avatarHost = FrameLayout(row.context)
+        val nameView = TextView(row.context)
+        val snippetView = TextView(row.context)
+        val timeView = TextView(row.context)
+        val badge = TextView(row.context)
+        var avatarName: String? = null
 
-    private fun buildSmsRow(conv: SmsConversation): View {
-        val a = this
-        val mp = ViewGroup.LayoutParams.MATCH_PARENT
-        val wc = ViewGroup.LayoutParams.WRAP_CONTENT
-        val isSentLast = conv.type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
-        val timeStr =
-            if (conv.date > 0) DateUtils.getRelativeTimeSpanString(
-                conv.date, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS
-            ).toString() else ""
-        val displayAddr = getContactName(conv.address)
-        val selected = smsWide && conv.address == smsCurrentAddress
-        val unread = conv.unreadCount > 0
+        init {
+            val wc = ViewGroup.LayoutParams.WRAP_CONTENT
+            row.orientation = LinearLayout.HORIZONTAL
+            row.gravity = Gravity.CENTER_VERTICAL
+            row.setPadding(dp(6), dp(10), dp(10), dp(10))
+            row.layoutParams = RecyclerView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, wc
+            ).apply { setMargins(dp(6), dp(1), dp(6), dp(1)) }
 
-        val row = LinearLayout(a)
-        row.orientation = LinearLayout.HORIZONTAL
-        row.gravity = Gravity.CENTER_VERTICAL
-        row.setPadding(dp(6), dp(10), dp(10), dp(10))
-        row.background = smsRound(if (selected) W11.ITEM_ACTIVE_BG else Color.TRANSPARENT, 6)
-        row.layoutParams = LinearLayout.LayoutParams(mp, wc).apply {
-            setMargins(dp(6), dp(1), dp(6), dp(1))
-        }
+            indicator.layoutParams = LinearLayout.LayoutParams(dp(3), dp(18)).apply {
+                setMargins(0, 0, dp(7), 0)
+            }
+            row.addView(indicator)
 
-        // accent selection indicator (Win11 style)
-        val indicator = View(a)
-        indicator.background = smsRound(if (selected) W11.ACCENT else Color.TRANSPARENT, 2)
-        indicator.layoutParams = LinearLayout.LayoutParams(dp(3), dp(18)).apply {
-            setMargins(0, 0, dp(7), 0)
-        }
-        row.addView(indicator)
+            avatarHost.layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
+                rightMargin = dp(12)
+            }
+            row.addView(avatarHost)
 
-        val avatar = smsAvatar(displayAddr, 40)
-        (avatar.layoutParams as LinearLayout.LayoutParams).rightMargin = dp(12)
-        row.addView(avatar)
+            val textBlock = LinearLayout(row.context)
+            textBlock.orientation = LinearLayout.VERTICAL
+            textBlock.layoutParams = LinearLayout.LayoutParams(0, wc, 1f)
+            nameView.setTextColor(W11.TEXT)
+            nameView.textSize = 14f
+            nameView.maxLines = 1
+            nameView.ellipsize = android.text.TextUtils.TruncateAt.END
+            textBlock.addView(nameView)
+            snippetView.textSize = 12f
+            snippetView.maxLines = 1
+            snippetView.ellipsize = android.text.TextUtils.TruncateAt.END
+            textBlock.addView(snippetView)
+            row.addView(textBlock)
 
-        val textBlock = LinearLayout(a)
-        textBlock.orientation = LinearLayout.VERTICAL
-        textBlock.layoutParams = LinearLayout.LayoutParams(0, wc, 1f)
-        val nameView = TextView(a)
-        nameView.text = displayAddr
-        nameView.setTextColor(W11.TEXT)
-        nameView.textSize = 14f
-        nameView.maxLines = 1
-        nameView.ellipsize = android.text.TextUtils.TruncateAt.END
-        if (unread) nameView.typeface = Typeface.DEFAULT_BOLD
-        textBlock.addView(nameView)
-        val snippetView = TextView(a)
-        val snip = conv.snippet.replace("\n", " ")
-        snippetView.text = (if (isSentLast) "You: " else "") + snip
-        snippetView.setTextColor(if (unread) W11.TEXT else W11.TEXT_DIM)
-        snippetView.textSize = 12f
-        snippetView.maxLines = 1
-        snippetView.ellipsize = android.text.TextUtils.TruncateAt.END
-        textBlock.addView(snippetView)
-        row.addView(textBlock)
-
-        val right = LinearLayout(a)
-        right.orientation = LinearLayout.VERTICAL
-        right.gravity = Gravity.END
-        right.setPadding(dp(8), 0, 0, 0)
-        right.layoutParams = LinearLayout.LayoutParams(wc, wc)
-        val timeView = TextView(a)
-        timeView.text = timeStr
-        timeView.setTextColor(W11.TEXT_DIM)
-        timeView.textSize = 11f
-        right.addView(timeView)
-        if (unread) {
-            val badge = TextView(a)
-            badge.text = conv.unreadCount.toString()
+            val right = LinearLayout(row.context)
+            right.orientation = LinearLayout.VERTICAL
+            right.gravity = Gravity.END
+            right.setPadding(dp(8), 0, 0, 0)
+            right.layoutParams = LinearLayout.LayoutParams(wc, wc)
+            timeView.setTextColor(W11.TEXT_DIM)
+            timeView.textSize = 11f
+            right.addView(timeView)
             badge.textSize = 10f
             badge.typeface = Typeface.DEFAULT_BOLD
             badge.gravity = Gravity.CENTER
@@ -1739,30 +1795,81 @@ class MainActivity : AppCompatActivity() {
             badge.setPadding(dp(5), dp(1), dp(5), dp(1))
             badge.layoutParams = LinearLayout.LayoutParams(wc, wc).apply { topMargin = dp(4) }
             right.addView(badge)
+            row.addView(right)
         }
-        row.addView(right)
+    }
 
-        row.setOnClickListener { openSmsThread(conv.address, displayAddr) }
-        row.setOnLongClickListener {
-            val menu = PopupMenu(a, row)
-            menu.menu.add(0, 1, 0, "Call")
-            menu.menu.add(0, 2, 1, "Reply")
-            menu.menu.add(0, 3, 2, "Delete conversation")
-            menu.setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    1 -> {
-                        dialInput?.setText(conv.address)
-                        switchToSection("dialer")
+    private inner class SmsListAdapter : RecyclerView.Adapter<SmsRowHolder>() {
+        private var items: List<SmsConversation> = emptyList()
+        var selected: String? = null
+            set(v) { if (field != v) { field = v; notifyDataSetChanged() } }
+
+        fun submit(list: List<SmsConversation>) {
+            items = list
+            notifyDataSetChanged()
+        }
+
+        override fun getItemCount() = items.size
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+            SmsRowHolder(LinearLayout(parent.context))
+
+        override fun onBindViewHolder(h: SmsRowHolder, position: Int) {
+            val conv = items[position]
+            val isSentLast = conv.type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
+            val sel = smsWide && conv.address == selected
+            val unread = conv.unreadCount > 0
+
+            h.row.background = smsRound(if (sel) W11.ITEM_ACTIVE_BG else Color.TRANSPARENT, 6)
+            h.indicator.background = smsRound(if (sel) W11.ACCENT else Color.TRANSPARENT, 2)
+
+            if (h.avatarName != conv.name) {
+                h.avatarName = conv.name
+                h.avatarHost.removeAllViews()
+                val av = smsAvatar(conv.name, 40)
+                av.layoutParams = FrameLayout.LayoutParams(dp(40), dp(40))
+                h.avatarHost.addView(av)
+            }
+
+            h.nameView.text = conv.name
+            h.nameView.typeface = if (unread) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            h.snippetView.text =
+                (if (isSentLast) "You: " else "") + conv.snippet.replace("\n", " ")
+            h.snippetView.setTextColor(if (unread) W11.TEXT else W11.TEXT_DIM)
+            h.timeView.text = if (conv.date > 0)
+                DateUtils.getRelativeTimeSpanString(
+                    conv.date, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS
+                ).toString() else ""
+            h.badge.visibility = if (unread) View.VISIBLE else View.GONE
+            if (unread) h.badge.text = conv.unreadCount.toString()
+
+            h.row.setOnClickListener {
+                val p = h.bindingAdapterPosition
+                if (p != RecyclerView.NO_POSITION) openSmsThread(items[p].address, items[p].name)
+            }
+            h.row.setOnLongClickListener {
+                val p = h.bindingAdapterPosition
+                if (p == RecyclerView.NO_POSITION) return@setOnLongClickListener true
+                val c = items[p]
+                val menu = PopupMenu(this@MainActivity, h.row)
+                menu.menu.add(0, 1, 0, "Call")
+                menu.menu.add(0, 2, 1, "Reply")
+                menu.menu.add(0, 3, 2, "Delete conversation")
+                menu.setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        1 -> {
+                            dialInput?.setText(c.address)
+                            switchToSection("dialer")
+                        }
+                        2 -> showComposeSmsDialog(c.address, "")
+                        3 -> deleteSmsThread(c.address)
                     }
-                    2 -> showComposeSmsDialog(conv.address, "")
-                    3 -> deleteSmsThread(conv.address)
+                    true
                 }
+                menu.show()
                 true
             }
-            menu.show()
-            true
         }
-        return row
     }
 
     private fun getContactName(address: String): String {
@@ -1781,75 +1888,124 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) { address }
     }
 
-    private fun smsBubbleRow(msg: SmsMessage, maxW: Int): LinearLayout {
-        val a = this
-        val mp = ViewGroup.LayoutParams.MATCH_PARENT
-        val wc = ViewGroup.LayoutParams.WRAP_CONTENT
-        val isSent = msg.type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
-        val row = LinearLayout(a)
-        row.orientation = LinearLayout.HORIZONTAL
-        row.gravity = if (isSent) Gravity.END else Gravity.START
-        row.layoutParams = LinearLayout.LayoutParams(mp, wc).apply { setMargins(0, dp(3), 0, dp(3)) }
+    // ── Message bubbles ──────────────────────────────────────────────────
+    private val SMS_VT_DAY = 0
+    private val SMS_VT_RECV = 1
+    private val SMS_VT_SENT = 2
 
-        val bubble = LinearLayout(a)
-        bubble.orientation = LinearLayout.VERTICAL
-        bubble.background =
-            smsRound(if (isSent) Color.parseColor("#0A5CAD") else Color.parseColor("#3A3A3A"), 8)
-        bubble.setPadding(dp(12), dp(8), dp(12), dp(6))
+    private inner class SmsBubbleHolder(
+        view: View, val body: TextView?, val time: TextView?
+    ) : RecyclerView.ViewHolder(view)
 
-        val bodyView = TextView(a)
-        bodyView.text = msg.body
-        bodyView.setTextColor(Color.WHITE)
-        bodyView.textSize = 14f
-        bodyView.maxWidth = maxW
-        bubble.addView(bodyView)
+    private inner class SmsThreadAdapter : RecyclerView.Adapter<SmsBubbleHolder>() {
+        var items: MutableList<SmsItem> = mutableListOf()
+        private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
-        val timeView = TextView(a)
-        timeView.text = if (msg.date > 0)
-            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(msg.date)) else ""
-        timeView.setTextColor(Color.parseColor("#B3FFFFFF"))
-        timeView.textSize = 10f
-        timeView.layoutParams = LinearLayout.LayoutParams(wc, wc).apply {
-            gravity = Gravity.END
-            topMargin = dp(2)
+        fun submit(list: MutableList<SmsItem>) {
+            items = list
+            notifyDataSetChanged()
         }
-        bubble.addView(timeView)
-        row.addView(bubble)
-        return row
-    }
 
-    private fun openSmsThread(address: String, displayName: String) {
-        val messages = mutableListOf<SmsMessage>()
-        try {
-            val cursor = contentResolver.query(
-                Uri.parse("content://sms/"),
-                arrayOf("_id", "body", "date", "type"),
-                "address = ?", arrayOf(address),
-                "date ASC"
+        override fun getItemCount() = items.size
+
+        override fun getItemViewType(position: Int) = when (val it = items[position]) {
+            is SmsItem.Day -> SMS_VT_DAY
+            is SmsItem.Msg ->
+                if (it.msg.type == Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT) SMS_VT_SENT
+                else SMS_VT_RECV
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SmsBubbleHolder {
+            val ctx = parent.context
+            val mp = ViewGroup.LayoutParams.MATCH_PARENT
+            val wc = ViewGroup.LayoutParams.WRAP_CONTENT
+            if (viewType == SMS_VT_DAY) {
+                val chip = TextView(ctx)
+                chip.setTextColor(W11.TEXT_DIM)
+                chip.textSize = 11f
+                chip.gravity = Gravity.CENTER
+                chip.setPadding(0, dp(8), 0, dp(6))
+                chip.layoutParams = RecyclerView.LayoutParams(mp, wc)
+                return SmsBubbleHolder(chip, chip, null)
+            }
+            val sent = viewType == SMS_VT_SENT
+            val row = FrameLayout(ctx)
+            row.layoutParams = RecyclerView.LayoutParams(mp, wc)
+            row.setPadding(dp(12), dp(3), dp(12), dp(3))
+
+            val bubble = SmsBubbleLayout(ctx, if (smsWide) 0.7f else 0.8f)
+            bubble.orientation = LinearLayout.VERTICAL
+            bubble.background =
+                smsRound(if (sent) Color.parseColor("#0A5CAD") else Color.parseColor("#3A3A3A"), 8)
+            bubble.setPadding(dp(12), dp(8), dp(12), dp(6))
+            bubble.layoutParams = FrameLayout.LayoutParams(
+                wc, wc, if (sent) Gravity.END else Gravity.START
             )
-            cursor?.use {
-                val bodyIdx = it.getColumnIndex("body")
-                val dateIdx = it.getColumnIndex("date")
-                val typeIdx = it.getColumnIndex("type")
-                while (it.moveToNext()) {
-                    val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
-                    val date = if (dateIdx >= 0) it.getLong(dateIdx) else 0L
-                    val type = if (typeIdx >= 0) it.getInt(typeIdx) else 1
-                    messages.add(SmsMessage(body, date, type))
+
+            val bodyView = TextView(ctx)
+            bodyView.setTextColor(Color.WHITE)
+            bodyView.textSize = 14f
+            // Simple line breaking + no hyphenation: fast, and safe for Bengali text.
+            bodyView.breakStrategy = android.text.Layout.BREAK_STRATEGY_SIMPLE
+            bodyView.hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
+            bodyView.layoutParams = LinearLayout.LayoutParams(wc, wc)
+            bubble.addView(bodyView)
+
+            val timeView = TextView(ctx)
+            timeView.setTextColor(Color.parseColor("#B3FFFFFF"))
+            timeView.textSize = 10f
+            timeView.layoutParams = LinearLayout.LayoutParams(wc, wc).apply {
+                gravity = Gravity.END
+                topMargin = dp(2)
+            }
+            bubble.addView(timeView)
+            row.addView(bubble)
+            return SmsBubbleHolder(row, bodyView, timeView)
+        }
+
+        override fun onBindViewHolder(h: SmsBubbleHolder, position: Int) {
+            when (val it = items[position]) {
+                is SmsItem.Day -> h.body?.text = it.label
+                is SmsItem.Msg -> {
+                    h.body?.text = it.msg.body
+                    h.time?.text =
+                        if (it.msg.date > 0) timeFmt.format(Date(it.msg.date)) else ""
                 }
             }
-        } catch (e: Exception) {
-            Toast.makeText(this, "SMS thread error: ${e.message}", Toast.LENGTH_SHORT).show()
-            return
         }
+    }
 
+    private fun smsBuildItems(messages: List<SmsMessage>): MutableList<SmsItem> {
+        val out = ArrayList<SmsItem>(messages.size + 16)
+        val dayFmt = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
+        var lastDay = ""
+        for (m in messages) {
+            if (m.date > 0) {
+                val day = dayFmt.format(Date(m.date))
+                if (day != lastDay) {
+                    lastDay = day
+                    out.add(SmsItem.Day(day))
+                }
+            }
+            out.add(SmsItem.Msg(m))
+        }
+        return out
+    }
+
+    private fun smsUpdateHeaderSub(count: Int, truncated: Boolean) {
+        val addr = smsCurrentAddress ?: return
+        smsHeaderSub?.text =
+            (if (smsCurrentName != addr) "$addr  -  " else "") +
+                (if (truncated) "$count+ messages" else "$count messages")
+    }
+
+    /** Builds header + message list + composer once; later opens only re-bind data. */
+    private fun ensureSmsThreadUi() {
+        if (smsThreadRv != null) return
         val content = smsThreadContent ?: return
         val a = this
         val mp = ViewGroup.LayoutParams.MATCH_PARENT
         val wc = ViewGroup.LayoutParams.WRAP_CONTENT
-        smsCurrentAddress = address
-        smsCurrentName = displayName
-        content.removeAllViews()
 
         // ── Header: [back] avatar  name / number   call  delete ──
         val header = LinearLayout(a)
@@ -1859,41 +2015,44 @@ class MainActivity : AppCompatActivity() {
         header.setPadding(dp(8), dp(8), dp(12), dp(8))
         header.layoutParams = LinearLayout.LayoutParams(mp, wc)
         if (!smsWide) {
-            header.addView(smsIconButton(VectorIconView.BACK, 40, Color.WHITE, null) {
+            val back = smsIconButton(VectorIconView.BACK, 40, Color.WHITE, null) {
                 smsCloseThread()
-            })
+            }
+            smsBackBtn = back
+            header.addView(back)
         } else {
             header.setPadding(dp(16), dp(8), dp(12), dp(8))
         }
-        val avatar = smsAvatar(displayName, 36)
-        (avatar.layoutParams as LinearLayout.LayoutParams).setMargins(dp(4), 0, dp(10), 0)
-        header.addView(avatar)
+        val avatarHost = LinearLayout(a)
+        avatarHost.layoutParams = LinearLayout.LayoutParams(wc, wc).apply {
+            setMargins(dp(4), 0, dp(10), 0)
+        }
+        smsHeaderAvatarHost = avatarHost
+        header.addView(avatarHost)
 
         val nameBlock = LinearLayout(a)
         nameBlock.orientation = LinearLayout.VERTICAL
         nameBlock.layoutParams = LinearLayout.LayoutParams(0, wc, 1f)
         val headerName = TextView(a)
-        headerName.text = displayName
         headerName.textSize = 15f
         headerName.typeface = Typeface.DEFAULT_BOLD
         headerName.setTextColor(Color.WHITE)
         headerName.maxLines = 1
         headerName.ellipsize = android.text.TextUtils.TruncateAt.END
         nameBlock.addView(headerName)
+        smsHeaderName = headerName
         val headerSub = TextView(a)
-        headerSub.text =
-            (if (displayName != address) "$address  -  " else "") + "${messages.size} messages"
         headerSub.textSize = 11f
         headerSub.setTextColor(W11.TEXT_DIM)
         nameBlock.addView(headerSub)
+        smsHeaderSub = headerSub
         header.addView(nameBlock)
 
         header.addView(smsIconButton(VectorIconView.PHONE, 40, Color.parseColor("#6CCB5F"), null) {
-            dialInput?.setText(address)
-            switchToSection("dialer")
+            smsCurrentAddress?.let { dialInput?.setText(it); switchToSection("dialer") }
         })
         header.addView(smsIconButton(VectorIconView.DELETE, 40, Color.parseColor("#FF99A4"), null) {
-            deleteSmsThread(address)
+            smsCurrentAddress?.let { deleteSmsThread(it) }
         })
         content.addView(header)
 
@@ -1902,44 +2061,20 @@ class MainActivity : AppCompatActivity() {
         divider.layoutParams = LinearLayout.LayoutParams(mp, dp(1))
         content.addView(divider)
 
-        // ── Messages (grouped by day) ──
-        val msgScroll = ScrollView(a)
-        msgScroll.layoutParams = LinearLayout.LayoutParams(mp, 0, 1f)
-        val msgContainer = LinearLayout(a)
-        msgContainer.orientation = LinearLayout.VERTICAL
-        msgContainer.setPadding(dp(14), dp(10), dp(14), dp(10))
-        val maxW = (resources.displayMetrics.widthPixels * (if (smsWide) 0.4f else 0.68f)).toInt()
-        val dayFmt = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
-        var lastDay = ""
-        for (msg in messages) {
-            if (msg.date > 0) {
-                val day = dayFmt.format(Date(msg.date))
-                if (day != lastDay) {
-                    lastDay = day
-                    val chip = TextView(a)
-                    chip.text = day
-                    chip.setTextColor(W11.TEXT_DIM)
-                    chip.textSize = 11f
-                    chip.gravity = Gravity.CENTER
-                    chip.setPadding(0, dp(8), 0, dp(6))
-                    chip.layoutParams = LinearLayout.LayoutParams(mp, wc)
-                    msgContainer.addView(chip)
-                }
-            }
-            msgContainer.addView(smsBubbleRow(msg, maxW))
-        }
-        if (messages.isEmpty()) {
-            val empty = TextView(a)
-            empty.text = "No messages"
-            empty.setTextColor(W11.TEXT_DIM)
-            empty.textSize = 14f
-            empty.gravity = Gravity.CENTER
-            empty.setPadding(dp(20), dp(40), dp(20), dp(40))
-            msgContainer.addView(empty)
-        }
-        msgScroll.addView(msgContainer)
-        content.addView(msgScroll)
-        msgScroll.post { msgScroll.fullScroll(View.FOCUS_DOWN) }
+        // ── Messages ──
+        val rv = RecyclerView(a)
+        rv.layoutManager = LinearLayoutManager(a)
+        rv.layoutParams = LinearLayout.LayoutParams(mp, 0, 1f)
+        rv.itemAnimator = null
+        rv.setItemViewCacheSize(12)
+        rv.overScrollMode = View.OVER_SCROLL_NEVER
+        rv.setPadding(0, dp(8), 0, dp(8))
+        rv.clipToPadding = false
+        val adapter = SmsThreadAdapter()
+        rv.adapter = adapter
+        smsThreadRv = rv
+        smsThreadAdapter = adapter
+        content.addView(rv)
 
         // ── Composer ──
         val replyBar = LinearLayout(a)
@@ -1963,22 +2098,98 @@ class MainActivity : AppCompatActivity() {
         replyEdit.maxLines = 4
         replyEdit.setPadding(0, dp(8), 0, dp(8))
         replyEdit.layoutParams = LinearLayout.LayoutParams(mp, wc)
+        smsReplyEdit = replyEdit
         inputBox.addView(replyEdit)
         replyBar.addView(inputBox)
         val sendBtn = smsIconButton(VectorIconView.SEND, 42, Color.BLACK, W11.ACCENT) {
+            val address = smsCurrentAddress
             val text = replyEdit.text.toString().trim()
-            if (text.isNotEmpty()) {
-                sendSms(address, text)
+            if (address != null && text.isNotEmpty() && sendSms(address, text)) {
                 replyEdit.setText("")
-                openSmsThread(address, displayName)
+                // Show the sent message instantly (no re-query, no lag).
+                val ad = smsThreadAdapter
+                if (ad != null) {
+                    val now = System.currentTimeMillis()
+                    val dayFmt = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
+                    val lastMsg = ad.items.lastOrNull { it is SmsItem.Msg } as? SmsItem.Msg
+                    if (lastMsg == null || dayFmt.format(Date(lastMsg.msg.date)) != dayFmt.format(Date(now)))
+                        ad.items.add(SmsItem.Day(dayFmt.format(Date(now))))
+                    ad.items.add(
+                        SmsItem.Msg(
+                            SmsMessage(
+                                text, now, Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
+                            )
+                        )
+                    )
+                    ad.notifyItemRangeInserted(ad.items.size - 1, 1)
+                    smsThreadRv?.scrollToPosition(ad.items.size - 1)
+                }
             }
         }
         (sendBtn.layoutParams as LinearLayout.LayoutParams).leftMargin = dp(8)
         replyBar.addView(sendBtn)
         content.addView(replyBar)
+    }
 
+    private fun openSmsThread(address: String, displayName: String) {
+        ensureSmsThreadUi()
+        val adapter = smsThreadAdapter ?: return
+        val changed = smsCurrentAddress != address
+        smsCurrentAddress = address
+        smsCurrentName = displayName
+        if (changed) {
+            smsReplyEdit?.setText("")
+            adapter.submit(mutableListOf())
+        }
+        smsHeaderName?.text = displayName
+        smsHeaderAvatarHost?.removeAllViews()
+        smsHeaderAvatarHost?.addView(smsAvatar(displayName, 36))
+        smsUpdateHeaderSub(0, false)
         smsShowThreadPane()
-        if (smsWide) refreshSmsView() // update selected highlight in the list
+        smsListAdapter?.selected = address // moves the highlight, no list reload
+
+        val gen = ++smsThreadGen
+        smsExec.execute {
+            val messages = ArrayList<SmsMessage>()
+            var error: String? = null
+            try {
+                val cursor = contentResolver.query(
+                    Uri.parse("content://sms/"),
+                    arrayOf("body", "date", "type"),
+                    "address = ?", arrayOf(address),
+                    "date DESC LIMIT $SMS_THREAD_LIMIT"
+                )
+                cursor?.use {
+                    val bodyIdx = it.getColumnIndex("body")
+                    val dateIdx = it.getColumnIndex("date")
+                    val typeIdx = it.getColumnIndex("type")
+                    while (it.moveToNext()) {
+                        messages.add(
+                            SmsMessage(
+                                if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else "",
+                                if (dateIdx >= 0) it.getLong(dateIdx) else 0L,
+                                if (typeIdx >= 0) it.getInt(typeIdx) else 1
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                error = e.message
+            }
+            messages.reverse() // oldest → newest
+            val items = smsBuildItems(messages)
+            smsMain.post {
+                if (gen != smsThreadGen || smsCurrentAddress != address) return@post
+                if (error != null) {
+                    Toast.makeText(this, "SMS thread error: $error", Toast.LENGTH_SHORT).show()
+                    return@post
+                }
+                if (messages.isEmpty()) items.add(SmsItem.Day("No messages"))
+                adapter.submit(items)
+                smsUpdateHeaderSub(messages.size, messages.size >= SMS_THREAD_LIMIT)
+                if (items.isNotEmpty()) smsThreadRv?.scrollToPosition(items.size - 1)
+            }
+        }
     }
 
     data class SmsMessage(val body: String, val date: Long, val type: Int)
@@ -2028,7 +2239,7 @@ class MainActivity : AppCompatActivity() {
         }
         dialogView.addView(msgEdit)
 
-        AlertDialog.Builder(this)
+        W11Dialog.Builder(this)
             .setTitle("New message")
             .setView(dialogView)
             .setPositiveButton("Send") { _, _ ->
@@ -2042,7 +2253,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun sendSms(address: String, body: String) {
+    private fun sendSms(address: String, body: String): Boolean {
         if (ContextCompat.checkSelfPermission(
                 this, PERM_SMS_S
             ) != PackageManager.PERMISSION_GRANTED
@@ -2051,7 +2262,7 @@ class MainActivity : AppCompatActivity() {
                 this, arrayOf(PERM_SMS_S, PERM_SMS_R), REQ_SMS
             )
             Toast.makeText(this, "SMS permission required", Toast.LENGTH_SHORT).show()
-            return
+            return false
         }
         try {
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -2065,26 +2276,36 @@ class MainActivity : AppCompatActivity() {
             else smsManager.sendMultipartTextMessage(address, null, parts, null, null)
             Toast.makeText(this, "SMS sent to $address", Toast.LENGTH_SHORT).show()
             if (activeSection == "sms") refreshSmsView()
+            return true
         } catch (e: Exception) {
             Toast.makeText(this, "SMS failed: ${e.message}", Toast.LENGTH_LONG).show()
+            return false
         }
     }
 
     private fun deleteSmsThread(address: String) {
-        AlertDialog.Builder(this)
+        W11Dialog.Builder(this)
             .setTitle("Delete conversation")
             .setMessage("Delete all messages with $address?")
             .setPositiveButton("Delete") { _, _ ->
-                try {
-                    val deleted = contentResolver.delete(
-                        Uri.parse("content://sms/"), "address = ?", arrayOf(address)
-                    )
-                    Toast.makeText(this, "Deleted $deleted message(s)", Toast.LENGTH_SHORT).show()
-                    if (smsCurrentAddress == address) smsCloseThread() else refreshSmsView()
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        this, "Delete failed: ${e.message}", Toast.LENGTH_SHORT
-                    ).show()
+                smsExec.execute {
+                    try {
+                        val deleted = contentResolver.delete(
+                            Uri.parse("content://sms/"), "address = ?", arrayOf(address)
+                        )
+                        smsMain.post {
+                            Toast.makeText(
+                                this, "Deleted $deleted message(s)", Toast.LENGTH_SHORT
+                            ).show()
+                            if (smsCurrentAddress == address) smsCloseThread() else refreshSmsView()
+                        }
+                    } catch (e: Exception) {
+                        smsMain.post {
+                            Toast.makeText(
+                                this, "Delete failed: ${e.message}", Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 }
             }
             .setNegativeButton("Cancel", null).show()
@@ -2155,7 +2376,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun createNewFolder() {
         val input = EditText(this)
-        AlertDialog.Builder(this).setTitle("New Folder").setView(input)
+        W11Dialog.Builder(this).setTitle("New Folder").setView(input)
             .setPositiveButton("Create") { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {
@@ -2171,7 +2392,7 @@ class MainActivity : AppCompatActivity() {
         val options = mutableListOf("Delete", "Rename", "Details")
         if (file.name.endsWith(".pdf", true)) options.add(1, "PDF to JPG")
         if (file.name.endsWith(".zip", true)) options.add(1, "Extract ZIP to DCIM")
-        AlertDialog.Builder(this).setTitle(file.name)
+        W11Dialog.Builder(this).setTitle(file.name)
             .setItems(options.toTypedArray()) { _, which ->
                 when (options[which]) {
                     "Delete" -> deleteFile(file)
@@ -2184,7 +2405,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun deleteFile(file: File) {
-        AlertDialog.Builder(this).setTitle("Delete?").setMessage("Delete ${file.name}?")
+        W11Dialog.Builder(this).setTitle("Delete?").setMessage("Delete ${file.name}?")
             .setPositiveButton("Yes") { _, _ ->
                 if (file.deleteRecursively()) {
                     Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show()
@@ -2195,7 +2416,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renameFile(file: File) {
         val input = EditText(this).apply { setText(file.name) }
-        AlertDialog.Builder(this).setTitle("Rename").setView(input)
+        W11Dialog.Builder(this).setTitle("Rename").setView(input)
             .setPositiveButton("OK") { _, _ ->
                 val newName = input.text.toString().trim()
                 if (newName.isNotEmpty() && file.renameTo(File(file.parent, newName))) {
@@ -2206,7 +2427,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDetails(file: File) {
-        AlertDialog.Builder(this).setTitle("Details").setMessage(
+        W11Dialog.Builder(this).setTitle("Details").setMessage(
             """
             Name: ${file.name}
             Path: ${file.absolutePath}
@@ -2221,7 +2442,7 @@ class MainActivity : AppCompatActivity() {
     // ── ZIP ──────────────────────────────────────────────────────
 
     private fun showZipOptions(file: File) {
-        AlertDialog.Builder(this).setTitle("🗜️ ${file.name}")
+        W11Dialog.Builder(this).setTitle("🗜️ ${file.name}")
             .setItems(arrayOf("Extract to DCIM", "Details")) { _, which ->
                 when (which) { 0 -> extractZipToDcim(file); 1 -> showDetails(file) }
             }.setNegativeButton("Cancel", null).show()
@@ -2234,7 +2455,7 @@ class MainActivity : AppCompatActivity() {
             File(Environment.getExternalStorageDirectory(), "DCIM")
         }
         val destRoot = File(dcimDir, zipFile.nameWithoutExtension)
-        val progressDialog = AlertDialog.Builder(this).setTitle("📦 Extracting…")
+        val progressDialog = W11Dialog.Builder(this).setTitle("📦 Extracting…")
             .setMessage("0 files extracted").setCancelable(false).create()
         progressDialog.show()
         Thread {
@@ -2267,7 +2488,7 @@ class MainActivity : AppCompatActivity() {
                     val msg =
                         if (failed == 0) "✅ $extracted files extracted to\nDCIM/${zipFile.nameWithoutExtension}"
                         else "✅ $extracted extracted, ⚠️ $failed failed"
-                    AlertDialog.Builder(this).setTitle("Extraction Complete").setMessage(msg)
+                    W11Dialog.Builder(this).setTitle("Extraction Complete").setMessage(msg)
                         .setPositiveButton("OK", null).show()
                     loadFiles(currentPath)
                 }
@@ -3265,7 +3486,7 @@ class MainActivity : AppCompatActivity() {
                     view: WebView?, url: String?, message: String?, result: JsResult?
                 ): Boolean {
                     runOnUiThread {
-                        AlertDialog.Builder(this@MainActivity).setTitle("Alert")
+                        W11Dialog.Builder(this@MainActivity).setTitle("Alert")
                             .setMessage(message)
                             .setPositiveButton("OK") { _, _ -> result?.confirm() }
                             .setCancelable(false).show()
@@ -3276,7 +3497,7 @@ class MainActivity : AppCompatActivity() {
                     view: WebView?, url: String?, message: String?, result: JsResult?
                 ): Boolean {
                     runOnUiThread {
-                        AlertDialog.Builder(this@MainActivity).setTitle("Confirm")
+                        W11Dialog.Builder(this@MainActivity).setTitle("Confirm")
                             .setMessage(message)
                             .setPositiveButton("OK") { _, _ -> result?.confirm() }
                             .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
@@ -3290,7 +3511,7 @@ class MainActivity : AppCompatActivity() {
                 ): Boolean {
                     runOnUiThread {
                         val input = EditText(this@MainActivity).apply { setText(defaultValue) }
-                        AlertDialog.Builder(this@MainActivity).setTitle("Input")
+                        W11Dialog.Builder(this@MainActivity).setTitle("Input")
                             .setMessage(message).setView(input)
                             .setPositiveButton("OK") { _, _ ->
                                 result?.confirm(input.text.toString())
@@ -3362,8 +3583,8 @@ class MainActivity : AppCompatActivity() {
             val chip = TabChip(tab)
             chip.title.text = "New Tab"
             chip.setOnClickListener { switchTab(webTabs.indexOf(tab)) }
-            chip.setOnLongClickListener { closeTab(webTabs.indexOf(tab)); true }
-            chip.close.setOnClickListener { closeTab(webTabs.indexOf(tab)) }
+            chip.setOnLongClickListener { confirmCloseTab(tab); true }
+            chip.close.setOnClickListener { confirmCloseTab(tab) }
             tabContainer.addView(chip)
             webView.loadUrl(url)
             if (switch) switchTab(tabIndex)
@@ -3402,6 +3623,18 @@ class MainActivity : AppCompatActivity() {
         desktopIcon.setIconColor(
             if (tab.isDesktopMode) Color.parseColor("#4CC2FF") else Color.parseColor("#B0B0B0")
         )
+    }
+
+    /** A tab is only closed after the user confirms in a dialog. */
+    private fun confirmCloseTab(tab: WebTab) {
+        if (webTabs.size <= 1) {
+            Toast.makeText(this, "Cannot close last tab", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val name = tab.title.ifBlank { "New Tab" }
+        W11Dialog.confirm(this, "Close tab", "Close \"$name\"?", "Close") {
+            closeTab(webTabs.indexOf(tab))
+        }
     }
 
     private fun closeTab(index: Int): Boolean {
@@ -3480,7 +3713,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showImageSaveDialog(imageUrl: String, webView: WebView) {
         val options = arrayOf("💾 ছবি সেভ করুন", "🔗 লিংক কপি করুন", "🌐 নতুন ট্যাবে খুলুন")
-        AlertDialog.Builder(this).setTitle("ছবির অপশন").setItems(options) { _, which ->
+        W11Dialog.Builder(this).setTitle("ছবির অপশন").setItems(options) { _, which ->
             when (which) {
                 0 -> downloadImage(imageUrl, webView)
                 1 -> {
@@ -3597,7 +3830,7 @@ class MainActivity : AppCompatActivity() {
             setText(defaultName); textSize = 14f; setSingleLine(true); post { selectAll() }
         }
         dialogView.addView(fileNameInput)
-        AlertDialog.Builder(this).setTitle("⬇️ Download File").setView(dialogView)
+        W11Dialog.Builder(this).setTitle("⬇️ Download File").setView(dialogView)
             .setPositiveButton("Download") { _, _ ->
                 val inputName = fileNameInput.text.toString().trim()
                 onConfirm(sanitizeFileName(inputName.ifBlank { defaultName }))
@@ -3691,7 +3924,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showLinkDialog(link: String, webView: WebView) {
         val options = arrayOf("🌐 Open in new tab", "⬇️ Download link", "🔗 Copy link")
-        AlertDialog.Builder(this).setTitle(link).setItems(options) { _, which ->
+        W11Dialog.Builder(this).setTitle(link).setItems(options) { _, which ->
             when (which) {
                 0 -> addNewTab(link, switch = true)
                 1 -> {

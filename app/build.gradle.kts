@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.srizwan.win11"
-    compileSdk = 35 // Stable SDK 35 ব্যবহার করা ভালো
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.srizwan.win11"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 101
         versionName = "2.0.0"
 
@@ -43,4 +43,6 @@ dependencies {
     // এই লাইব্রেরিটি অত্যন্ত গুরুত্বপূর্ণ TabLayout ও BottomNav এর জন্য
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    // Recycled lists for the Messages UI (smooth scrolling, no lag)
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 }

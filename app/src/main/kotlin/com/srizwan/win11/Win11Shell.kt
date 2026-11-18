@@ -11,7 +11,6 @@ import android.text.TextWatcher
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import android.app.AlertDialog
 import android.os.Build
 import android.graphics.Canvas
 import android.graphics.Color
@@ -613,12 +612,10 @@ class Win11Shell(
 
     // ── Footer: user profile + power (Step 4.5) ──────────────────
 
-    private val shellPrefs by lazy { ctx.getSharedPreferences("start_menu", Context.MODE_PRIVATE) }
     private var userNameView: TextView? = null
     private var avatarView: TextView? = null
 
     private fun userName(): String {
-        shellPrefs.getString("user_name", null)?.takeIf { it.isNotBlank() }?.let { return it }
         val dev = try { Settings.Global.getString(ctx.contentResolver, "device_name") } catch (e: Exception) { null }
         return if (!dev.isNullOrBlank()) dev else "User"
     }
@@ -700,12 +697,10 @@ class Win11Shell(
 
     private fun showUserMenu(anchor: View) {
         val menu = PopupMenu(ctx, anchor)
-        menu.menu.add(0, 1, 0, "Change name")
-        menu.menu.add(0, 2, 1, "Settings")
+        menu.menu.add(0, 1, 0, "Settings")
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                1 -> askUserName()
-                2 -> try {
+                1 -> try {
                     ctx.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     closeStart(animated = false)
                 } catch (e: Exception) { }
@@ -713,21 +708,6 @@ class Win11Shell(
             true
         }
         menu.show()
-    }
-
-    private fun askUserName() {
-        val input = EditText(ctx).apply {
-            setText(userName()); setSelection(text.length); setSingleLine(true)
-        }
-        AlertDialog.Builder(ctx)
-            .setTitle("Your name")
-            .setView(input)
-            .setPositiveButton("Save") { _, _ ->
-                shellPrefs.edit().putString("user_name", input.text.toString().trim()).apply()
-                applyUserName()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     // Android only lets a launcher lock / show the power dialog through an
@@ -739,8 +719,9 @@ class Win11Shell(
         menu.menu.add(0, 3, 2, "Shut down")
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                1 -> doPower(lock = true)
-                2, 3 -> doPower(lock = false)
+                1 -> W11Dialog.confirm(ctx, "Lock", "Lock the screen now?", "Lock") { doPower(lock = true) }
+                2 -> W11Dialog.confirm(ctx, "Restart", "Restart this device? Anything running will be closed.", "Restart") { doPower(lock = false) }
+                3 -> W11Dialog.confirm(ctx, "Shut down", "Shut down this device? Anything running will be closed.", "Shut down") { doPower(lock = false) }
             }
             true
         }
@@ -762,7 +743,7 @@ class Win11Shell(
     }
 
     private fun askEnablePowerService() {
-        AlertDialog.Builder(ctx)
+        W11Dialog.Builder(ctx)
             .setTitle("Enable power controls")
             .setMessage("Android only allows Lock / Restart / Shut down through an accessibility service. " +
                 "Turn on \"Win11 Power and Lock\" in Accessibility settings. It does not read your screen.")

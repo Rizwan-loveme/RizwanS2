@@ -1,6 +1,5 @@
 package com.srizwan.win11
 
-import android.app.AlertDialog
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -219,26 +218,35 @@ class DownloadsUi(
                 opts.add("Open" to { onOpen(t) })
                 opts.add("Show in Downloads folder" to { onShowFolder() })
                 opts.add("Delete file" to { DlEngine.deleteFinishedFile(t.id) })
-                opts.add("Remove from list" to { DlEngine.cancel(t.id) })
+                opts.add("Remove from list" to { confirmStop(t, "Remove from list") })
             }
             DlEngine.RUNNING, DlEngine.QUEUED -> {
                 if (!t.isBlob) opts.add("Pause" to { DlEngine.pause(t.id) })
-                opts.add("Cancel and delete" to { DlEngine.cancel(t.id) })
+                opts.add("Cancel and delete" to { confirmStop(t, "Cancel and delete") })
             }
             DlEngine.PAUSED -> {
                 opts.add("Resume" to { DlEngine.resume(t.id) })
-                opts.add("Cancel and delete" to { DlEngine.cancel(t.id) })
+                opts.add("Cancel and delete" to { confirmStop(t, "Cancel and delete") })
             }
             DlEngine.FAILED -> {
                 if (!t.isBlob) opts.add("Retry" to { DlEngine.resume(t.id) })
-                opts.add("Remove from list" to { DlEngine.cancel(t.id) })
+                opts.add("Remove from list" to { confirmStop(t, "Remove from list") })
             }
-            else -> opts.add("Remove from list" to { DlEngine.cancel(t.id) })
+            else -> opts.add("Remove from list" to { confirmStop(t, "Remove from list") })
         }
         if (t.url.isNotEmpty()) opts.add("Copy link" to { onCopyLink(t.url) })
-        AlertDialog.Builder(ctx).setTitle(t.fileName)
+        W11Dialog.Builder(ctx).setTitle(t.fileName)
             .setItems(opts.map { it.first }.toTypedArray()) { _, which -> opts[which].second() }
             .setNegativeButton("Close", null).show()
+    }
+
+    /** A download is only stopped / removed after the user confirms. */
+    private fun confirmStop(t: DlTask, action: String) {
+        val msg = if (action.startsWith("Remove")) "Remove ${t.fileName} from the list?"
+                  else "${t.fileName}\n\nThis stops the download. Continue?"
+        W11Dialog.confirm(ctx, action, msg, "Yes") {
+            DlEngine.cancel(t.id)
+        }
     }
 
     private fun showSettings() {
@@ -247,12 +255,12 @@ class DownloadsUi(
             "Simultaneous downloads: ${DlEngine.maxParallel}",
             "Clear finished and failed"
         )
-        AlertDialog.Builder(ctx).setTitle("Download settings")
+        W11Dialog.Builder(ctx).setTitle("Download settings")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {
                         val v = intArrayOf(1, 2, 4, 6, 8)
-                        AlertDialog.Builder(ctx).setTitle("Connections per download")
+                        W11Dialog.Builder(ctx).setTitle("Connections per download")
                             .setSingleChoiceItems(
                                 v.map { it.toString() }.toTypedArray(),
                                 v.indexOf(DlEngine.connections).coerceAtLeast(0)
@@ -261,7 +269,7 @@ class DownloadsUi(
                     }
                     1 -> {
                         val v = intArrayOf(1, 2, 3, 4, 5)
-                        AlertDialog.Builder(ctx).setTitle("Simultaneous downloads")
+                        W11Dialog.Builder(ctx).setTitle("Simultaneous downloads")
                             .setSingleChoiceItems(
                                 v.map { it.toString() }.toTypedArray(),
                                 v.indexOf(DlEngine.maxParallel).coerceAtLeast(0)
@@ -402,7 +410,7 @@ class DownloadsUi(
                 else -> action.visibility = View.GONE
             }
             cancel.visibility = if (t.status == DlEngine.DONE || t.status == DlEngine.SAVING) View.GONE else View.VISIBLE
-            cancel.setOnClickListener { DlEngine.cancel(t.id) }
+            cancel.setOnClickListener { confirmStop(t, "Cancel download") }
         }
     }
 

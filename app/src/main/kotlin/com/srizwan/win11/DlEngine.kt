@@ -702,7 +702,7 @@ object DlEngine {
         val text = if (total > 0) "${dlFmtSize(done)} / ${dlFmtSize(total)}" + (if (speed > 0) "  •  ${dlFmtSize(speed)}/s" else "")
         else if (speed > 0) "${dlFmtSize(speed)}/s" else "Preparing…"
         val b = NotificationCompat.Builder(app, CH_PROGRESS)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(R.drawable.ic_stat_download)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
@@ -741,7 +741,7 @@ object DlEngine {
             val nm = app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val ok = t.status == DONE
             val n = NotificationCompat.Builder(app, CH_DONE)
-                .setSmallIcon(if (ok) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error)
+                .setSmallIcon(if (ok) R.drawable.ic_stat_done else R.drawable.ic_stat_error)
                 .setContentTitle(t.fileName)
                 .setContentText(if (ok) "Download complete" else "Download failed: ${t.error}")
                 .setAutoCancel(true)

@@ -31,6 +31,10 @@ class NotificationSettingsActivity : AppCompatActivity() {
     private lateinit var statusBtn: TextView
     private val appRows = mutableListOf<Pair<View, SwitchCompat>>()
 
+    private lateinit var adminStatusText: TextView
+    private lateinit var adminBtn: TextView
+    private val REQ_DEVICE_ADMIN = 9001
+
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun round(color: Int, radiusDp: Int): GradientDrawable =
@@ -60,6 +64,12 @@ class NotificationSettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshStatus()
+        refreshAdminStatus()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_DEVICE_ADMIN) refreshAdminStatus()
     }
 
     // =====================================================================
@@ -141,6 +151,43 @@ class NotificationSettingsActivity : AppCompatActivity() {
         }
         card.addView(statusBtn)
         col.addView(card)
+
+        // ── Uninstall protection (Device Admin) card ──
+        col.addView(sectionLabel("Security"))
+        val adminCard = LinearLayout(this)
+        adminCard.orientation = LinearLayout.VERTICAL
+        adminCard.background = round(Color.parseColor("#2B2B2B"), 8)
+        adminCard.setPadding(dp(16), dp(14), dp(16), dp(14))
+        adminCard.layoutParams = LinearLayout.LayoutParams(mp, wc).apply { bottomMargin = dp(16) }
+        val adminTitle = TextView(this)
+        adminTitle.text = "Uninstall protection"
+        adminTitle.setTextColor(W11.TEXT)
+        adminTitle.textSize = 14f
+        adminTitle.typeface = Typeface.DEFAULT_BOLD
+        adminCard.addView(adminTitle)
+        adminStatusText = TextView(this)
+        adminStatusText.setTextColor(W11.TEXT_DIM)
+        adminStatusText.textSize = 12f
+        adminStatusText.setPadding(0, dp(4), 0, 0)
+        adminCard.addView(adminStatusText)
+        adminBtn = TextView(this)
+        adminBtn.setTextColor(Color.BLACK)
+        adminBtn.textSize = 13f
+        adminBtn.typeface = Typeface.DEFAULT_BOLD
+        adminBtn.gravity = Gravity.CENTER
+        adminBtn.background = round(W11.ACCENT, 6)
+        adminBtn.setPadding(dp(16), dp(8), dp(16), dp(8))
+        adminBtn.layoutParams = LinearLayout.LayoutParams(wc, wc).apply { topMargin = dp(10) }
+        adminBtn.setOnClickListener {
+            if (AppDeviceAdmin.isActive(this)) {
+                AppDeviceAdmin.deactivate(this)
+                refreshAdminStatus()
+            } else {
+                AppDeviceAdmin.requestActivation(this, REQ_DEVICE_ADMIN)
+            }
+        }
+        adminCard.addView(adminBtn)
+        col.addView(adminCard)
 
         // ── Master switch ──
         col.addView(sectionLabel("General"))
@@ -287,5 +334,13 @@ class NotificationSettingsActivity : AppCompatActivity() {
             if (on) "Access is on. Alerts work even when the launcher is in the background."
             else "Access is off. Turn it on to receive alerts from your chat apps."
         statusBtn.visibility = if (on) View.GONE else View.VISIBLE
+    }
+
+    private fun refreshAdminStatus() {
+        val on = AppDeviceAdmin.isActive(this)
+        adminStatusText.text =
+            if (on) "On. Uninstalling now requires turning this off first."
+            else "Off. Turn this on to stop the app being uninstalled by accident."
+        adminBtn.text = if (on) "Turn off" else "Turn on"
     }
 }

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="device_admin_description">Keeps RizwanS2 from being removed by accident. While this is on, uninstalling the app first requires turning this off here or in Settings → Security → Device admin apps.</string>
+</resources>
