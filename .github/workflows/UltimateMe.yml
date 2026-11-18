@@ -19,7 +19,7 @@ on:
       old_package_name:
         description: 'Old package name (current applicationId, case-sensitive)'
         required: true
-        default: 'com.srizwan.parallel'
+        default: 'com.srizwan.win11'
         type: string
       new_package_name:
         description: 'New package name (e.g. com.example.newapp, case-sensitive)'
