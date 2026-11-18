@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.srizwan.win11"
-    compileSdk = 37
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.srizwan.win11"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 101
         versionName = "2.0.0"
 
