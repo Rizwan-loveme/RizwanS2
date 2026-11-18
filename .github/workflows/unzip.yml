@@ -4,10 +4,6 @@ name: Auto Unzip & Push
 # ১) রিপোতে .zip push করলে (ছোট জিপের জন্য)
 # ২) Actions ট্যাব থেকে হাতে চালিয়ে direct download লিংক দিলে (বড় জিপের জন্য)
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - '**.zip'
   workflow_dispatch:
     inputs:
       zip_url:
