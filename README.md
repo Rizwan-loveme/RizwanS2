@@ -5,6 +5,21 @@ A Quick Settings shortcut (gear / notification glyph) is added to the taskbar. I
 
 Android security restrictions apply: Wi-Fi/Bluetooth/Location/Airplane Mode and rotation controls open the relevant system settings rather than silently changing protected system state. Screen recording works from the panel's recorder tile: Android's system screen-capture consent dialog appears first (it cannot be skipped), then the whole screen is recorded (optionally with microphone audio) and saved to Movies/RizwanS2; tap the tile again or the notification's Stop action to finish. Screenshot: with the "Win11 Power and Lock" Accessibility service enabled (Android 9+) it is a single tap; otherwise Android's system screen-capture consent dialog appears and a PNG is saved to Pictures/RizwanS2. Nothing is captured silently. The flashlight turns on at the brightest level the device reports (Android 13+ devices that expose torch strength); other devices use plain on/off. The tile reflects the real torch state.
 
+## Quick Settings flyout (v2.1.0)
+
+- **Windows 11 layout, docked to the right** just above the taskbar. **Notifications and calendar are on top, Quick Settings are at the bottom** (tiles, then brightness and volume sliders). There is no close button: tap anywhere outside the panel (or press Back) to dismiss it. The taskbar gear and the tray clock both open it.
+- **Win11 sliders:** a brightness slider and a volume slider (tap the speaker icon to mute / unmute). The volume slider follows the hardware volume keys.
+- **Tiles show real state** (accent fill when on): Wi-Fi, Bluetooth, Airplane, Location, Auto-rotate, Flashlight, Normal / Vibrate / Silent, Screen recorder.
+- **Settings are applied automatically where Android allows it:**
+  - Brightness and Auto-rotate: allow **Modify system settings** once. The app asks, opens the right screen, and finishes the action when you come back.
+  - Silent mode: allow **Do Not Disturb access** once (same flow).
+  - Wi-Fi: switched directly on Android 9 and older; Android 10+ shows the system Internet panel (apps cannot toggle Wi-Fi there).
+  - Bluetooth: switched directly up to Android 12L (asks for *Nearby devices* once); Android 13+ shows the system "turn on Bluetooth" prompt.
+  - Location: switched directly once you run `adb shell pm grant com.srizwan.win11 android.permission.WRITE_SECURE_SETTINGS` a single time; otherwise it opens Location settings.
+  - Airplane mode: opens the system screen (Android only lets system apps switch radios).
+- **Start search fix:** with the keyboard open the Start panel now shrinks to the free space (search box stays visible) and turns more opaque while searching.
+- **Glass everywhere:** the popup menus (Start / app long-press / Messages long-press) are now glass `GlassMenu` cards, the remaining system dialogs are `W11Dialog`, all search boxes (Start, Contacts, Messages, in-file search) use the same glass pill, and text fields inside dialogs are glass too. The text viewer is dark glass.
+
 ## Debug & crash log (v2.0.1)
 
 The app now keeps its own log so problems can be diagnosed on the phone itself:

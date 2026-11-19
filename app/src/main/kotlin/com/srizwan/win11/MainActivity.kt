@@ -380,7 +380,7 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) {
             AppLog.e(LOGT, "showErrorDialog failed", t)
             try {
-                androidx.appcompat.app.AlertDialog.Builder(this)
+                W11Dialog.Builder(this)
                     .setTitle(title).setMessage(text.take(1500)).setPositiveButton("OK", null).show()
             } catch (_: Throwable) { }
         }
@@ -1310,22 +1310,16 @@ class MainActivity : AppCompatActivity() {
 
         val dialogView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#1E1E1E"))
+            setBackgroundColor(Color.TRANSPARENT)
         }
-        val searchEdit = EditText(this).apply {
-            hint = "Search contacts"
-            iconStart(R.drawable.ic_w_search, 16, Color.GRAY, 8)
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.GRAY)
-            setBackgroundColor(Color.parseColor("#2A2A2A"))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-        dialogView.addView(searchEdit)
+        val searchField = GlassSearch(this, "Search contacts")
+        val searchEdit = searchField.edit
+        dialogView.addView(searchField.root, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(40)).apply { bottomMargin = dp(8) })
         val listView = ListView(this).apply {
             layoutParams =
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(350))
-            setBackgroundColor(Color.parseColor("#1E1E1E"))
+            setBackgroundColor(Color.TRANSPARENT)
             divider = null
         }
         dialogView.addView(listView)
@@ -1339,7 +1333,7 @@ class MainActivity : AppCompatActivity() {
                 ): View {
                     val view = super.getView(position, convertView, parent)
                     val item = getItem(position) ?: return view
-                    view.setBackgroundColor(Color.parseColor("#1E1E1E"))
+                    view.setBackgroundColor(Color.TRANSPARENT)
                     view.findViewById<TextView>(android.R.id.text1).apply {
                         text = item.first
                         iconStart(R.drawable.ic_w_person, 18, Color.WHITE, 8)
@@ -1624,7 +1618,11 @@ class MainActivity : AppCompatActivity() {
         val searchBox = LinearLayout(a)
         searchBox.orientation = LinearLayout.HORIZONTAL
         searchBox.gravity = Gravity.CENTER_VERTICAL
-        searchBox.background = smsRound(Color.parseColor("#333333"), 6)
+        searchBox.background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(18).toFloat()
+            setColor(W11.START_SEARCH_BG)
+            setStroke(1, W11.START_BORDER)
+        }
         searchBox.setPadding(dp(10), 0, dp(10), 0)
         searchBox.layoutParams = LinearLayout.LayoutParams(0, dp(36), 1f)
         val searchIcon = VectorIconView(a, VectorIconView.SEARCH)
@@ -2019,7 +2017,7 @@ class MainActivity : AppCompatActivity() {
                 val p = h.bindingAdapterPosition
                 if (p == RecyclerView.NO_POSITION) return@setOnLongClickListener true
                 val c = items[p]
-                val menu = PopupMenu(this@MainActivity, h.row)
+                val menu = GlassMenu(this@MainActivity, h.row)
                 menu.menu.add(0, 1, 0, "Call")
                 menu.menu.add(0, 2, 1, "Reply")
                 menu.menu.add(0, 3, 2, "Delete conversation")
@@ -2378,11 +2376,8 @@ class MainActivity : AppCompatActivity() {
             textSize = 14f
             setText(preFilledAddress ?: "")
             setTextColor(Color.WHITE)
-            setHintTextColor(Color.GRAY)
-            setBackgroundColor(Color.parseColor("#2A2A2A"))
-            setPadding(dp(10), dp(8), dp(10), dp(8))
             inputType = android.text.InputType.TYPE_CLASS_PHONE
-        }
+        }.glassStyle()
         dialogView.addView(toEdit)
         dialogView.addView(View(this).apply {
             layoutParams =
@@ -2398,13 +2393,10 @@ class MainActivity : AppCompatActivity() {
             textSize = 14f
             setText(preFilledBody)
             setTextColor(Color.WHITE)
-            setHintTextColor(Color.GRAY)
-            setBackgroundColor(Color.parseColor("#2A2A2A"))
-            setPadding(dp(10), dp(8), dp(10), dp(8))
             minLines = 3
             maxLines = 6
             gravity = Gravity.TOP
-        }
+        }.glassStyle()
         dialogView.addView(msgEdit)
 
         W11Dialog.Builder(this)
@@ -2543,7 +2535,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createNewFolder() {
-        val input = EditText(this)
+        val input = EditText(this).glassStyle()
         W11Dialog.Builder(this).setTitle("New Folder").setView(input)
             .setPositiveButton("Create") { _, _ ->
                 val name = input.text.toString().trim()
@@ -2583,7 +2575,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renameFile(file: File) {
-        val input = EditText(this).apply { setText(file.name) }
+        val input = EditText(this).apply { setText(file.name) }.glassStyle()
         W11Dialog.Builder(this).setTitle("Rename").setView(input)
             .setPositiveButton("OK") { _, _ ->
                 val newName = input.text.toString().trim()
@@ -2895,15 +2887,15 @@ class MainActivity : AppCompatActivity() {
         try {
             val fileContent = file.readText()
             val dialog = Dialog(
-                this, android.R.style.Theme_DeviceDefault_Light_NoActionBar_Fullscreen
+                this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
             )
             val layout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setBackgroundColor(Color.parseColor("#FAFAFA"))
+                setBackgroundColor(Color.parseColor("#181B22"))
             }
             val topBar = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
-                setBackgroundColor(Color.parseColor("#2C2C2C"))
+                setBackgroundColor(Color.parseColor("#33FFFFFF"))
                 setPadding(dp(8), dp(8), dp(8), dp(8))
                 gravity = Gravity.CENTER_VERTICAL
             }
@@ -2917,48 +2909,42 @@ class MainActivity : AppCompatActivity() {
                 setSingleLine(true)
                 ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
             }
-            val closeBtn = Button(this).apply {
-                text = "X"
-                textSize = 16f
-                setTextColor(Color.WHITE)
-                setBackgroundColor(Color.parseColor("#D32F2F"))
+            val closeBtn = ImageView(this).apply {
+                setImageResource(R.drawable.ic_qs_close)
+                setColorFilter(Color.WHITE)
+                contentDescription = "Close"
+                setPadding(dp(10), dp(10), dp(10), dp(10))
                 layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
-                setPadding(0, 0, 0, 0)
                 setOnClickListener { dialog.dismiss() }
             }
             val searchBar = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
-                setBackgroundColor(Color.parseColor("#E8E8E8"))
-                setPadding(dp(8), dp(4), dp(8), dp(4))
+                setBackgroundColor(Color.TRANSPARENT)
+                setPadding(dp(10), dp(8), dp(10), dp(8))
                 gravity = Gravity.CENTER_VERTICAL
             }
-            val searchInput = EditText(this).apply {
-                hint = "Search in file…"
-                iconStart(R.drawable.ic_w_search, 16, Color.GRAY, 8)
-                layoutParams =
-                    LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                setSingleLine(true)
-                textSize = 13f
-            }
+            val glassSearch = GlassSearch(this, "Search in file…", 38)
+            val searchInput = glassSearch.edit
+            glassSearch.root.layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f)
             val resultCount = TextView(this).apply {
                 text = ""
-                setTextColor(Color.parseColor("#666666"))
+                setTextColor(Color.parseColor("#B3FFFFFF"))
                 textSize = 12f
                 setPadding(dp(8), 0, dp(8), 0)
             }
             topBar.addView(titleView)
             topBar.addView(closeBtn)
-            searchBar.addView(searchInput)
+            searchBar.addView(glassSearch.root)
             searchBar.addView(resultCount)
             val infoBar = TextView(this).apply {
                 val lines = fileContent.lines().size
                 val words = fileContent.trim().split(Regex("\\s+")).size
                 this.text =
                     "  ${getSize(file.length())}  |  $lines lines  |  $words words"
-                setTextColor(Color.parseColor("#666666"))
-                iconStart(R.drawable.ic_w_doc, 12, Color.parseColor("#666666"), 4)
+                setTextColor(Color.parseColor("#B3FFFFFF"))
+                iconStart(R.drawable.ic_w_doc, 12, Color.parseColor("#B3FFFFFF"), 4)
                 textSize = 11f
-                setBackgroundColor(Color.parseColor("#E0E0E0"))
+                setBackgroundColor(Color.parseColor("#26FFFFFF"))
                 setPadding(dp(8), dp(4), dp(8), dp(4))
             }
             val scrollView = ScrollView(this).apply {
@@ -2970,7 +2956,7 @@ class MainActivity : AppCompatActivity() {
                 setPadding(dp(16), dp(16), dp(16), dp(16))
                 setTextIsSelectable(true)
                 textSize = 14f
-                setTextColor(Color.parseColor("#212121"))
+                setTextColor(Color.parseColor("#EDEDED"))
                 typeface = Typeface.MONOSPACE
             }
             scrollView.addView(textView)
@@ -2986,6 +2972,11 @@ class MainActivity : AppCompatActivity() {
                     while (idx != -1) {
                         span.setSpan(
                             android.text.style.BackgroundColorSpan(Color.parseColor("#FFEB3B")),
+                            idx, idx + q.length,
+                            android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                        span.setSpan(
+                            android.text.style.ForegroundColorSpan(Color.BLACK),
                             idx, idx + q.length,
                             android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                         )
@@ -3679,7 +3670,7 @@ class MainActivity : AppCompatActivity() {
                     defaultValue: String?, result: JsPromptResult?
                 ): Boolean {
                     runOnUiThread {
-                        val input = EditText(this@MainActivity).apply { setText(defaultValue) }
+                        val input = EditText(this@MainActivity).apply { setText(defaultValue) }.glassStyle()
                         W11Dialog.Builder(this@MainActivity).setTitle("Input")
                             .setMessage(message).setView(input)
                             .setPositiveButton("OK") { _, _ ->
@@ -3999,7 +3990,7 @@ class MainActivity : AppCompatActivity() {
         })
         val fileNameInput = EditText(this).apply {
             setText(defaultName); textSize = 14f; setSingleLine(true); post { selectAll() }
-        }
+        }.glassStyle()
         dialogView.addView(fileNameInput)
         W11Dialog.Builder(this).setTitle("Download File").setIcon(R.drawable.ic_w_download).setView(dialogView)
             .setPositiveButton("Download") { _, _ ->

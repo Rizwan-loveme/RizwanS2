@@ -32,7 +32,6 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
-import android.widget.PopupMenu
 import android.widget.ScrollView
 import android.widget.Toast
 import android.widget.LinearLayout
@@ -341,6 +340,12 @@ class Win11Shell(
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             setPadding(0, 0, dp(10), 0)
             layoutParams = LinearLayout.LayoutParams(dp(74), ViewGroup.LayoutParams.MATCH_PARENT)
+            // Like Windows 11: tapping the tray clock opens the notification / quick settings flyout.
+            isClickable = true
+            contentDescription = "Quick Settings and Notifications"
+            setOnClickListener {
+                try { onQuick?.invoke() } catch (e: Throwable) { AppLog.e("Shell", "clock tap failed", e) }
+            }
         }
         row.addView(clockView)
         outer.addView(row)
@@ -476,7 +481,20 @@ class Win11Shell(
         val panelW = minOf(dm.widthPixels - dp(16), dp(560))
         val panelH = minOf(dp(600), (dm.heightPixels * 0.72f).toInt())
 
-        val overlay = FrameLayout(ctx).apply {
+        // FIX: when the keyboard opens the overlay gets shorter, but the panel kept its fixed height and,
+        // being bottom-aligned, grew past the top edge - hiding the search box and "Pinned" header.
+        // The height is now clamped during measure, so the panel always fits the space really available.
+        val overlay = object : FrameLayout(ctx) {
+            override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+                val avail = View.MeasureSpec.getSize(heightSpec)
+                val pn = startPanel
+                val lp = pn?.layoutParams
+                if (avail > 0 && lp != null) {
+                    lp.height = minOf(panelH, avail - dp(16)).coerceAtLeast(dp(160))
+                }
+                super.onMeasure(widthSpec, heightSpec)
+            }
+        }.apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -501,7 +519,7 @@ class Win11Shell(
                 cornerRadius = dpf(8f)
                 setColor(W11.START_BG)
                 setStroke(1, W11.START_BORDER)
-            }
+            }.also { startPanelBg = it }
             elevation = dpf(16f)
             isClickable = true // swallow taps so they don't reach the scrim
         }
@@ -707,7 +725,7 @@ class Win11Shell(
     }
 
     private fun showUserMenu(anchor: View) {
-        val menu = PopupMenu(ctx, anchor)
+        val menu = GlassMenu(ctx, anchor)
         menu.menu.add(0, 1, 0, "Settings")
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -724,7 +742,7 @@ class Win11Shell(
     // Android only lets a launcher lock / show the power dialog through an
     // accessibility service, so the user must enable "Win11 Power and Lock" once.
     private fun showPowerMenu(anchor: View) {
-        val menu = PopupMenu(ctx, anchor, Gravity.END)
+        val menu = GlassMenu(ctx, anchor, Gravity.END)
         menu.menu.add(0, 1, 0, "Lock")
         menu.menu.add(0, 2, 1, "Restart")
         menu.menu.add(0, 3, 2, "Shut down")
@@ -788,6 +806,7 @@ class Win11Shell(
         return sv
     }
 
+    private var startPanelBg: GradientDrawable? = null
     private var currentQuery = ""
     private var searchResults: List<AppEntry> = emptyList()
 
@@ -807,6 +826,7 @@ class Win11Shell(
     private fun onSearchChanged(q: String) {
         val query = q.trim()
         currentQuery = query
+        startPanelBg?.setColor(if (query.isEmpty()) W11.START_BG else Color.parseColor("#F21E2230"))
         searchClear?.visibility = if (q.isEmpty()) View.GONE else View.VISIBLE
         val sp = searchPage ?: return
         if (query.isEmpty()) {
@@ -1181,7 +1201,7 @@ class Win11Shell(
 
     /** Long-press menu in All apps: pin/unpin, hide/unhide, app info. */
     private fun showAppMenu(anchor: View, e: AppEntry) {
-        val menu = PopupMenu(ctx, anchor)
+        val menu = GlassMenu(ctx, anchor)
         val hidden = appRepo.isHidden(e)
         if (hidden) {
             menu.menu.add(0, 1, 0, "Unhide app")
@@ -1315,7 +1335,7 @@ class Win11Shell(
     }
 
     private fun showPinMenu(anchor: View, e: AppEntry) {
-        val menu = PopupMenu(ctx, anchor)
+        val menu = GlassMenu(ctx, anchor)
         menu.menu.add(0, 1, 0, "Unpin from Start")
         menu.menu.add(0, 2, 1, "Move to front")
         menu.menu.add(0, 5, 2, "Hide app")

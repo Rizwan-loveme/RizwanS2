@@ -1,8 +1,10 @@
 package com.srizwan.win11
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
@@ -22,6 +24,8 @@ import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -34,12 +38,17 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/** Icon-only Windows-inspired Quick Settings and notification panel. */
+/**
+ * Windows 11 style flyout, docked to the right of the screen just above the taskbar:
+ *   - top    : notification center (+ calendar), scrollable
+ *   - bottom : Quick Settings tiles, then brightness and volume sliders
+ * No close button: tap anywhere outside the panel (or press Back) to dismiss it.
+ */
 class QuickControlsActivity : AppCompatActivity() {
-    // Glass look: translucent dark backdrop (more see-through when real blur is available) + frosted tiles/cards.
-    private var bg = Color.argb(205, 24, 27, 34)
     private val tile = Color.argb(64, 255, 255, 255)
     private val accent = Color.rgb(76, 194, 255)
+    private val darkIcon = Color.rgb(16, 20, 28)
+    private val recRed = Color.rgb(255, 82, 82)
     private var torchOn = false
     private var notifSection: LinearLayout? = null
     private var calSection: LinearLayout? = null
@@ -50,10 +59,23 @@ class QuickControlsActivity : AppCompatActivity() {
     private val storeListener: () -> Unit = {
         try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
     }
-    private var recorderTile: FrameLayout? = null
-    private var flashTile: FrameLayout? = null
+
+    private class QTile(val frame: FrameLayout, val icon: ImageView)
+    private class SRow(val row: LinearLayout, val icon: ImageView, val slider: GlassSlider)
+    private val tiles = HashMap<String, QTile>()
+    private var panel: LinearLayout? = null
+    private var briRow: SRow? = null
+    private var volRow: SRow? = null
+    private var lastVolume = 0
+    private var closing = false
+    /** Runs once after the user comes back from a permission screen with the permission granted. */
+    private var pendingAfterGrant: (() -> Unit)? = null
+    private var pendingNeedsWrite = false
+    private var pendingNeedsPolicy = false
+
     private var torchId: String? = null
     private var torchUnavailable = false
+    private val audio by lazy { getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
     // Real torch state (also changes when another app / the system toggles the torch).
     private val torchCallback = object : CameraManager.TorchCallback() {
@@ -66,6 +88,13 @@ class QuickControlsActivity : AppCompatActivity() {
         }
         override fun onTorchModeUnavailable(cameraId: String) {
             if (cameraId == torchId) torchUnavailable = true
+        }
+    }
+
+    // Wi-Fi / Bluetooth / ringer / location / airplane / hardware-volume changes keep the tiles truthful.
+    private val stateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) {
+            try { refreshState() } catch (e: Throwable) { AppLog.w("Quick", "refresh failed", e) }
         }
     }
 
@@ -97,86 +126,150 @@ class QuickControlsActivity : AppCompatActivity() {
         if (!granted) Toast.makeText(this, "Microphone not allowed - recording without audio", Toast.LENGTH_SHORT).show()
         requestScreenCapture()
     }
+    // Android 12+: turning Bluetooth on/off needs the "Nearby devices" (BLUETOOTH_CONNECT) permission.
+    private val btPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onBluetoothTap()
+        else {
+            Toast.makeText(this, "Allow Nearby devices to switch Bluetooth from here", Toast.LENGTH_LONG).show()
+            try { startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) } catch (_: Exception) {}
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppLog.i("Quick", "onCreate")
+        quietTransition(open = true)
         try {
-            var blur = false
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            window.setDimAmount(0.28f)
             if (Build.VERSION.SDK_INT >= 31) {
-                val wm = getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
-                blur = wm.isCrossWindowBlurEnabled
-                if (blur) window.setBackgroundBlurRadius(dp(40))
+                val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                if (wm.isCrossWindowBlurEnabled) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    window.attributes = window.attributes.apply { blurBehindRadius = dp(18) }
+                }
             }
-            bg = if (blur) Color.argb(125, 24, 27, 34) else Color.argb(205, 24, 27, 34)
             @Suppress("DEPRECATION")
             window.statusBarColor = Color.TRANSPARENT
             @Suppress("DEPRECATION")
             window.navigationBarColor = Color.TRANSPARENT
         } catch (e: Throwable) { AppLog.w("Quick", "glass window setup failed", e) }
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            setBackgroundColor(bg)
+        // Full-screen transparent layer: a tap anywhere outside the panel closes it.
+        val root = FrameLayout(this).apply {
+            isClickable = true
+            contentDescription = "Close quick settings"
+            setOnClickListener { finish() }
         }
-        // No visible headings or tile labels: controls are vector-icon-only.
-        val scroll = ScrollView(this)
+
+        val pw = minOf(resources.displayMetrics.widthPixels - dp(16), dp(380))
+        val p = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat()
+                setColor(Color.argb(232, 30, 34, 48))
+                setStroke(dp(1), Color.argb(64, 255, 255, 255))
+            }
+            elevation = dp(14).toFloat()
+            isClickable = true   // taps on the panel itself must not reach the dismiss layer
+            setPadding(dp(12), dp(10), dp(12), dp(12))
+        }
+        panel = p
+
+        // ── TOP: notifications + calendar ─────────────────────────────
+        val scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(body)
-        val grid = GridLayout(this).apply { columnCount = 3; useDefaultMargins = false }
-        body.addView(grid)
-
-        recorderTile = addTile(grid, R.drawable.ic_qs_recorder, "Screen recorder") { onRecorderTap() }
-        addTile(grid, R.drawable.ic_qs_screenshot, "Capture screenshot") { onScreenshotTap() }
-        addTile(grid, R.drawable.ic_qs_power, "Power menu") { onPowerTap() }
-        addTile(grid, R.drawable.ic_qs_wifi, "Wi-Fi") { openPanel("android.settings.panel.action.INTERNET_CONNECTIVITY", Settings.ACTION_WIFI_SETTINGS) }
-        addTile(grid, R.drawable.ic_qs_bluetooth, "Bluetooth") { startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }
-        addTile(grid, R.drawable.ic_qs_location, "Location / GPS") { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
-        addTile(grid, R.drawable.ic_qs_ring, "Normal ring mode") { setRinger(AudioManager.RINGER_MODE_NORMAL) }
-        addTile(grid, R.drawable.ic_qs_vibrate, "Vibrate mode") { setRinger(AudioManager.RINGER_MODE_VIBRATE) }
-        addTile(grid, R.drawable.ic_qs_silent, "Silent mode") { setRinger(AudioManager.RINGER_MODE_SILENT) }
-        addTile(grid, R.drawable.ic_qs_rotate, "Screen rotation settings") { startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS)) }
-        addTile(grid, R.drawable.ic_qs_volume_up, "Volume up") { volume(AudioManager.ADJUST_RAISE) }
-        addTile(grid, R.drawable.ic_qs_volume_down, "Volume down") { volume(AudioManager.ADJUST_LOWER) }
-        addTile(grid, R.drawable.ic_qs_airplane, "Airplane mode settings") { startActivity(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) }
-        flashTile = addTile(grid, R.drawable.ic_qs_flashlight, "Flashlight") { toggleTorch() }
-        addTile(grid, R.drawable.ic_qs_notifications, "Debug log") { startActivity(Intent(this, DebugLogActivity::class.java)) }
-
-        // Windows-style notification center (filled by renderNotifications()).
         val section = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(section)
         notifSection = section
         try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
-        // Win11-style calendar under the notifications.
         val cal = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(cal)
         calSection = cal
         try { renderCalendar() } catch (e: Throwable) { AppLog.e("Quick", "renderCalendar failed", e) }
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(ImageButton(this).apply {
-            setImageResource(R.drawable.ic_qs_close)
-            contentDescription = "Close quick settings"
-            setColorFilter(Color.WHITE)
-            background = null
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            setOnClickListener { finish() }
-        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { gravity = Gravity.END })
+        p.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        p.addView(View(this).apply { setBackgroundColor(Color.argb(38, 255, 255, 255)) },
+            LinearLayout.LayoutParams(-1, 1).apply { topMargin = dp(6); bottomMargin = dp(8) })
+
+        // ── BOTTOM: quick settings tiles, then brightness + volume ────
+        val quick = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val grid = GridLayout(this).apply { columnCount = 5; useDefaultMargins = false }
+        quick.addView(grid)
+        buildTiles(grid)
+        val bri = sliderRow(R.drawable.ic_qs_brightness, "Brightness", null)
+        bri.slider.max = 254
+        bri.slider.onGate = {
+            if (SystemToggles.canWriteSettings(this)) true
+            else { askWriteSettings("Brightness", null); false }
+        }
+        bri.slider.onChange = { v, user -> if (user) SystemToggles.setBrightness(this, v + 1) }
+        briRow = bri
+        val vol = sliderRow(R.drawable.ic_qs_volume_up, "Volume (tap to mute)") { toggleMute() }
+        vol.slider.onChange = { v, user ->
+            if (user) {
+                try { audio.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0) } catch (_: SecurityException) {}
+                if (v > 0) lastVolume = v
+                updateVolumeIcon(v)
+            }
+        }
+        volRow = vol
+        quick.addView(bri.row, LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(6) })
+        quick.addView(vol.row, LinearLayout.LayoutParams(-1, dp(40)))
+        p.addView(quick, LinearLayout.LayoutParams(-1, -2))
+
+        root.addView(p, FrameLayout.LayoutParams(pw, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END or Gravity.BOTTOM).apply {
+            setMargins(dp(8), dp(8), dp(8), dp(TASKBAR_DP + 8))
+        })
         setContentView(root)
 
-        // Android 15+ draws edge-to-edge: keep the panel clear of the status / navigation bars.
-        val pad = dp(12)
-        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+        // Keep the panel clear of the status bar / cutout / navigation bar, and sitting right above the taskbar.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            v.setPadding(bars.left + pad, bars.top + pad, bars.right + pad, bars.bottom + pad)
+            val lp = p.layoutParams as FrameLayout.LayoutParams
+            lp.setMargins(bars.left + dp(8), bars.top + dp(8), bars.right + dp(8), bars.bottom + dp(TASKBAR_DP + 8))
+            p.layoutParams = lp
             WindowInsetsCompat.CONSUMED
         }
         ViewCompat.requestApplyInsets(root)
+
+        // Slide in from the right.
+        p.alpha = 0f
+        p.translationX = dp(36).toFloat()
+        p.animate().alpha(1f).translationX(0f).setDuration(200).setInterpolator(DecelerateInterpolator()).start()
+        refreshState()
     }
 
-    private fun addTile(parent: GridLayout, iconRes: Int, description: String, action: () -> Unit): FrameLayout {
+    private fun buildTiles(grid: GridLayout) {
+        fun t(key: String, icon: Int, desc: String, action: () -> Unit) = addTile(grid, key, icon, desc, action)
+        t("wifi", R.drawable.ic_qs_wifi, "Wi-Fi") { onWifiTap() }
+        t("bt", R.drawable.ic_qs_bluetooth, "Bluetooth") { onBluetoothTap() }
+        t("air", R.drawable.ic_qs_airplane, "Airplane mode") { startActivity(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) }
+        t("loc", R.drawable.ic_qs_location, "Location / GPS") { onLocationTap() }
+        t("rot", R.drawable.ic_qs_rotate, "Auto-rotate") { onRotateTap() }
+        t("torch", R.drawable.ic_qs_flashlight, "Flashlight") { toggleTorch() }
+        t("ring", R.drawable.ic_qs_ring, "Normal ring mode") { setRinger(AudioManager.RINGER_MODE_NORMAL) }
+        t("vib", R.drawable.ic_qs_vibrate, "Vibrate mode") { setRinger(AudioManager.RINGER_MODE_VIBRATE) }
+        t("silent", R.drawable.ic_qs_silent, "Silent mode") { setRinger(AudioManager.RINGER_MODE_SILENT) }
+        t("rec", R.drawable.ic_qs_recorder, "Screen recorder") { onRecorderTap() }
+        t("shot", R.drawable.ic_qs_screenshot, "Capture screenshot") { onScreenshotTap() }
+        t("power", R.drawable.ic_qs_power, "Power menu") { onPowerTap() }
+        t("log", R.drawable.ic_qs_notifications, "Debug log") { startActivity(Intent(this, DebugLogActivity::class.java)) }
+    }
+
+    private fun addTile(parent: GridLayout, key: String, iconRes: Int, description: String, action: () -> Unit): QTile {
+        val icon = ImageView(this).apply {
+            try { setImageResource(iconRes) } catch (e: Throwable) { AppLog.e("Quick", "icon for '$description' failed", e) }
+            contentDescription = description
+            setColorFilter(Color.WHITE)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
         val button = FrameLayout(this).apply {
             background = roundBg(tile, 8, stroke = true)
             isClickable = true
@@ -188,42 +281,171 @@ class QuickControlsActivity : AppCompatActivity() {
                     AppLog.e("Quick", "tile '$description' failed", e)
                     Toast.makeText(this@QuickControlsActivity, "$description: not available on this device", Toast.LENGTH_SHORT).show()
                 }
+                try { refreshState() } catch (_: Throwable) {}
             }
-            val icon = ImageView(this@QuickControlsActivity).apply {
-                try { setImageResource(iconRes) } catch (e: Throwable) { AppLog.e("Quick", "icon for '$description' failed", e) }
-                contentDescription = description
-                setColorFilter(Color.WHITE)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-            }
-            addView(icon, FrameLayout.LayoutParams(dp(32), dp(32), Gravity.CENTER))
+            addView(icon, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
         }
-        val p = GridLayout.LayoutParams().apply {
+        val lp = GridLayout.LayoutParams().apply {
             width = 0
-            height = dp(76)
+            height = dp(46)
             columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-            setMargins(dp(4), dp(4), dp(4), dp(4))
+            setMargins(dp(3), dp(3), dp(3), dp(3))
         }
-        parent.addView(button, p)
-        return button
+        parent.addView(button, lp)
+        val q = QTile(button, icon)
+        tiles[key] = q
+        return q
     }
 
+    private fun sliderRow(iconRes: Int, desc: String, onIcon: (() -> Unit)?): SRow {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            setColorFilter(Color.WHITE)
+            contentDescription = desc
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            if (onIcon != null) {
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { try { onIcon() } catch (e: Throwable) { AppLog.w("Quick", "$desc icon failed", e) } }
+            }
+        }
+        row.addView(icon, LinearLayout.LayoutParams(dp(40), dp(40)))
+        val s = GlassSlider(this)
+        row.addView(s, LinearLayout.LayoutParams(0, dp(40), 1f))
+        return SRow(row, icon, s)
+    }
+
+    /** Active tile = accent fill + dark icon (Windows 11); inactive = frosted tile + white icon. */
+    private fun setTile(key: String, active: Boolean, on: Int = accent, iconOn: Int = darkIcon) {
+        val t = tiles[key] ?: return
+        t.frame.background = roundBg(if (active) on else tile, 8, stroke = !active)
+        t.icon.setColorFilter(if (active) iconOn else Color.WHITE)
+    }
+
+    /** Re-read the real state of every tile and slider. */
+    private fun refreshState() {
+        setTile("wifi", SystemToggles.wifiOn(this))
+        setTile("bt", SystemToggles.bluetoothOn(this))
+        setTile("air", SystemToggles.airplaneOn(this))
+        setTile("loc", SystemToggles.locationOn(this))
+        setTile("rot", SystemToggles.autoRotate(this))
+        val rm = try { audio.ringerMode } catch (_: Throwable) { AudioManager.RINGER_MODE_NORMAL }
+        setTile("ring", rm == AudioManager.RINGER_MODE_NORMAL)
+        setTile("vib", rm == AudioManager.RINGER_MODE_VIBRATE)
+        setTile("silent", rm == AudioManager.RINGER_MODE_SILENT)
+        updateFlashTile()
+        updateRecorderTile()
+        syncSliders()
+    }
+
+    private fun syncSliders() {
+        briRow?.slider?.let { s ->
+            if (!s.dragging) s.value = SystemToggles.brightness(this) - 1
+        }
+        volRow?.slider?.let { s ->
+            if (!s.dragging) {
+                val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                val cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                s.max = max
+                s.value = cur
+                if (cur > 0) lastVolume = cur
+                updateVolumeIcon(cur)
+            }
+        }
+    }
+
+    private fun updateVolumeIcon(v: Int) {
+        volRow?.icon?.setImageResource(if (v <= 0) R.drawable.ic_qs_silent else R.drawable.ic_qs_volume_up)
+    }
+
+    private fun toggleMute() {
+        try {
+            val cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            if (cur > 0) {
+                lastVolume = cur
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            } else {
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, if (lastVolume > 0) lastVolume else max / 2, 0)
+            }
+        } catch (_: SecurityException) {}
+        syncSliders()
+    }
+
+    // ── Tile actions ──────────────────────────────────────────────────
     private fun openPanel(panel: String, fallback: String) {
         try { if (Build.VERSION.SDK_INT >= 29) startActivity(Intent(panel)) else startActivity(Intent(fallback)) }
         catch (_: Exception) { startActivity(Intent(fallback)) }
     }
+
+    private fun onWifiTap() {
+        if (SystemToggles.toggleWifiDirect(this)) return
+        openPanel("android.settings.panel.action.INTERNET_CONNECTIVITY", Settings.ACTION_WIFI_SETTINGS)
+    }
+
+    private fun onBluetoothTap() {
+        if (Build.VERSION.SDK_INT >= 31 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            btPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+            return
+        }
+        if (!SystemToggles.toggleBluetooth(this)) startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+    }
+
+    private fun onLocationTap() {
+        if (SystemToggles.setLocationDirect(this, !SystemToggles.locationOn(this))) return
+        startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+    }
+
+    private fun onRotateTap() {
+        val act = { SystemToggles.setAutoRotate(this, !SystemToggles.autoRotate(this)); Unit }
+        if (!SystemToggles.canWriteSettings(this)) { askWriteSettings("Auto-rotate", act); return }
+        act()
+    }
+
     private fun setRinger(mode: Int) {
         try {
-            val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            if (mode == AudioManager.RINGER_MODE_SILENT && !SystemToggles.hasPolicyAccess(this)) {
+                askPolicyAccess { setRinger(mode) }
+                return
+            }
             audio.ringerMode = mode
-            Toast.makeText(this, "Ring mode updated", Toast.LENGTH_SHORT).show()
         } catch (_: SecurityException) {
-            Toast.makeText(this, "Allow Do Not Disturb access for Silent mode", Toast.LENGTH_LONG).show()
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            askPolicyAccess { setRinger(mode) }
         } catch (_: Exception) { Toast.makeText(this, "This mode is restricted by Android", Toast.LENGTH_SHORT).show() }
     }
-    private fun volume(direction: Int) {
-        (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(direction, AudioManager.FLAG_SHOW_UI)
+
+    /** One-time "Modify system settings" permission; [then] runs automatically when the user comes back with it granted. */
+    private fun askWriteSettings(what: String, then: (() -> Unit)?) {
+        W11Dialog.Builder(this)
+            .setTitle("Allow modify system settings")
+            .setMessage("$what needs the \"Modify system settings\" permission. Turn it on for RizwanS2 on the next screen, then come back. You only need to do this once.")
+            .setPositiveButton("Allow") { _, _ ->
+                pendingAfterGrant = then; pendingNeedsWrite = true; pendingNeedsPolicy = false
+                try { startActivity(SystemToggles.writeSettingsIntent(this)) }
+                catch (_: Exception) { try { startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)) } catch (_: Exception) {} }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
+
+    private fun askPolicyAccess(then: (() -> Unit)?) {
+        W11Dialog.Builder(this)
+            .setTitle("Allow Do Not Disturb access")
+            .setMessage("Silent mode needs Do Not Disturb access. Turn it on for RizwanS2 on the next screen, then come back. You only need to do this once.")
+            .setPositiveButton("Allow") { _, _ ->
+                pendingAfterGrant = then; pendingNeedsPolicy = true; pendingNeedsWrite = false
+                try { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) } catch (_: Exception) {}
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     // ── Flashlight ────────────────────────────────────────────────────
     private fun findTorchId(cm: CameraManager): String? = try {
         val withFlash = cm.cameraIdList.filter {
@@ -240,6 +462,17 @@ class QuickControlsActivity : AppCompatActivity() {
         try { renderCalendar() } catch (e: Throwable) { AppLog.e("Quick", "renderCalendar failed", e) }
         try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
         try {
+            val f = IntentFilter().apply {
+                addAction(android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION)
+                addAction(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
+                addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
+                addAction("android.media.VOLUME_CHANGED_ACTION")
+                addAction("android.location.MODE_CHANGED")
+                addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)
+            }
+            ContextCompat.registerReceiver(this, stateReceiver, f, ContextCompat.RECEIVER_EXPORTED)
+        } catch (e: Throwable) { AppLog.w("Quick", "register state receiver failed", e) }
+        try {
             val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
             if (torchId == null) torchId = findTorchId(cm)
             if (torchId != null) cm.registerTorchCallback(torchCallback, Handler(Looper.getMainLooper()))
@@ -248,14 +481,14 @@ class QuickControlsActivity : AppCompatActivity() {
 
     override fun onStop() {
         NotificationStore.removeListener(storeListener)
+        try { unregisterReceiver(stateReceiver) } catch (_: Exception) {}
         try { (getSystemService(Context.CAMERA_SERVICE) as CameraManager).unregisterTorchCallback(torchCallback) } catch (_: Exception) {}
         super.onStop()
     }
 
     private fun updateFlashTile() {
-        val t = flashTile ?: return
-        (t.getChildAt(0) as? ImageView)?.setColorFilter(if (torchOn) Color.rgb(255, 214, 0) else Color.WHITE)
-        t.contentDescription = if (torchOn) "Flashlight off" else "Flashlight (brightest)"
+        setTile("torch", torchOn)
+        tiles["torch"]?.frame?.contentDescription = if (torchOn) "Flashlight off" else "Flashlight (brightest)"
     }
 
     /** Toggle the torch at the brightest level the device supports (Android 13+), plain on/off otherwise. */
@@ -288,28 +521,35 @@ class QuickControlsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateRecorderTile()
+        refreshState()
+        // Back from a permission screen: finish the action the user started, automatically.
+        val job = pendingAfterGrant
+        if (job != null) {
+            val granted = (pendingNeedsWrite && SystemToggles.canWriteSettings(this)) ||
+                (pendingNeedsPolicy && SystemToggles.hasPolicyAccess(this))
+            if (granted) {
+                pendingAfterGrant = null; pendingNeedsWrite = false; pendingNeedsPolicy = false
+                try { job(); refreshState() } catch (e: Throwable) { AppLog.w("Quick", "pending action failed", e) }
+            }
+        }
     }
 
-    /** Red icon + "stop" description while a recording is running. */
+    /** Red tile while a recording is running. */
     private fun updateRecorderTile() {
-        val tileView = recorderTile ?: return
         val recording = ScreenRecordService.isRecording
-        (tileView.getChildAt(0) as? ImageView)?.setColorFilter(if (recording) Color.rgb(255, 82, 82) else Color.WHITE)
-        tileView.contentDescription = if (recording) "Stop screen recording" else "Screen recorder"
+        setTile("rec", recording, recRed, Color.WHITE)
+        tiles["rec"]?.frame?.contentDescription = if (recording) "Stop screen recording" else "Screen recorder"
     }
 
     private fun onRecorderTap() {
         if (ScreenRecordService.isRecording) {
             ScreenRecordService.stop(this)
             Toast.makeText(this, "Stopping recording... it will be saved to Movies/RizwanS2", Toast.LENGTH_LONG).show()
-            recorderTile?.let { t ->
-                (t.getChildAt(0) as? ImageView)?.setColorFilter(Color.WHITE)
-                t.contentDescription = "Screen recorder"
-            }
+            setTile("rec", false)
+            tiles["rec"]?.frame?.contentDescription = "Screen recorder"
             return
         }
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        W11Dialog.Builder(this)
             .setTitle("Screen Recorder")
             .setItems(arrayOf("Screen only", "Screen + microphone")) { _, which ->
                 if (which == 1) {
@@ -659,7 +899,8 @@ class QuickControlsActivity : AppCompatActivity() {
     // ── Power popup (Android 5.0+) ────────────────────────────────────
     private fun onPowerTap() {
         if (!PowerService.isEnabled) {
-            androidx.appcompat.app.AlertDialog.Builder(this)
+            W11Dialog.Builder(this)
+                .setTitle("Enable power controls")
                 .setMessage("Turn on \"Win11 Power and Lock\" in Accessibility settings to use the power popup. It does not read your screen.")
                 .setPositiveButton("Open settings") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
                 .setNegativeButton("Cancel", null).show()
@@ -685,7 +926,7 @@ class QuickControlsActivity : AppCompatActivity() {
             return
         }
         if (Build.VERSION.SDK_INT >= 28) {
-            androidx.appcompat.app.AlertDialog.Builder(this)
+            W11Dialog.Builder(this)
                 .setTitle("Capture Screenshot")
                 .setItems(arrayOf(
                     "Use screen-capture permission (asks each time)",
@@ -709,5 +950,36 @@ class QuickControlsActivity : AppCompatActivity() {
             Toast.makeText(this, "Screenshot is not available on this device", Toast.LENGTH_LONG).show()
         }
     }
+
+    // ── Dismiss: slide out to the right, no close button ──────────────
+    override fun finish() {
+        val p = panel
+        if (closing || p == null) { reallyFinish(); return }
+        closing = true
+        p.animate().cancel()
+        p.animate().alpha(0f).translationX(dp(36).toFloat()).setDuration(140)
+            .withEndAction { reallyFinish() }.start()
+    }
+
+    private fun reallyFinish() {
+        super.finish()
+        quietTransition(open = false)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun quietTransition(open: Boolean) {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                overrideActivityTransition(
+                    if (open) OVERRIDE_TRANSITION_OPEN else OVERRIDE_TRANSITION_CLOSE, 0, 0)
+            } else overridePendingTransition(0, 0)
+        } catch (_: Throwable) {}
+    }
+
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    companion object {
+        /** Taskbar height (52dp) + its 1dp top border: the panel sits right above it. */
+        private const val TASKBAR_DP = 53
+    }
 }
