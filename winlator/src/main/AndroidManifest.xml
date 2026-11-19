@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Winlator library manifest, merged into the Win11 app (part 4 of "Winlator inside Win11").
+    Differences from the original Winlator manifest:
+      * no package attribute (namespace com.winlator), no <application> attributes, so the Win11
+        app is not turned into a "game" and keeps its own icon / label / theme
+      * the Winlator screens are NOT exported: they are opened from inside Win11 (Start menu,
+        File Manager); there is no second launcher icon by default (see the disabled alias)
+      * own task (taskAffinity ...winlator): Winlator shows as its own entry in Recents and the
+        Win11 home screen stays underneath
+      * own FileProvider subclass + authority ${applicationId}.winlator.fileprovider
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true" />
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application>
+
+        <!-- Winlator home screen (containers, shortcuts, settings) -->
+        <activity android:name="com.winlator.MainActivity"
+            android:label="@string/app_name"
+            android:theme="@style/AppThemeDark"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.winlator"
+            android:screenOrientation="sensor"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation" />
+
+        <!-- Optional "Winlator" icon in the Android app drawer. Off by default: Win11 opens Winlator
+             from its own Start menu. Turned on / off at run time with PackageManager.setComponentEnabledSetting
+             (switch added in part 5). -->
+        <activity-alias android:name="com.winlator.WinlatorLauncherAlias"
+            android:targetActivity="com.winlator.MainActivity"
+            android:label="@string/app_name"
+            android:icon="@mipmap/ic_winlator"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <!-- The running Windows desktop / game -->
+        <activity android:name="com.winlator.XServerDisplayActivity"
+            android:exported="false"
+            android:theme="@style/AppThemeFullscreenDark"
+            android:taskAffinity="${applicationId}.winlator"
+            android:supportsPictureInPicture="true"
+            android:launchMode="singleTask"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity android:name="com.winlator.ControlsEditorActivity"
+            android:exported="false"
+            android:theme="@style/AppThemeFullscreenDark"
+            android:taskAffinity="${applicationId}.winlator"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity android:name="com.winlator.ExternalControllerBindingsActivity"
+            android:theme="@style/AppThemeDark"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.winlator"
+            android:screenOrientation="sensor" />
+
+        <!-- Needed for keep the container alive when in background or the device is locked. -->
+        <service
+            android:name="com.winlator.services.ForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"
+            android:stopWithTask="false">
+        </service>
+
+        <provider
+            android:name="com.winlator.core.WinlatorFileProvider"
+            android:authorities="${applicationId}.winlator.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
+    </application>
+</manifest>

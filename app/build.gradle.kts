@@ -11,10 +11,13 @@ android {
 
     defaultConfig {
         applicationId = "com.srizwan.win11"
-        minSdk = 24
-        targetSdk = 37
-        versionCode = 114
-        versionName = "2.2.8"
+        // 26: required by the :winlator library (was 24)
+        minSdk = 26
+        // 28: Android blocks running programs from the app data folder above 28 (Winlator runs box64 / wine
+        // there). Same reason the BlackBox engine prefers 28. See README "Winlator inside Win11", part 3.
+        targetSdk = 28
+        versionCode = 115
+        versionName = "2.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,6 +56,8 @@ kotlin {
 dependencies {
     // BlackBox virtual-space engine (parallel apps)
     implementation(project(":Bcore"))
+    // Winlator engine (Wine + Box64 for PC software), added in v2.3.0 part 1
+    implementation(project(":winlator"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

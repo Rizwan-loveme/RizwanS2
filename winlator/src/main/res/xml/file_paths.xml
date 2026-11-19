@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="files" path="." />
+    <!-- Win11: the Winlator root file system is /data/data/<package>/rootfs (outside files/), see PathRelocator.
+         Windows files that "Open with" shares live in rootfs/home/xuser/.wine/drive_c. -->
+    <root-path name="rootfs" path="data/data/com.srizwan.win11/rootfs/" />
+</paths>

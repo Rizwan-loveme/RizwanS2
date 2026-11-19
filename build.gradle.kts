@@ -12,6 +12,6 @@ plugins {
 
 // Read by :Bcore (Groovy) as rootProject.ext.xxx
 extra["compileSdkVersion"] = 37
-extra["targetSdkVersion"] = 37
+extra["targetSdkVersion"] = 28
 extra["minSdk"] = 21
 extra["ndkVer"] = "29.0.13846066"
