@@ -360,7 +360,7 @@ class DownloadsUi(
                 isFocusable = false
             }
             cancel.apply {
-                text = "✕"
+                iconOnly(R.drawable.ic_qs_close, 16, WX.DIM)
                 textSize = 16f
                 gravity = Gravity.CENTER
                 setTextColor(WX.DIM)
@@ -394,17 +394,17 @@ class DownloadsUi(
             when (t.status) {
                 DlEngine.RUNNING, DlEngine.QUEUED -> {
                     action.visibility = if (t.isBlob) View.GONE else View.VISIBLE
-                    action.text = "❚❚"
+                    action.iconOnly(R.drawable.ic_w_pause, 18)
                     action.setOnClickListener { DlEngine.pause(t.id) }
                 }
                 DlEngine.PAUSED -> {
                     action.visibility = View.VISIBLE
-                    action.text = "▶"
+                    action.iconOnly(R.drawable.ic_w_play, 18)
                     action.setOnClickListener { DlEngine.resume(t.id) }
                 }
                 DlEngine.FAILED -> {
                     action.visibility = if (t.isBlob) View.GONE else View.VISIBLE
-                    action.text = "↻"
+                    action.iconOnly(R.drawable.ic_w_refresh, 18)
                     action.setOnClickListener { DlEngine.resume(t.id) }
                 }
                 else -> action.visibility = View.GONE

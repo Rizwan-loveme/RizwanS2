@@ -28,17 +28,25 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import java.text.DateFormatSymbols
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 /** Icon-only Windows-inspired Quick Settings and notification panel. */
 class QuickControlsActivity : AppCompatActivity() {
-    private val bg = Color.rgb(28, 31, 38)
-    private val tile = Color.rgb(53, 58, 68)
+    // Glass look: translucent dark backdrop (more see-through when real blur is available) + frosted tiles/cards.
+    private var bg = Color.argb(205, 24, 27, 34)
+    private val tile = Color.argb(64, 255, 255, 255)
     private val accent = Color.rgb(76, 194, 255)
     private var torchOn = false
     private var notifSection: LinearLayout? = null
+    private var calSection: LinearLayout? = null
+    private val calMonth: Calendar = Calendar.getInstance()
+    private val collapsedGroups = HashSet<String>()
+    private val showAllGroups = HashSet<String>()
+    private val cardBorder = Color.argb(28, 255, 255, 255)
     private val storeListener: () -> Unit = {
         try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
     }
@@ -94,11 +102,18 @@ class QuickControlsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         AppLog.i("Quick", "onCreate")
         try {
+            var blur = false
+            if (Build.VERSION.SDK_INT >= 31) {
+                val wm = getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                blur = wm.isCrossWindowBlurEnabled
+                if (blur) window.setBackgroundBlurRadius(dp(40))
+            }
+            bg = if (blur) Color.argb(125, 24, 27, 34) else Color.argb(205, 24, 27, 34)
             @Suppress("DEPRECATION")
-            window.statusBarColor = bg
+            window.statusBarColor = Color.TRANSPARENT
             @Suppress("DEPRECATION")
-            window.navigationBarColor = bg
-        } catch (e: Throwable) { AppLog.w("Quick", "system bar colors failed", e) }
+            window.navigationBarColor = Color.TRANSPARENT
+        } catch (e: Throwable) { AppLog.w("Quick", "glass window setup failed", e) }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -133,6 +148,11 @@ class QuickControlsActivity : AppCompatActivity() {
         body.addView(section)
         notifSection = section
         try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
+        // Win11-style calendar under the notifications.
+        val cal = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(cal)
+        calSection = cal
+        try { renderCalendar() } catch (e: Throwable) { AppLog.e("Quick", "renderCalendar failed", e) }
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(ImageButton(this).apply {
             setImageResource(R.drawable.ic_qs_close)
@@ -158,7 +178,7 @@ class QuickControlsActivity : AppCompatActivity() {
 
     private fun addTile(parent: GridLayout, iconRes: Int, description: String, action: () -> Unit): FrameLayout {
         val button = FrameLayout(this).apply {
-            setBackgroundColor(tile)
+            background = roundBg(tile, 8, stroke = true)
             isClickable = true
             isFocusable = true
             contentDescription = description
@@ -217,6 +237,7 @@ class QuickControlsActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         NotificationStore.addListener(storeListener)
+        try { renderCalendar() } catch (e: Throwable) { AppLog.e("Quick", "renderCalendar failed", e) }
         try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
         try {
             val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -315,22 +336,46 @@ class QuickControlsActivity : AppCompatActivity() {
             Toast.makeText(this, "Screen recording is not available on this device", Toast.LENGTH_LONG).show()
         }
     }
-    // ── Notification center (Windows style) ──────────────────────────
+    // ── Notification center (Windows 11 style) ───────────────────────
+    private fun roundBg(color: Int, radiusDp: Int, stroke: Boolean = false) = GradientDrawable().apply {
+        setColor(color); cornerRadius = dp(radiusDp).toFloat()
+        if (stroke) setStroke(dp(1), cardBorder)
+    }
+
+    /** Small vector-icon button (no emoji / text glyphs). */
+    private fun iconButton(res: Int, desc: String, tint: Int, sizeDp: Int = 28, padDp: Int = 7, onClick: () -> Unit): ImageView =
+        ImageView(this).apply {
+            setImageResource(res)
+            setColorFilter(tint)
+            contentDescription = desc
+            setPadding(dp(padDp), dp(padDp), dp(padDp), dp(padDp))
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
+            setOnClickListener { onClick() }
+        }
+
     private fun renderNotifications() {
         val sec = notifSection ?: return
         sec.removeAllViews()
         val items = NotificationStore.snapshot()
 
-        // Header: bell + title + "Clear all"
+        // Header: bell + title + "Clear all" pill
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(4), dp(18), dp(4), dp(8))
         }
-        header.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_qs_notifications)
-            setColorFilter(Color.WHITE)
-        }, LinearLayout.LayoutParams(dp(22), dp(22)))
+        val dnd = NotifPrefs.isDndOn(this)
+        header.addView(iconButton(
+            if (dnd) R.drawable.ic_qs_bell_off else R.drawable.ic_qs_notifications,
+            if (dnd) "Do not disturb is on. Tap to turn off" else "Turn on do not disturb",
+            if (dnd) accent else Color.WHITE, sizeDp = 32, padDp = 5
+        ) {
+            NotifPrefs.setDnd(this, !NotifPrefs.isDndOn(this))
+            renderNotifications()
+        })
         header.addView(TextView(this).apply {
             text = "Notifications"
             setTextColor(Color.WHITE); textSize = 16f
@@ -341,13 +386,21 @@ class QuickControlsActivity : AppCompatActivity() {
         if (items.isNotEmpty()) {
             header.addView(TextView(this).apply {
                 text = "Clear all"
-                setTextColor(accent); textSize = 13f
-                setPadding(dp(10), dp(8), dp(10), dp(8))
+                setTextColor(Color.WHITE); textSize = 12f
+                background = roundBg(Color.argb(40, 255, 255, 255), 14)
+                setPadding(dp(14), dp(6), dp(14), dp(6))
                 isClickable = true
                 setOnClickListener { NotificationStore.clearAll() }
             })
         }
         sec.addView(header)
+        if (dnd) {
+            sec.addView(TextView(this).apply {
+                text = "Do not disturb is on. Pop-ups and sounds are silenced."
+                setTextColor(accent); textSize = 12f
+                setPadding(dp(6), 0, dp(6), dp(8))
+            })
+        }
 
         // Notification access is required to read other apps' notifications.
         if (!WhatsAppNotificationListener.isEnabled(this)) {
@@ -360,89 +413,198 @@ class QuickControlsActivity : AppCompatActivity() {
             return
         }
         if (items.isEmpty()) {
-            sec.addView(TextView(this).apply {
+            val empty = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(0, dp(26), 0, dp(26))
+            }
+            empty.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_qs_notifications)
+                setColorFilter(Color.GRAY)
+            }, LinearLayout.LayoutParams(dp(30), dp(30)))
+            empty.addView(TextView(this).apply {
                 text = "No new notifications"
-                setTextColor(Color.LTGRAY); alpha = 0.7f; textSize = 14f
+                setTextColor(Color.LTGRAY); alpha = 0.8f; textSize = 14f
                 gravity = Gravity.CENTER
-                setPadding(0, dp(28), 0, dp(28))
-            }, LinearLayout.LayoutParams(-1, -2))
+                setPadding(0, dp(8), 0, 0)
+            })
+            sec.addView(empty, LinearLayout.LayoutParams(-1, -2))
             return
         }
 
         // One group per app, newest group first.
         items.groupBy { it.pkg }.entries.sortedByDescending { it.value.first().time }.forEach { (pkg, list) ->
+            val collapsed = pkg in collapsedGroups
+            val showAll = pkg in showAllGroups
             val gh = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(4), dp(10), dp(4), dp(4))
+                setPadding(dp(4), dp(10), dp(0), dp(2))
             }
             gh.addView(ImageView(this).apply {
                 val ic = appIcon(pkg)
                 if (ic != null) setImageDrawable(ic) else { setImageResource(R.drawable.ic_qs_notifications); setColorFilter(accent) }
-            }, LinearLayout.LayoutParams(dp(18), dp(18)))
+            }, LinearLayout.LayoutParams(dp(16), dp(16)))
             gh.addView(TextView(this).apply {
-                text = if (list.size > 1) "${list.first().app}  ·  ${list.size}" else list.first().app
+                text = if (collapsed && list.size > 1) "${list.first().app}  \u00B7  ${list.size}" else list.first().app
                 setTextColor(Color.LTGRAY); textSize = 12f
                 setPadding(dp(8), 0, 0, 0)
             })
             gh.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-            gh.addView(TextView(this).apply {
-                text = "Clear"
-                setTextColor(accent); textSize = 12f
-                setPadding(dp(10), dp(6), dp(10), dp(6))
-                isClickable = true
-                setOnClickListener { NotificationStore.clearApp(pkg) }
+            if (list.size > 1) {
+                gh.addView(iconButton(
+                    if (collapsed) R.drawable.ic_qs_chevron_down else R.drawable.ic_qs_chevron_up,
+                    if (collapsed) "Expand notifications" else "Collapse notifications",
+                    Color.LTGRAY
+                ) {
+                    if (!collapsedGroups.add(pkg)) collapsedGroups.remove(pkg)
+                    renderNotifications()
+                })
+            }
+            gh.addView(iconButton(R.drawable.ic_qs_close, "Clear notifications from ${list.first().app}", Color.LTGRAY, padDp = 9) {
+                NotificationStore.clearApp(pkg)
             })
             sec.addView(gh)
-            list.forEach { sec.addView(notifCard(it), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) }) }
+            if (collapsed) return@forEach
+
+            val visible = if (showAll || list.size <= 3) list else list.take(3)
+            visible.forEach { sec.addView(notifCard(it), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) }) }
+            if (list.size > 3) {
+                sec.addView(TextView(this).apply {
+                    text = if (showAll) "Show less" else "Show more (${list.size - 3})"
+                    setTextColor(accent); textSize = 12f
+                    gravity = Gravity.CENTER
+                    setPadding(dp(8), dp(6), dp(8), dp(6))
+                    isClickable = true
+                    setOnClickListener {
+                        if (!showAllGroups.add(pkg)) showAllGroups.remove(pkg)
+                        renderNotifications()
+                    }
+                }, LinearLayout.LayoutParams(-1, -2))
+            }
         }
     }
 
     private fun notifCard(item: NotifItem): View {
         val card = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.TOP
-            setPadding(dp(12), dp(10), dp(4), dp(10))
-            background = GradientDrawable().apply { setColor(tile); cornerRadius = dp(8).toFloat() }
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(8), dp(4), dp(12))
+            background = roundBg(tile, 8, stroke = true)
             isClickable = true
             isFocusable = true
             setOnClickListener { openNotification(item) }
         }
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        if (item.title.isNotEmpty()) col.addView(TextView(this).apply {
-            text = item.title
+        // Row 1: title, time, dismiss (vector X)
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        top.addView(TextView(this).apply {
+            text = if (item.title.isNotEmpty()) item.title else item.app
             setTextColor(Color.WHITE); textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-        })
-        if (item.text.isNotEmpty()) col.addView(TextView(this).apply {
-            text = item.text
-            setTextColor(Color.LTGRAY); textSize = 12f
-            maxLines = 3; ellipsize = TextUtils.TruncateAt.END
-            setPadding(0, dp(2), 0, 0)
-        })
-        card.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
-
-        val right = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.END
-        }
-        right.addView(TextView(this).apply {
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        top.addView(TextView(this).apply {
             text = ago(item.time)
             setTextColor(Color.GRAY); textSize = 11f
-            setPadding(dp(8), 0, dp(8), 0)
+            setPadding(dp(8), 0, dp(2), 0)
         })
-        right.addView(TextView(this).apply {
-            text = "\u2715"
-            setTextColor(Color.LTGRAY); textSize = 15f
-            gravity = Gravity.CENTER
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            contentDescription = "Dismiss notification"
-            isClickable = true
-            setOnClickListener { NotificationStore.dismiss(item.key) }
+        top.addView(iconButton(R.drawable.ic_qs_close, "Dismiss notification", Color.LTGRAY, sizeDp = 30, padDp = 9) {
+            NotificationStore.dismiss(item.key)
         })
-        card.addView(right, LinearLayout.LayoutParams(-2, -2))
+        card.addView(top, LinearLayout.LayoutParams(-1, -2))
+        // Row 2: message text
+        if (item.text.isNotEmpty()) card.addView(TextView(this).apply {
+            text = item.text
+            setTextColor(Color.LTGRAY); textSize = 13f
+            maxLines = 3; ellipsize = TextUtils.TruncateAt.END
+            setPadding(0, 0, dp(10), 0)
+        })
         return card
+    }
+
+    // ── Calendar (Windows 11 notification center bottom half) ────────
+    private fun renderCalendar() {
+        val sec = calSection ?: return
+        sec.removeAllViews()
+        val today = Calendar.getInstance()
+
+        // Full date line: "Thursday, November 19"
+        sec.addView(TextView(this).apply {
+            text = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(today.time)
+            setTextColor(Color.WHITE); textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(4), dp(20), dp(4), dp(8))
+        })
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(6), dp(8), dp(10))
+            background = roundBg(tile, 8, stroke = true)
+        }
+        // Month title with up / down arrows (tap the title to jump back to this month)
+        val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        nav.addView(TextView(this).apply {
+            text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(calMonth.time)
+            setTextColor(Color.WHITE); textSize = 14f
+            setPadding(dp(6), dp(8), dp(6), dp(8))
+            isClickable = true
+            setOnClickListener {
+                calMonth.timeInMillis = System.currentTimeMillis()
+                renderCalendar()
+            }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        nav.addView(iconButton(R.drawable.ic_qs_chevron_up, "Previous month", Color.WHITE, sizeDp = 36, padDp = 9) {
+            calMonth.add(Calendar.MONTH, -1); renderCalendar()
+        })
+        nav.addView(iconButton(R.drawable.ic_qs_chevron_down, "Next month", Color.WHITE, sizeDp = 36, padDp = 9) {
+            calMonth.add(Calendar.MONTH, 1); renderCalendar()
+        })
+        card.addView(nav, LinearLayout.LayoutParams(-1, -2))
+
+        val first = calMonth.firstDayOfWeek
+        val names = DateFormatSymbols.getInstance().shortWeekdays
+        val grid = GridLayout(this).apply { columnCount = 7; useDefaultMargins = false }
+        fun cell(text: String, color: Int, circle: Boolean, bold: Boolean, hDp: Int): FrameLayout {
+            val f = FrameLayout(this)
+            f.addView(TextView(this).apply {
+                this.text = text
+                setTextColor(color); textSize = 12f
+                gravity = Gravity.CENTER
+                if (bold) typeface = Typeface.DEFAULT_BOLD
+                if (circle) background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(accent) }
+            }, FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
+            val lp = GridLayout.LayoutParams().apply {
+                width = 0; height = dp(hDp)
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+            }
+            grid.addView(f, lp)
+            return f
+        }
+        for (i in 0 until 7) {
+            val d = (first - 1 + i) % 7 + 1
+            cell(names[d].take(2), Color.LTGRAY, false, false, 28)
+        }
+        val start = calMonth.clone() as Calendar
+        start.set(Calendar.DAY_OF_MONTH, 1)
+        val offset = (start.get(Calendar.DAY_OF_WEEK) - first + 7) % 7
+        start.add(Calendar.DAY_OF_MONTH, -offset)
+        val month = calMonth.get(Calendar.MONTH)
+        for (i in 0 until 42) {
+            val isToday = start.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                start.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
+            val inMonth = start.get(Calendar.MONTH) == month
+            cell(
+                start.get(Calendar.DAY_OF_MONTH).toString(),
+                if (isToday) Color.rgb(20, 24, 30) else if (inMonth) Color.WHITE else Color.GRAY,
+                isToday, isToday, 34
+            )
+            start.add(Calendar.DAY_OF_MONTH, 1)
+        }
+        card.addView(grid, LinearLayout.LayoutParams(-1, -2))
+        sec.addView(card, LinearLayout.LayoutParams(-1, -2))
+        sec.addView(View(this), LinearLayout.LayoutParams(-1, dp(12)))
     }
 
     private fun infoCard(message: String, button: String, onClick: () -> Unit): View {

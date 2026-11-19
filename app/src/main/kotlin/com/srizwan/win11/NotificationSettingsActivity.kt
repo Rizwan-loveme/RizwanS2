@@ -1,5 +1,6 @@
 package com.srizwan.win11
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -41,16 +42,26 @@ class NotificationSettingsActivity : AppCompatActivity() {
         GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radiusDp).toFloat()
+            setStroke(dp(1), Color.argb(28, 255, 255, 255))
         }
+
+    private var glassBlur = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try { supportActionBar?.hide() } catch (e: Exception) { }
         try {
             @Suppress("DEPRECATION")
-            window.statusBarColor = Color.parseColor("#202020")
+            window.statusBarColor = Color.TRANSPARENT
             @Suppress("DEPRECATION")
-            window.navigationBarColor = Color.parseColor("#202020")
+            window.navigationBarColor = Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                val wm = getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                if (wm.isCrossWindowBlurEnabled) {
+                    window.setBackgroundBlurRadius((40 * resources.displayMetrics.density).toInt())
+                    glassBlur = true
+                }
+            }
         } catch (e: Exception) { }
         setContentView(buildScreen())
         try {
@@ -82,7 +93,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
 
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
-        root.setBackgroundColor(Color.parseColor("#202020"))
+        root.setBackgroundColor(if (glassBlur) Color.argb(125, 24, 27, 34) else Color.argb(205, 24, 27, 34))
         root.layoutParams = ViewGroup.LayoutParams(mp, mp)
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val b = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -119,7 +130,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
         // ── Access status card ──
         val card = LinearLayout(this)
         card.orientation = LinearLayout.VERTICAL
-        card.background = round(Color.parseColor("#2B2B2B"), 8)
+        card.background = round(Color.argb(64, 255, 255, 255), 8)
         card.setPadding(dp(16), dp(14), dp(16), dp(14))
         card.layoutParams = LinearLayout.LayoutParams(mp, wc).apply { bottomMargin = dp(16) }
         val cardTitle = TextView(this)
@@ -156,7 +167,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
         col.addView(sectionLabel("Security"))
         val adminCard = LinearLayout(this)
         adminCard.orientation = LinearLayout.VERTICAL
-        adminCard.background = round(Color.parseColor("#2B2B2B"), 8)
+        adminCard.background = round(Color.argb(64, 255, 255, 255), 8)
         adminCard.setPadding(dp(16), dp(14), dp(16), dp(14))
         adminCard.layoutParams = LinearLayout.LayoutParams(mp, wc).apply { bottomMargin = dp(16) }
         val adminTitle = TextView(this)
@@ -286,7 +297,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
         row.gravity = Gravity.CENTER_VERTICAL
-        row.background = round(Color.parseColor("#2B2B2B"), 8)
+        row.background = round(Color.argb(64, 255, 255, 255), 8)
         row.setPadding(dp(14), dp(12), dp(10), dp(12))
         row.layoutParams = LinearLayout.LayoutParams(mp, wc).apply { bottomMargin = dp(6) }
 

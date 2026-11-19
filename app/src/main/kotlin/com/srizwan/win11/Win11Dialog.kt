@@ -105,6 +105,7 @@ object DialogFont {
 class W11Dialog private constructor(private val ctx: Context) : Dialog(ctx) {
 
     private var title: CharSequence? = null
+    private var iconRes: Int = 0
     private var message: CharSequence? = null
     private var customView: View? = null
     private var items: Array<out CharSequence>? = null
@@ -143,7 +144,16 @@ class W11Dialog private constructor(private val ctx: Context) : Dialog(ctx) {
     private fun buildContent() {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        window?.setDimAmount(0.55f)
+        window?.setDimAmount(0.35f)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                if (wm.isCrossWindowBlurEnabled) {
+                    window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    window?.attributes = window?.attributes?.apply { blurBehindRadius = dp(24) }
+                }
+            }
+        } catch (_: Throwable) { }
 
         // One language for the whole dialog, decided from everything it shows.
         val lang = DialogFont.languageOf(
@@ -157,8 +167,8 @@ class W11Dialog private constructor(private val ctx: Context) : Dialog(ctx) {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 cornerRadius = dpf(12f)
-                setColor(Color.parseColor("#2B2B2B"))
-                setStroke(dp(1), Color.parseColor("#3D3D3D"))
+                setColor(Color.parseColor("#D91E2230"))
+                setStroke(dp(1), Color.parseColor("#40FFFFFF"))
             }
             setPadding(dp(22), dp(20), dp(22), dp(16))
         }
@@ -167,6 +177,7 @@ class W11Dialog private constructor(private val ctx: Context) : Dialog(ctx) {
             card.addView(TextView(ctx).apply {
                 text = title
                 setTextColor(Color.WHITE)
+                if (iconRes != 0) iconStart(iconRes, 22, Color.WHITE, 10)
                 textSize = 18f
                 typeface = strong
                 maxLines = 3
@@ -258,8 +269,8 @@ class W11Dialog private constructor(private val ctx: Context) : Dialog(ctx) {
             minWidth = dp(84)
             setTextColor(if (primary) Color.BLACK else Color.WHITE)
             setPadding(dp(18), dp(9), dp(18), dp(9))
-            val base = if (primary) W11.ACCENT else Color.parseColor("#3A3A3A")
-            val pressed = if (primary) Color.parseColor("#3AA6DB") else Color.parseColor("#4A4A4A")
+            val base = if (primary) W11.ACCENT else Color.parseColor("#33FFFFFF")
+            val pressed = if (primary) Color.parseColor("#3AA6DB") else Color.parseColor("#4DFFFFFF")
             fun bg(c: Int) = GradientDrawable().apply { cornerRadius = dpf(6f); setColor(c) }
             background = bg(base)
             setOnTouchListener { v, ev ->
@@ -327,6 +338,7 @@ class W11Dialog private constructor(private val ctx: Context) : Dialog(ctx) {
         private val d = W11Dialog(ctx)
 
         fun setTitle(t: CharSequence?): Builder { d.title = t; return this }
+        fun setIcon(res: Int): Builder { d.iconRes = res; return this }
         fun setMessage(m: CharSequence?): Builder { d.message = m; return this }
         fun setView(v: View?): Builder { d.customView = v; return this }
         fun setCancelable(c: Boolean): Builder { d.setCancelable(c); return this }

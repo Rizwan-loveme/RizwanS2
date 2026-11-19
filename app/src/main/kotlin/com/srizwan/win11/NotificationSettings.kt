@@ -24,6 +24,7 @@ object NotifPrefs {
     private const val FILE = "notif_settings"
     private const val KEY_MASTER = "master"
     private const val KEY_SOUND = "sound"
+    private const val KEY_DND = "dnd"
 
     /** Every package the listener watches belongs to exactly one entry here. */
     val apps: List<NotifApp> = listOf(
@@ -54,9 +55,14 @@ object NotifPrefs {
     fun isSoundOn(ctx: Context): Boolean = p(ctx).getBoolean(KEY_SOUND, true)
     fun setSound(ctx: Context, on: Boolean) { p(ctx).edit().putBoolean(KEY_SOUND, on).apply() }
 
-    /** Master switch AND the app's own switch must be on. */
+    /** Do Not Disturb (Win11 style): no toast pop-ups and no sound; the notification center still collects everything. */
+    fun isDndOn(ctx: Context): Boolean = p(ctx).getBoolean(KEY_DND, false)
+    fun setDnd(ctx: Context, on: Boolean) { p(ctx).edit().putBoolean(KEY_DND, on).apply() }
+
+    /** Master switch AND the app's own switch must be on, and Do Not Disturb must be off. */
     fun isAllowed(ctx: Context, pkg: String): Boolean {
         if (!isMasterOn(ctx)) return false
+        if (isDndOn(ctx)) return false
         val app = appFor(pkg) ?: return true
         return isAppOn(ctx, app.id)
     }

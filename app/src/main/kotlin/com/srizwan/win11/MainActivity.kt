@@ -78,6 +78,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         const val EXTRA_SENDER = "sender"
         const val EXTRA_MESSAGE = "message"
         const val EXTRA_APP = "app"
+        const val EXTRA_PKG = "pkg"
 
         /**
          * true while MainActivity is started (receiver registered) and shows the in-app overlay.
@@ -129,6 +130,7 @@ class WhatsAppNotificationListener : NotificationListenerService() {
                 putExtra(EXTRA_SENDER, sender)
                 putExtra(EXTRA_MESSAGE, message)
                 putExtra(EXTRA_APP, getAppLabel(sbn.packageName))
+                putExtra(EXTRA_PKG, sbn.packageName)
                 setPackage(packageName)
             }
             sendBroadcast(intent)
@@ -287,7 +289,7 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (WhatsAppNotificationListener.isEnabled(this)) {
                 Toast.makeText(
-                    this, "✅ নোটিফিকেশন অ্যাক্সেস চালু হয়েছে", Toast.LENGTH_SHORT
+                    this, "নোটিফিকেশন অ্যাক্সেস চালু হয়েছে", Toast.LENGTH_SHORT
                 ).show()
                 registerChatReceiver()
             }
@@ -335,7 +337,7 @@ class MainActivity : AppCompatActivity() {
     private fun showLastCrashIfAny() {
         val crash = AppLog.takeLastCrash() ?: return
         AppLog.w(LOGT, "previous run crashed:\n$crash")
-        showErrorDialog("⚠ App crashed last time", crash, null)
+        showErrorDialog("App crashed last time", crash, null)
     }
 
     /** Error dialog: scrollable stack text + Copy / Open log / (Retry) / Close buttons. */
@@ -499,7 +501,8 @@ class MainActivity : AppCompatActivity() {
         try {
             isTorchOn = !isTorchOn
             cameraManager!!.setTorchMode(cameraId!!, isTorchOn)
-            btn?.text = if (isTorchOn) "🔦 OFF" else "🔦 ON"
+            btn?.text = if (isTorchOn) "OFF" else "ON"
+            btn?.iconStart(R.drawable.ic_qs_flashlight, 18, Color.WHITE, 6)
             btn?.setBackgroundColor(
                 if (isTorchOn) Color.parseColor("#FFC107") else Color.parseColor("#444444")
             )
@@ -527,7 +530,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestNotificationAccess() {
         W11Dialog.Builder(this)
-            .setTitle("📱 Notification Access")
+            .setTitle("Notification Access")
             .setMessage("WhatsApp ও Messenger মেসেজের Toast দেখাতে হলে Notification Access অনুমতি দিতে হবে।\n\nSettings → Notification Access → এই অ্যাপ চালু করুন।")
             .setPositiveButton("Settings খুলুন") { _, _ ->
                 try {
@@ -553,7 +556,8 @@ class MainActivity : AppCompatActivity() {
                     intent.getStringExtra(WhatsAppNotificationListener.EXTRA_MESSAGE) ?: ""
                 val app =
                     intent.getStringExtra(WhatsAppNotificationListener.EXTRA_APP) ?: "Message"
-                showChatToast(sender, message, app)
+                val pkg = intent.getStringExtra(WhatsAppNotificationListener.EXTRA_PKG)
+                showChatToast(sender, message, app, pkg)
                 if (NotifPrefs.isSoundOn(this@MainActivity)) playSystemNotificationSound()
             }
         }
@@ -572,31 +576,14 @@ class MainActivity : AppCompatActivity() {
         WhatsAppNotificationListener.appVisible = false
     }
 
-    // FIX: Custom Toast view removed (crashes on Android 13+). Use a safe overlay window instead.
-    private fun showChatToast(sender: String, message: String, app: String) {
+    // Win11 style glass toast card (vector icons only, no emoji); see GlassToast.kt.
+    private fun showChatToast(sender: String, message: String, app: String, pkg: String? = null) {
         runOnUiThread {
             try {
-                val accentColor = when (app) {
-                    "WhatsApp" -> "#25D366"
-                    "Messenger" -> "#0084FF"
-                    "Telegram" -> "#2CA5E0"
-                    else -> "#888888"
-                }
-                val appIcon = when (app) {
-                    "WhatsApp" -> "💬"
-                    "Messenger" -> "💙"
-                    "Telegram" -> "✈️"
-                    else -> "📨"
-                }
-                val displayMsg =
-                    if (message.length > 80) message.substring(0, 80) + "…" else message
-                Toast.makeText(
-                    this,
-                    "$appIcon $sender\n$displayMsg",
-                    Toast.LENGTH_LONG
-                ).show()
+                val displayMsg = if (message.length > 120) message.substring(0, 120) + "\u2026" else message
+                GlassToast.show(this, pkg, app, sender, displayMsg)
             } catch (e: Exception) {
-                Toast.makeText(this, "$app: $sender — $message", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "$app: $sender - $message", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -701,7 +688,7 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) {
             AppLog.e(LOGT, "showStartupError: blank view failed", t)
         }
-        showErrorDialog("⚠ Startup error", AppLog.deviceInfo() + "\n\n" + AppLog.stack(e)) {
+        showErrorDialog("Startup error", AppLog.deviceInfo() + "\n\n" + AppLog.stack(e)) {
             AppLog.i(LOGT, "retry initUI")
             initUI()
         }
@@ -722,7 +709,9 @@ class MainActivity : AppCompatActivity() {
             )
             visibility = View.GONE
             addView(TextView(this@MainActivity).apply {
-                text = "⚠ $name could not load\n${e.javaClass.simpleName}: ${e.message}\n\n(see Quick Settings → Debug log)"
+                text = "$name could not load\n${e.javaClass.simpleName}: ${e.message}\n\n(see Quick Settings → Debug log)"
+                setCompoundDrawables(null, Ico.drawable(this@MainActivity, R.drawable.ic_w_warning, 32, Color.rgb(255, 193, 7)), null, null)
+                compoundDrawablePadding = 16
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 setPadding(32, 32, 32, 32)
@@ -746,7 +735,7 @@ class MainActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(Color.parseColor("#202020"))
+            setBackgroundColor(Color.TRANSPARENT) // glass: the wallpaper shows behind the taskbar
         }
 
         // ── Win11 taskbar (bottom) ── ──────────────────────────────────────
@@ -774,6 +763,7 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
             )
+            setBackgroundColor(Color.parseColor("#202020"))
         }
 
         fileManagerView = safeSection("Files") { createFileManagerView() }
@@ -800,7 +790,12 @@ class MainActivity : AppCompatActivity() {
 
         rootLayout.addView(contentFrame)
         rootLayout.addView(tabLayout)
-        setContentView(rootLayout)
+        // Glass: wallpaper bloom behind everything, so the translucent taskbar / Start menu look frosted.
+        val glassRoot = FrameLayout(this)
+        glassRoot.addView(BloomView(this), FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        glassRoot.addView(rootLayout)
+        setContentView(glassRoot)
 
         // ── System bar insets (status bar / cutout / nav bar / keyboard) ──
         // Works for edge-to-edge (Android 15+) and older versions alike, so
@@ -1093,7 +1088,8 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val headerTitle = TextView(this).apply {
-            text = "📞 Phone & Flashlight"
+            text = "Phone & Flashlight"
+            iconStart(R.drawable.ic_w_phone, 20, Color.WHITE, 8)
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -1101,7 +1097,8 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         torchBtn = Button(this).apply {
-            text = "🔦 ON"
+            text = "ON"
+            iconStart(R.drawable.ic_qs_flashlight, 18, Color.WHITE, 6)
             setBackgroundColor(Color.parseColor("#444444"))
             setTextColor(Color.WHITE)
             textSize = 13f
@@ -1186,7 +1183,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val deleteBtn = Button(this).apply {
-            text = "⌫"
+            iconOnly(R.drawable.ic_w_backspace, 24, Color.WHITE)
             textSize = 22f
             setTextColor(Color.WHITE)
             setBackgroundColor(Color.parseColor("#333333"))
@@ -1201,7 +1198,8 @@ class MainActivity : AppCompatActivity() {
             setOnLongClickListener { dialInput?.setText(""); true }
         }
         val callBtn = Button(this).apply {
-            text = "📞 Call"
+            text = "Call"
+            iconStart(R.drawable.ic_w_phone, 22, Color.WHITE, 8)
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
@@ -1213,7 +1211,7 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { makeCall() }
         }
         val contactsBtn = Button(this).apply {
-            text = "👤"
+            iconOnly(R.drawable.ic_w_person, 24, Color.WHITE)
             textSize = 22f
             setTextColor(Color.WHITE)
             setBackgroundColor(Color.parseColor("#1565C0"))
@@ -1234,7 +1232,8 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(16))
         })
         val recentTitle = TextView(this).apply {
-            text = "📋 Recent Calls"
+            text = "Recent Calls"
+            iconStart(R.drawable.ic_w_history, 16, Color.parseColor("#AAAAAA"), 8)
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.parseColor("#AAAAAA"))
@@ -1314,7 +1313,8 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#1E1E1E"))
         }
         val searchEdit = EditText(this).apply {
-            hint = "🔍 Search contacts"
+            hint = "Search contacts"
+            iconStart(R.drawable.ic_w_search, 16, Color.GRAY, 8)
             textSize = 14f
             setTextColor(Color.WHITE)
             setHintTextColor(Color.GRAY)
@@ -1341,7 +1341,8 @@ class MainActivity : AppCompatActivity() {
                     val item = getItem(position) ?: return view
                     view.setBackgroundColor(Color.parseColor("#1E1E1E"))
                     view.findViewById<TextView>(android.R.id.text1).apply {
-                        text = "👤 ${item.first}"
+                        text = item.first
+                        iconStart(R.drawable.ic_w_person, 18, Color.WHITE, 8)
                         setTextColor(Color.WHITE)
                         textSize = 14f
                     }
@@ -1356,7 +1357,7 @@ class MainActivity : AppCompatActivity() {
 
         var currentList = contacts.toMutableList()
         listView.adapter = makeAdapter(currentList)
-        val dialog = W11Dialog.Builder(this).setTitle("👤 Contacts").setView(dialogView)
+        val dialog = W11Dialog.Builder(this).setTitle("Contacts").setIcon(R.drawable.ic_w_person).setView(dialogView)
             .setNegativeButton("Cancel", null).create()
         listView.setOnItemClickListener { _, _, pos, _ ->
             val pair = currentList.getOrNull(pos) ?: return@setOnItemClickListener
@@ -1417,11 +1418,13 @@ class MainActivity : AppCompatActivity() {
                     val type = if (typeIdx >= 0) it.getInt(typeIdx) else 0
                     val date = if (dateIdx >= 0) it.getLong(dateIdx) else 0L
                     val typeIcon = when (type) {
-                        android.provider.CallLog.Calls.INCOMING_TYPE -> "📲"
-                        android.provider.CallLog.Calls.OUTGOING_TYPE -> "📞"
-                        android.provider.CallLog.Calls.MISSED_TYPE -> "📵"
-                        else -> "📋"
+                        android.provider.CallLog.Calls.INCOMING_TYPE -> R.drawable.ic_w_call_in
+                        android.provider.CallLog.Calls.OUTGOING_TYPE -> R.drawable.ic_w_call_out
+                        android.provider.CallLog.Calls.MISSED_TYPE -> R.drawable.ic_w_call_missed
+                        else -> R.drawable.ic_w_history
                     }
+                    val typeTint = if (type == android.provider.CallLog.Calls.MISSED_TYPE)
+                        Color.rgb(255, 82, 82) else Color.rgb(76, 194, 255)
                     val displayName = if (name.isNotEmpty()) name else num ?: "Unknown"
                     val timeStr =
                         if (date > 0) DateUtils.getRelativeTimeSpanString(
@@ -1438,9 +1441,7 @@ class MainActivity : AppCompatActivity() {
                         ).apply { setMargins(0, dp(2), 0, dp(2)) }
                     }
                     val iconView = TextView(this).apply {
-                        text = typeIcon
-                        textSize = 20f
-                        gravity = Gravity.CENTER
+                        iconOnly(typeIcon, 22, typeTint)
                         layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply {
                             setMargins(0, 0, dp(10), 0)
                         }
@@ -1462,7 +1463,7 @@ class MainActivity : AppCompatActivity() {
                         textSize = 11f
                     })
                     val callBackBtn = Button(this).apply {
-                        text = "📞"
+                        iconOnly(R.drawable.ic_w_phone, 22, Color.WHITE)
                         textSize = 18f
                         setTextColor(Color.WHITE)
                         setBackgroundColor(Color.parseColor("#4CAF50"))
@@ -2609,7 +2610,7 @@ class MainActivity : AppCompatActivity() {
     // ── ZIP ──────────────────────────────────────────────────────
 
     private fun showZipOptions(file: File) {
-        W11Dialog.Builder(this).setTitle("🗜️ ${file.name}")
+        W11Dialog.Builder(this).setTitle(file.name).setIcon(R.drawable.ic_w_archive)
             .setItems(arrayOf("Extract to DCIM", "Details")) { _, which ->
                 when (which) { 0 -> extractZipToDcim(file); 1 -> showDetails(file) }
             }.setNegativeButton("Cancel", null).show()
@@ -2622,7 +2623,7 @@ class MainActivity : AppCompatActivity() {
             File(Environment.getExternalStorageDirectory(), "DCIM")
         }
         val destRoot = File(dcimDir, zipFile.nameWithoutExtension)
-        val progressDialog = W11Dialog.Builder(this).setTitle("📦 Extracting…")
+        val progressDialog = W11Dialog.Builder(this).setTitle("Extracting…").setIcon(R.drawable.ic_w_box)
             .setMessage("0 files extracted").setCancelable(false).create()
         progressDialog.show()
         Thread {
@@ -2653,8 +2654,8 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     progressDialog.dismiss()
                     val msg =
-                        if (failed == 0) "✅ $extracted files extracted to\nDCIM/${zipFile.nameWithoutExtension}"
-                        else "✅ $extracted extracted, ⚠️ $failed failed"
+                        if (failed == 0) "$extracted files extracted to\nDCIM/${zipFile.nameWithoutExtension}"
+                        else "$extracted extracted, $failed failed"
                     W11Dialog.Builder(this).setTitle("Extraction Complete").setMessage(msg)
                         .setPositiveButton("OK", null).show()
                     loadFiles(currentPath)
@@ -2732,15 +2733,14 @@ class MainActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER_VERTICAL
             }
             val playPauseBtn = Button(this).apply {
-                text = "⏸"
-                textSize = 20f
+                iconOnly(R.drawable.ic_w_pause, 26, Color.WHITE)
                 setBackgroundColor(Color.TRANSPARENT)
                 setTextColor(Color.WHITE)
                 setOnClickListener {
                     if (videoView.isPlaying) {
-                        videoView.pause(); text = "▶"
+                        videoView.pause(); iconOnly(R.drawable.ic_w_play, 26, Color.WHITE)
                     } else {
-                        videoView.start(); text = "⏸"
+                        videoView.start(); iconOnly(R.drawable.ic_w_pause, 26, Color.WHITE)
                     }
                 }
             }
@@ -2768,9 +2768,13 @@ class MainActivity : AppCompatActivity() {
                 label: String,
                 color: String = "#333333",
                 w: Int = 70,
+                icon: Int? = null,
                 action: () -> Unit
             ) = Button(this).apply {
                 text = label
+                if (icon != null) {
+                    if (label.isEmpty()) iconOnly(icon, 20, Color.WHITE) else iconStart(icon, 16, Color.WHITE, 6)
+                }
                 textSize = 12f
                 setBackgroundColor(Color.parseColor(color))
                 setTextColor(Color.WHITE)
@@ -2781,23 +2785,23 @@ class MainActivity : AppCompatActivity() {
                 setOnClickListener { action() }
             }
 
-            orientationControls.addView(makeCtrlBtn("📱") {
+            orientationControls.addView(makeCtrlBtn("", icon = R.drawable.ic_w_portrait) {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             })
-            orientationControls.addView(makeCtrlBtn("🌍") {
+            orientationControls.addView(makeCtrlBtn("", icon = R.drawable.ic_w_landscape) {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             })
-            orientationControls.addView(makeCtrlBtn("🔄") {
+            orientationControls.addView(makeCtrlBtn("", icon = R.drawable.ic_qs_rotate) {
                 requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
             })
-            val pipBtn = makeCtrlBtn("⧉ PiP", "#1565C0", 80) {
+            val pipBtn = makeCtrlBtn("PiP", "#1565C0", 80, R.drawable.ic_w_pip) {
                 enterFilePip(videoView)
             }.apply {
                 isEnabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 1f else 0.4f
             }
             orientationControls.addView(pipBtn)
-            orientationControls.addView(makeCtrlBtn("✕", "#D32F2F", 60) {
+            orientationControls.addView(makeCtrlBtn("", "#D32F2F", 60, R.drawable.ic_qs_close) {
                 try { videoView.stopPlayback() } catch (e: Exception) { }
                 pipVideoView = null
                 pipControlOverlay = null
@@ -2929,7 +2933,8 @@ class MainActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER_VERTICAL
             }
             val searchInput = EditText(this).apply {
-                hint = "🔍 Search in file…"
+                hint = "Search in file…"
+                iconStart(R.drawable.ic_w_search, 16, Color.GRAY, 8)
                 layoutParams =
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 setSingleLine(true)
@@ -2949,8 +2954,9 @@ class MainActivity : AppCompatActivity() {
                 val lines = fileContent.lines().size
                 val words = fileContent.trim().split(Regex("\\s+")).size
                 this.text =
-                    "  📄 ${getSize(file.length())}  |  $lines lines  |  $words words"
+                    "  ${getSize(file.length())}  |  $lines lines  |  $words words"
                 setTextColor(Color.parseColor("#666666"))
+                iconStart(R.drawable.ic_w_doc, 12, Color.parseColor("#666666"), 4)
                 textSize = 11f
                 setBackgroundColor(Color.parseColor("#E0E0E0"))
                 setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -3066,9 +3072,7 @@ class MainActivity : AppCompatActivity() {
                 ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
             }
             val closeBtn = Button(this).apply {
-                text = "✕"
-                textSize = 16f
-                setTextColor(Color.WHITE)
+                iconOnly(R.drawable.ic_qs_close, 18, Color.WHITE)
                 setBackgroundColor(Color.parseColor("#D32F2F"))
                 layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
                 setPadding(0, 0, 0, 0)
@@ -3137,8 +3141,7 @@ class MainActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
             val closeBtn = Button(this).apply {
-                text = "✕"
-                textSize = 20f
+                iconOnly(R.drawable.ic_qs_close, 20)
                 setOnClickListener {
                     try { renderer.close() } catch (e: Exception) { }
                     dialog.dismiss()
@@ -3262,9 +3265,7 @@ class MainActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
             close.apply {
-                text = "✕"
-                textSize = 12f
-                gravity = Gravity.CENTER
+                iconOnly(R.drawable.ic_qs_close, 12, Color.parseColor("#9D9D9D"))
                 setTextColor(Color.parseColor("#9D9D9D"))
                 layoutParams = LinearLayout.LayoutParams(dp(30), ViewGroup.LayoutParams.MATCH_PARENT)
             }
@@ -3381,8 +3382,7 @@ class MainActivity : AppCompatActivity() {
         }
         pill.addView(urlBar)
         reloadBtn = TextView(this).apply {
-            text = "↻"
-            textSize = 18f
+            iconOnly(R.drawable.ic_w_refresh, 20, Color.WHITE)
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
@@ -3475,11 +3475,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateReloadIcon() {
         if (!::reloadBtn.isInitialized) return
-        reloadBtn.text = when {
-            urlBar.hasFocus() -> "→"
-            isPageLoading -> "✕"
-            else -> "↻"
-        }
+        reloadBtn.iconOnly(
+            when {
+                urlBar.hasFocus() -> R.drawable.ic_w_arrow_forward
+                isPageLoading -> R.drawable.ic_qs_close
+                else -> R.drawable.ic_w_refresh
+            }, 20, Color.WHITE
+        )
     }
 
     private fun updateNavButtons() {
@@ -3879,7 +3881,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showImageSaveDialog(imageUrl: String, webView: WebView) {
-        val options = arrayOf("💾 ছবি সেভ করুন", "🔗 লিংক কপি করুন", "🌐 নতুন ট্যাবে খুলুন")
+        val options = arrayOf("ছবি সেভ করুন", "লিংক কপি করুন", "নতুন ট্যাবে খুলুন")
         W11Dialog.Builder(this).setTitle("ছবির অপশন").setItems(options) { _, which ->
             when (which) {
                 0 -> downloadImage(imageUrl, webView)
@@ -3962,7 +3964,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         ensureNotifPermission()
         val t = DlEngine.enqueue(url, fileName, mime, cookies, ua, referer, total)
-        Toast.makeText(this, "⬇️ Download started: ${t.fileName}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Download started: ${t.fileName}", Toast.LENGTH_SHORT).show()
         updateDownloadBadge()
     }
 
@@ -3975,13 +3977,15 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(20), dp(16), dp(20), dp(8))
         }
         dialogView.addView(TextView(this).apply {
-            text = "📦 Size: $sizeText"
+            text = "Size: $sizeText"
+            iconStart(R.drawable.ic_w_box, 14, Color.parseColor("#555555"), 6)
             textSize = 13f
             setTextColor(Color.parseColor("#555555"))
             setPadding(0, 0, 0, dp(4))
         })
         dialogView.addView(TextView(this).apply {
-            text = "📁 Saved to: Downloads"
+            text = "Saved to: Downloads"
+            iconStart(R.drawable.ic_w_folder, 14, Color.parseColor("#555555"), 6)
             textSize = 13f
             setTextColor(Color.parseColor("#555555"))
             setPadding(0, 0, 0, dp(12))
@@ -3997,7 +4001,7 @@ class MainActivity : AppCompatActivity() {
             setText(defaultName); textSize = 14f; setSingleLine(true); post { selectAll() }
         }
         dialogView.addView(fileNameInput)
-        W11Dialog.Builder(this).setTitle("⬇️ Download File").setView(dialogView)
+        W11Dialog.Builder(this).setTitle("Download File").setIcon(R.drawable.ic_w_download).setView(dialogView)
             .setPositiveButton("Download") { _, _ ->
                 val inputName = fileNameInput.text.toString().trim()
                 onConfirm(sanitizeFileName(inputName.ifBlank { defaultName }))
@@ -4049,7 +4053,7 @@ class MainActivity : AppCompatActivity() {
                 ensureNotifPermission()
                 val task = DlEngine.beginBlob(chosen, mime, size)
                 webView.evaluateJavascript(blobTransferJs(org.json.JSONObject.quote(blobUrl), task.id), null)
-                Toast.makeText(this, "⬇️ Download started: $chosen", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Download started: $chosen", Toast.LENGTH_SHORT).show()
                 updateDownloadBadge()
             }
         }
@@ -4076,7 +4080,7 @@ class MainActivity : AppCompatActivity() {
                 DlEngine.saveBytes(fileName, mimeType, bytes)
                 runOnUiThread {
                     ensureNotifPermission()
-                    Toast.makeText(this, "⬇️ Saving: $fileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Saving: $fileName", Toast.LENGTH_SHORT).show()
                     updateDownloadBadge()
                 }
             } catch (e: Exception) {
@@ -4090,7 +4094,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLinkDialog(link: String, webView: WebView) {
-        val options = arrayOf("🌐 Open in new tab", "⬇️ Download link", "🔗 Copy link")
+        val options = arrayOf("Open in new tab", "Download link", "Copy link")
         W11Dialog.Builder(this).setTitle(link).setItems(options) { _, which ->
             when (which) {
                 0 -> addNewTab(link, switch = true)
@@ -4110,7 +4114,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         val fileName = customFileName
             ?: sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimetype))
-        Toast.makeText(this, "⬇️ Manual download: $fileName", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Manual download: $fileName", Toast.LENGTH_SHORT).show()
         Thread {
             var connection: HttpURLConnection? = null
             var inputStream: InputStream? = null
@@ -4155,7 +4159,7 @@ class MainActivity : AppCompatActivity() {
                         contentResolver.update(uri, cv, null, null)
                         runOnUiThread {
                             Toast.makeText(
-                                this, "✅ ডাউনলোড সম্পন্ন: $fileName", Toast.LENGTH_LONG
+                                this, "ডাউনলোড সম্পন্ন: $fileName", Toast.LENGTH_LONG
                             ).show()
                         }
                     } else runOnUiThread {
@@ -4170,7 +4174,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     runOnUiThread {
                         Toast.makeText(
-                            this, "✅ ডাউনলোড সম্পন্ন: $fileName", Toast.LENGTH_LONG
+                            this, "ডাউনলোড সম্পন্ন: $fileName", Toast.LENGTH_LONG
                         ).show()
                     }
                 }
@@ -4202,7 +4206,7 @@ class MainActivity : AppCompatActivity() {
                         DownloadManager.STATUS_SUCCESSFUL ->
                             Toast.makeText(
                                 this@MainActivity,
-                                "✅ ডাউনলোড সম্পন্ন: $fileName",
+                                "ডাউনলোড সম্পন্ন: $fileName",
                                 Toast.LENGTH_LONG
                             ).show()
                         DownloadManager.STATUS_FAILED -> {
@@ -4211,7 +4215,7 @@ class MainActivity : AppCompatActivity() {
                             val reason = if (rc >= 0) cursor.getInt(rc) else 0
                             Toast.makeText(
                                 this@MainActivity,
-                                "⚠️ ব্যর্থ (${downloadFailReason(reason)})",
+                                "ব্যর্থ (${downloadFailReason(reason)})",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }

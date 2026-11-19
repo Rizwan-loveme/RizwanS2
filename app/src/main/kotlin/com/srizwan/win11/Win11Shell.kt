@@ -47,16 +47,16 @@ import java.util.Locale
 // =====================================================================
 
 object W11 {
-    val TASKBAR = Color.parseColor("#202020")
-    val TASKBAR_BORDER = Color.parseColor("#3A3A3A")
+    val TASKBAR = Color.parseColor("#B31B1F2A")
+    val TASKBAR_BORDER = Color.parseColor("#3DFFFFFF")
     val ACCENT = Color.parseColor("#4CC2FF")
     val ITEM_ACTIVE_BG = Color.parseColor("#26FFFFFF")
     val DOT = Color.parseColor("#9AFFFFFF")
     val TEXT = Color.WHITE
     val TEXT_DIM = Color.parseColor("#B3FFFFFF")
-    val START_BG = Color.parseColor("#F2282828")
-    val START_BORDER = Color.parseColor("#404040")
-    val START_SEARCH_BG = Color.parseColor("#333333")
+    val START_BG = Color.parseColor("#C71E2230")
+    val START_BORDER = Color.parseColor("#40FFFFFF")
+    val START_SEARCH_BG = Color.parseColor("#33FFFFFF")
     val START_FOOTER_BG = Color.parseColor("#33000000")
     val DIVIDER = Color.parseColor("#26FFFFFF")
 }
@@ -311,9 +311,7 @@ class Win11Shell(
         // left slot (same width as before, so the icon group stays truly centered):
         // Quick Settings / Notification Center shortcut.
         row.addView(TextView(ctx).apply {
-            text = "\u2699"
-            textSize = 20f
-            gravity = Gravity.CENTER
+            iconOnly(R.drawable.ic_w_settings, 22, W11.TEXT)
             setTextColor(W11.TEXT)
             contentDescription = "Quick Settings and Notifications"
             isClickable = true
@@ -555,7 +553,7 @@ class Win11Shell(
             searchBox = box
             addView(box)
             val clear = TextView(ctx).apply {
-                text = "✕"
+                iconOnly(R.drawable.ic_qs_close, 14, W11.TEXT_DIM)
                 setTextColor(W11.TEXT_DIM)
                 textSize = 14f
                 gravity = Gravity.CENTER
@@ -1064,7 +1062,8 @@ class Win11Shell(
         val hidden = appRepo.hiddenApps()
         if (hidden.isNotEmpty()) {
             list.addView(TextView(ctx).apply {
-                text = (if (showHiddenApps) "▾  " else "▸  ") + "Hidden apps (${hidden.size})"
+                text = "Hidden apps (${hidden.size})"
+                iconStart(if (showHiddenApps) R.drawable.ic_qs_chevron_down else R.drawable.ic_w_chevron_right, 14, W11.TEXT_DIM, 8)
                 setTextColor(W11.TEXT_DIM)
                 textSize = 12f
                 gravity = Gravity.CENTER_VERTICAL
