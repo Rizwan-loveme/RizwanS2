@@ -1,6 +1,8 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    // FIX: AGP 9.x-এ Kotlin সাপোর্ট বিল্ট-ইন। আলাদা করে
+    // id("org.jetbrains.kotlin.android") দিলে "plugin is no longer required
+    // for Kotlin support since AGP 9.0" এরর দিয়ে বিল্ড ফেইল করে — তাই সরানো হয়েছে।
 }
 
 android {
@@ -27,12 +29,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions { jvmTarget = "1.8" }
     
     // Compose প্রয়োজন নেই তাই এগুলো ফলস করে দেওয়া হলো
     buildFeatures { 
         compose = false 
         viewBinding = true
+    }
+}
+
+// FIX: AGP 9-এ android { kotlinOptions {} } আর নেই; এর বদলে kotlin { compilerOptions {} }।
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
     }
 }
 

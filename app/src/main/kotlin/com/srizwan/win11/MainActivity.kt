@@ -85,6 +85,9 @@ class WhatsAppNotificationListener : NotificationListenerService() {
          */
         @Volatile var appVisible = false
 
+        /** Connected listener, used by the notification center to dismiss notifications. */
+        @Volatile var instance: WhatsAppNotificationListener? = null
+
         fun isEnabled(context: Context): Boolean {
             val flat = Settings.Secure.getString(
                 context.contentResolver,
@@ -107,13 +110,8 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         val extras = sbn.notification?.extras ?: return
         val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val message = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        if (sender.isNotEmpty() || message.isNotEmpty()) {
-            synchronized(NotificationStore.items) {
-                NotificationStore.items.removeAll { it.first == sender && it.second == message }
-                NotificationStore.items.add((getAppLabel(sbn.packageName) + " · " + sender) to message)
-                while (NotificationStore.items.size > 60) NotificationStore.items.removeAt(0)
-            }
-        }
+        // Every dismissible notification goes to the Windows-style notification center.
+        NotificationStore.onPosted(this, sbn)
         if (sbn.packageName !in SUPPORTED_PACKAGES) return
         if (sender.isEmpty() && message.isEmpty()) return
         // Notification settings: master switch + per-app on/off
@@ -132,7 +130,22 @@ class WhatsAppNotificationListener : NotificationListenerService() {
         sendBroadcast(intent)
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) { /* no-op */ }
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        NotificationStore.remove(sbn?.key)
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+        // Rebuild the center from what is currently showing on the phone.
+        NotificationStore.clearLocal()
+        try { activeNotifications?.forEach { NotificationStore.onPosted(this, it) } } catch (_: Exception) {}
+    }
+
+    override fun onListenerDisconnected() {
+        if (instance === this) instance = null
+        super.onListenerDisconnected()
+    }
 }
 
 // ==================== MAIN ACTIVITY ====================

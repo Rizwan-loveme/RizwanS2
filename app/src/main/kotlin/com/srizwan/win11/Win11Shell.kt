@@ -735,7 +735,6 @@ class Win11Shell(
         if (!ok) {
             val msg = when {
                 lock && Build.VERSION.SDK_INT < 28 -> "Lock needs Android 9 or newer"
-                !lock && Build.VERSION.SDK_INT < 31 -> "Hold the physical power button to restart or shut down"
                 else -> "Action failed"
             }
             Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()

@@ -8,7 +8,7 @@ import android.view.accessibility.AccessibilityEvent
 /**
  * Tiny accessibility service (no XML config; set up in code) whose only job is to
  * perform the global actions Android allows launchers to trigger:
- * lock screen (API 28+) and the system power dialog (API 31+).
+ * lock screen (API 28+), take screenshot (API 28+) and the system power dialog (API 21+, Android 5.0 and up).
  */
 class PowerService : AccessibilityService() {
 
@@ -22,8 +22,14 @@ class PowerService : AccessibilityService() {
             Build.VERSION.SDK_INT >= 28 &&
                 instance?.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) == true
 
+        /** One-tap system screenshot (Android 9+). Needs this accessibility service enabled. */
+        fun screenshot(): Boolean =
+            Build.VERSION.SDK_INT >= 28 &&
+                instance?.performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT) == true
+
+        // FIX: GLOBAL_ACTION_POWER_DIALOG exists since Android 5.0 (API 21), not only 12 (API 31).
         fun powerDialog(): Boolean =
-            Build.VERSION.SDK_INT >= 31 &&
+            Build.VERSION.SDK_INT >= 21 &&
                 instance?.performGlobalAction(GLOBAL_ACTION_POWER_DIALOG) == true
     }
 
