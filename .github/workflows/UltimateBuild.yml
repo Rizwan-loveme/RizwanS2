@@ -166,7 +166,7 @@ jobs:
 
       # The engine has native code (ndkBuild) and needs this exact NDK.
       # compileSdk/targetSdk 37 may not be preinstalled on the runner's image,
-      # and AGP 9.1.1 and Gradle 9.3.1 support API 37. Install the API 37
+      # and AGP 8.13.2 with Gradle 8.14.3 (needed by the BlackBox engine) run with API 37. Install the API 37
       # platform and matching Build Tools explicitly on the GitHub runner.
       - name: Install NDK and SDK Platform
         run: |
@@ -178,8 +178,8 @@ jobs:
       - name: Make gradlew executable
         run: |
           if [ ! -f ./gradlew ]; then
-            echo "::warning::gradlew not found - generating wrapper (Gradle 9.3.1)"
-            gradle wrapper --gradle-version 9.3.1 --no-validate-url
+            echo "::warning::gradlew not found - generating wrapper (Gradle 8.14.3)"
+            gradle wrapper --gradle-version 8.14.3 --no-validate-url
           fi
           chmod +x ./gradlew
 
