@@ -48,8 +48,15 @@ import androidx.core.view.WindowInsetsCompat
  */
 class NotificationSettingsActivity : AppCompatActivity() {
 
+    companion object {
+        /** Extra: scroll straight to the "Apps" list (set by the long-press on the device name in Start). */
+        const val EXTRA_FOCUS_APPS = "focus_apps"
+    }
+
     private lateinit var statusText: TextView
     private lateinit var statusBtn: TextView
+    private var appsLabel: TextView? = null
+    private var listView: RecyclerView? = null
     /** One installed app in the per-app list. The icon is NOT loaded here (lazy, see [AppsAdapter]). */
     private class AppEntry(val pkg: String, val label: String, val ri: android.content.pm.ResolveInfo)
     private val appEntries = mutableListOf<AppEntry>()
@@ -305,7 +312,15 @@ class NotificationSettingsActivity : AppCompatActivity() {
         col.addView(ovCard)
 
         // ── Per-app switches: every installed app ──
-        col.addView(sectionLabel("Apps"))
+        val appsHead = sectionLabel("Apps")
+        appsLabel = appsHead
+        col.addView(appsHead)
+        val appsHint = TextView(this)
+        appsHint.text = "Per app: pop-up notifications on / off, Hide app (from Start), Black box (default opener)."
+        appsHint.setTextColor(W11.TEXT_DIM)
+        appsHint.textSize = 11f
+        appsHint.setPadding(dp(4), 0, dp(4), dp(8))
+        col.addView(appsHint)
         col.addView(buildAppSearch())
         col.addView(buildBulkRow())
         appsStatus = TextView(this)
@@ -368,9 +383,24 @@ class NotificationSettingsActivity : AppCompatActivity() {
         val ad = AppsAdapter(col, footer)
         appsAdapter = ad
         rv.adapter = ad
+        listView = rv
         root.addView(rv)
         loadApps()
+        if (intent?.getBooleanExtra(EXTRA_FOCUS_APPS, false) == true) focusApps()
         return root
+    }
+
+    /** Scrolls the page so the "Apps" list is at the top (once, when the header has been laid out). */
+    private fun focusApps() {
+        val rv = listView ?: return
+        val lbl = appsLabel ?: return
+        rv.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                if (lbl.height == 0) return
+                if (rv.viewTreeObserver.isAlive) rv.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                rv.scrollBy(0, lbl.top - dp(4))
+            }
+        })
     }
 
     private fun sectionLabel(text: String): TextView {
@@ -550,20 +580,35 @@ class NotificationSettingsActivity : AppCompatActivity() {
 
     private class StaticHolder(v: View) : RecyclerView.ViewHolder(v)
 
-    /** One app row: icon (lazy), name, package, pop-up on/off switch. */
+    /**
+     * One app row: icon (lazy), name, package, pop-up on/off switch ([top]); below it the
+     * "Hide app" and "Black box (default opener)" switches ([hideSw], [bbSw]).
+     */
     private inner class AppHolder(
-        val row: LinearLayout, val icon: ImageView, val name: TextView, val pkgText: TextView, val sw: SwitchCompat
+        val row: LinearLayout, val top: LinearLayout, val icon: ImageView, val name: TextView,
+        val pkgText: TextView, val sw: SwitchCompat, val hideSw: SwitchCompat, val bbSw: SwitchCompat
     ) : RecyclerView.ViewHolder(row) {
         fun bind(e: AppEntry) {
             name.text = e.label
             pkgText.text = e.pkg
-            row.alpha = if (masterOn) 1f else 0.45f
+            top.alpha = if (masterOn) 1f else 0.45f
             sw.isEnabled = masterOn
             sw.setOnCheckedChangeListener(null)
             sw.isChecked = NotifPrefs.isPkgOn(this@NotificationSettingsActivity, e.pkg)
             sw.setOnCheckedChangeListener { _, on ->
                 NotifPrefs.setPkgOn(this@NotificationSettingsActivity, e.pkg, on)
                 refreshPopupSwitches() // keep the per-app pop-up card in step with this row
+            }
+            // Hide app: the Start menu's hidden list (see AppControl); black box: default opener
+            hideSw.setOnCheckedChangeListener(null)
+            hideSw.isChecked = AppControl.isHidden(this@NotificationSettingsActivity, e.pkg)
+            hideSw.setOnCheckedChangeListener { _, on ->
+                AppControl.setHidden(this@NotificationSettingsActivity, e.pkg, on)
+            }
+            bbSw.setOnCheckedChangeListener(null)
+            bbSw.isChecked = AppControl.isBlackBoxDefault(this@NotificationSettingsActivity, e.pkg)
+            bbSw.setOnCheckedChangeListener { _, on ->
+                AppControl.setBlackBoxDefault(this@NotificationSettingsActivity, e.pkg, on)
             }
             icon.tag = e.pkg
             val cached = iconCache.get(e.pkg)
@@ -584,21 +629,35 @@ class NotificationSettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun styledSwitch(): SwitchCompat {
+        val sw = SwitchCompat(this)
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+        sw.thumbTintList = ColorStateList(states, intArrayOf(Color.BLACK, Color.parseColor("#CCCCCC")))
+        sw.trackTintList = ColorStateList(states, intArrayOf(W11.ACCENT, Color.parseColor("#555555")))
+        return sw
+    }
+
     private fun newAppHolder(): AppHolder {
         val mp = ViewGroup.LayoutParams.MATCH_PARENT
         val wc = ViewGroup.LayoutParams.WRAP_CONTENT
         val row = LinearLayout(this)
-        row.orientation = LinearLayout.HORIZONTAL
-        row.gravity = Gravity.CENTER_VERTICAL
+        row.orientation = LinearLayout.VERTICAL
         row.background = round(Color.argb(64, 255, 255, 255), 8)
-        row.setPadding(dp(14), dp(10), dp(10), dp(10))
+        row.setPadding(dp(14), dp(10), dp(10), dp(8))
         row.layoutParams = RecyclerView.LayoutParams(mp, wc).apply {
             leftMargin = dp(16); rightMargin = dp(16); bottomMargin = dp(6)
         }
 
+        // top line: icon, name + package, pop-up notification switch
+        val top = LinearLayout(this)
+        top.orientation = LinearLayout.HORIZONTAL
+        top.gravity = Gravity.CENTER_VERTICAL
+        top.layoutParams = LinearLayout.LayoutParams(mp, wc)
+        row.addView(top)
+
         val ic = ImageView(this)
         ic.layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { rightMargin = dp(14) }
-        row.addView(ic)
+        top.addView(ic)
 
         val texts = LinearLayout(this)
         texts.orientation = LinearLayout.VERTICAL
@@ -615,14 +674,39 @@ class NotificationSettingsActivity : AppCompatActivity() {
         st.maxLines = 1
         st.ellipsize = android.text.TextUtils.TruncateAt.END
         texts.addView(st)
-        row.addView(texts)
+        top.addView(texts)
 
-        val sw = SwitchCompat(this)
-        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
-        sw.thumbTintList = ColorStateList(states, intArrayOf(Color.BLACK, Color.parseColor("#CCCCCC")))
-        sw.trackTintList = ColorStateList(states, intArrayOf(W11.ACCENT, Color.parseColor("#555555")))
-        row.addView(sw)
-        return AppHolder(row, ic, t, st, sw)
+        val sw = styledSwitch()
+        top.addView(sw)
+
+        // thin divider + the two extra switches
+        val div = View(this)
+        div.setBackgroundColor(Color.argb(28, 255, 255, 255))
+        div.layoutParams = LinearLayout.LayoutParams(mp, 1).apply { topMargin = dp(8); rightMargin = dp(4) }
+        row.addView(div)
+
+        fun optionRow(label: String): Pair<LinearLayout, SwitchCompat> {
+            val r = LinearLayout(this)
+            r.orientation = LinearLayout.HORIZONTAL
+            r.gravity = Gravity.CENTER_VERTICAL
+            r.layoutParams = LinearLayout.LayoutParams(mp, wc).apply { topMargin = dp(2) }
+            val l = TextView(this)
+            l.text = label
+            l.setTextColor(W11.TEXT)
+            l.textSize = 13f
+            l.layoutParams = LinearLayout.LayoutParams(0, wc, 1f)
+            r.addView(l)
+            val s2 = styledSwitch()
+            r.addView(s2)
+            // a tap anywhere on the line flips the switch
+            r.setOnClickListener { s2.toggle() }
+            row.addView(r)
+            return Pair(r, s2)
+        }
+        val hideSw = optionRow("Hide app").second
+        val bbSw = optionRow("Black box (default opener)").second
+
+        return AppHolder(row, top, ic, t, st, sw, hideSw, bbSw)
     }
 
     /** position 0 = header, last = footer, everything between = app rows. */

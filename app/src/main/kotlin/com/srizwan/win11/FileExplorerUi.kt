@@ -925,7 +925,7 @@ class ExplorerUi(
      * Step 4.2: rows come as [FileItem]s whose size/date were read on the
      * loader thread, so binding a row never touches the disk.
      */
-    fun show(dir: File, storageRoot: File, files: List<FileItem>, free: Long, total: Long) {
+    internal fun show(dir: File, storageRoot: File, files: List<FileItem>, free: Long, total: Long) {
         // Same folder reloaded (after delete / rename / new folder): DiffUtil animates only the
         // rows that changed and the scroll position stays. A different folder starts at the top.
         val sameFolder = shownDir?.absolutePath == dir.absolutePath

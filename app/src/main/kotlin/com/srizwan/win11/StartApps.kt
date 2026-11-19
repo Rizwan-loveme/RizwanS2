@@ -156,7 +156,9 @@ class AppRepository(private val ctx: Context) {
             val list = try { query() } catch (e: Exception) { null }
             main.post {
                 if (list == null) return@post
-                val changed = list.map { it.key } != apps.map { it.key }
+                // "Hide app" can also be switched in Notifications > Apps (AppControl): re-read it here.
+                val prefsChanged = reloadPrefs()
+                val changed = list.map { it.key } != apps.map { it.key } || prefsChanged
                 apps = list
                 migrateBuiltInPhone()
                 if (!prefs.getBoolean(KEY_RECENT_MODEL, false)) {
@@ -172,6 +174,21 @@ class AppRepository(private val ctx: Context) {
                 }
             }
         }
+    }
+
+    /**
+     * Re-reads the pinned and hidden lists from the preferences (they can be changed outside this
+     * object, see [AppControl]). Returns true when something differs from what was in memory.
+     */
+    private fun reloadPrefs(): Boolean {
+        val newHidden = (prefs.getString(KEY_HIDDEN, null)
+            ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()).toSet()
+        val newPinned = prefs.getString(KEY_PINNED, null)
+            ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+        var changed = false
+        if (newHidden != hiddenKeys) { hiddenKeys.clear(); hiddenKeys.addAll(newHidden); changed = true }
+        if (newPinned != pinnedKeys) { pinnedKeys.clear(); pinnedKeys.addAll(newPinned); changed = true }
+        return changed
     }
 
     private fun builtInApps(): List<AppEntry> = listOf(

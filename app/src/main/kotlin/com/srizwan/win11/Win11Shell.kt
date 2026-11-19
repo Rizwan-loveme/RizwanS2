@@ -693,6 +693,8 @@ class Win11Shell(
             false
         }
         user.setOnClickListener { showUserMenu(it) }
+        // Long-press on the device name: per-app switches (notification, hide app, black box).
+        user.setOnLongClickListener { openAppSwitches(); true }
         footer.addView(user)
 
         val power = object : View(ctx) {
@@ -723,6 +725,19 @@ class Win11Shell(
             setOnClickListener { showPowerMenu(it) }
         }
         footer.addView(power)
+    }
+
+    /** Opens Notifications > Apps: per app notification, Hide app and Black box (default opener) switches. */
+    private fun openAppSwitches() {
+        try {
+            val i = Intent(ctx, NotificationSettingsActivity::class.java)
+                .putExtra(NotificationSettingsActivity.EXTRA_FOCUS_APPS, true)
+            if (ctx !is android.app.Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            closeStart(animated = false)
+            ctx.startActivity(i)
+        } catch (e: Exception) {
+            AppLog.e("Win11Shell", "cannot open app switches", e)
+        }
     }
 
     private fun showUserMenu(anchor: View) {
@@ -1355,6 +1370,18 @@ class Win11Shell(
             onNavigate(sec)
             return
         }
+        // "Black box (default opener)" is on for this app: open its copy in the virtual space.
+        if (AppControl.isBlackBoxDefault(ctx, e.pkg)) {
+            appRepo.addRecent(e)
+            closeStart(animated = false)
+            ParallelApps.open(ctx, e.pkg, e.label) { openReal(e) }
+            return
+        }
+        openReal(e)
+    }
+
+    /** Starts the real (device) app. */
+    private fun openReal(e: AppEntry) {
         try {
             ctx.startActivity(e.launchIntent())
             appRepo.addRecent(e)
