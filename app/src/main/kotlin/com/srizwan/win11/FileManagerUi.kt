@@ -136,14 +136,9 @@ internal fun MainActivity.loadFiles(dir: File) {
         }
         currentPath = dir
         val storageRoot = try { Environment.getExternalStorageDirectory() } catch (e: Exception) { File("/storage/emulated/0") }
-        val files = try {
-            dir.listFiles()
-                ?.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
-                ?: emptyList()
-        } catch (e: Exception) { emptyList() }
-        val free = try { dir.freeSpace } catch (e: Exception) { 0L }
-        val total = try { dir.totalSpace } catch (e: Exception) { 0L }
-        explorerUi.show(dir, storageRoot, files, free, total)
+        // Step 4.1: listing, sorting and space lookup now run on a background
+        // thread inside ExplorerUi.load(); a newer call cancels the older one.
+        explorerUi.load(dir, storageRoot)
     } catch (e: Exception) {
         Toast.makeText(this, "Error loading files: ${e.message}", Toast.LENGTH_SHORT).show()
     }

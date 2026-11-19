@@ -98,7 +98,7 @@
         <activity
             android:windowSoftInputMode="adjustResize"
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|screenLayout"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode"
             android:exported="true"
             android:screenOrientation="portrait"
             android:supportsPictureInPicture="true"

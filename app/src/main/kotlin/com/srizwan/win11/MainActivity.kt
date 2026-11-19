@@ -339,6 +339,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         AppLog.i(LOGT, "onDestroy (finishing=$isFinishing)")
         try { if (::shell.isInitialized) shell.stopClock() } catch (e: Exception) { }
+        try { if (::explorerUi.isInitialized) explorerUi.destroy() } catch (e: Exception) { }
         try {
             saveState()
             webTabs.forEach {
@@ -362,6 +363,10 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    // 4.15.4: the manifest lists orientation | screenSize | smallestScreenSize | screenLayout | uiMode, so
+    // rotation, split-screen, fold and dark / light do NOT recreate this Activity (the open folder, scroll
+    // position, view mode and a running load stay). Views follow by themselves: ExplorerUi listens to the
+    // layout change of its list (columns, skeleton, thumb bar), all colours are fixed (WX), nothing to do here.
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
     }
