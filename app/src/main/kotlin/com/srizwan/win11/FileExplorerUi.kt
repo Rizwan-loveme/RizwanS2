@@ -379,7 +379,7 @@ class ExplorerUi(
             clipToPadding = false
             setPadding(0, 0, 0, dp(8))
             addHeaderView(cardHolder, null, false)
-            addFooterView(emptyView, null, false)
+            addFooterView(this@ExplorerUi.emptyView, null, false)
             this.adapter = this@ExplorerUi.adapter
             setOnItemClickListener { parent, _, position, _ ->
                 (parent.getItemAtPosition(position) as? File)?.let { f ->

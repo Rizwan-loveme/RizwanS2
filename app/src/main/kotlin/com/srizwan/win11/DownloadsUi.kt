@@ -143,7 +143,7 @@ class DownloadsUi(
             setBackgroundColor(WX.BG)
             clipToPadding = false
             setPadding(0, dp(4), 0, dp(8))
-            addFooterView(emptyView, null, false)
+            addFooterView(this@DownloadsUi.emptyView, null, false)
             this.adapter = this@DownloadsUi.adapter
             setOnItemClickListener { parent, _, position, _ ->
                 (parent.getItemAtPosition(position) as? DlTask)?.let { t ->
