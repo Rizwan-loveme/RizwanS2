@@ -73,7 +73,8 @@ object NotificationStore {
                 }
             }
             changed()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLog.e("NotifStore", "onPosted failed for ${sbn.packageName}", e)
         }
     }
 

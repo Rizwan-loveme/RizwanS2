@@ -35,6 +35,7 @@ class PowerService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        AppLog.i("PowerService", "connected")
         instance = this
         serviceInfo = AccessibilityServiceInfo().apply {
             eventTypes = 0

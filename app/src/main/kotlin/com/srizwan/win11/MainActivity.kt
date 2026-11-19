@@ -106,43 +106,56 @@ class WhatsAppNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        sbn ?: return
-        val extras = sbn.notification?.extras ?: return
-        val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-        val message = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        // Every dismissible notification goes to the Windows-style notification center.
-        NotificationStore.onPosted(this, sbn)
-        if (sbn.packageName !in SUPPORTED_PACKAGES) return
-        if (sender.isEmpty() && message.isEmpty()) return
-        // Notification settings: master switch + per-app on/off
-        if (!NotifPrefs.isAllowed(this, sbn.packageName)) return
-        if (!appVisible) {
-            // Launcher is paused/stopped/in background: alert straight from the service
-            NotifPrefs.alert(this, sender, message, getAppLabel(sbn.packageName))
-            return
+        // A crash in this service would kill the whole app process (and Android re-binds the
+        // listener on every start), so everything here is guarded and logged.
+        try {
+            sbn ?: return
+            val extras = sbn.notification?.extras ?: return
+            val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+            val message = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+            // Every dismissible notification goes to the Windows-style notification center.
+            NotificationStore.onPosted(this, sbn)
+            if (sbn.packageName !in SUPPORTED_PACKAGES) return
+            if (sender.isEmpty() && message.isEmpty()) return
+            AppLog.d("Listener", "chat notification from ${sbn.packageName}")
+            // Notification settings: master switch + per-app on/off
+            if (!NotifPrefs.isAllowed(this, sbn.packageName)) return
+            if (!appVisible) {
+                // Launcher is paused/stopped/in background: alert straight from the service
+                NotifPrefs.alert(this, sender, message, getAppLabel(sbn.packageName))
+                return
+            }
+            val intent = Intent(ACTION_CHAT_MESSAGE).apply {
+                putExtra(EXTRA_SENDER, sender)
+                putExtra(EXTRA_MESSAGE, message)
+                putExtra(EXTRA_APP, getAppLabel(sbn.packageName))
+                setPackage(packageName)
+            }
+            sendBroadcast(intent)
+        } catch (e: Throwable) {
+            AppLog.e("Listener", "onNotificationPosted failed", e)
         }
-        val intent = Intent(ACTION_CHAT_MESSAGE).apply {
-            putExtra(EXTRA_SENDER, sender)
-            putExtra(EXTRA_MESSAGE, message)
-            putExtra(EXTRA_APP, getAppLabel(sbn.packageName))
-            setPackage(packageName)
-        }
-        sendBroadcast(intent)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        NotificationStore.remove(sbn?.key)
+        try { NotificationStore.remove(sbn?.key) } catch (e: Throwable) { AppLog.e("Listener", "onNotificationRemoved failed", e) }
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        AppLog.i("Listener", "connected")
         instance = this
-        // Rebuild the center from what is currently showing on the phone.
-        NotificationStore.clearLocal()
-        try { activeNotifications?.forEach { NotificationStore.onPosted(this, it) } } catch (_: Exception) {}
+        try {
+            // Rebuild the center from what is currently showing on the phone.
+            NotificationStore.clearLocal()
+            activeNotifications?.forEach { NotificationStore.onPosted(this, it) }
+        } catch (e: Throwable) {
+            AppLog.e("Listener", "initial notification scan failed", e)
+        }
     }
 
     override fun onListenerDisconnected() {
+        AppLog.i("Listener", "disconnected")
         if (instance === this) instance = null
         super.onListenerDisconnected()
     }
@@ -284,39 +297,118 @@ class MainActivity : AppCompatActivity() {
     // LIFECYCLE
     // =====================================================================
 
+    // ── Debug helpers (log + never let one failing step kill the whole app) ──
+    private val LOGT = "Main"
+
+    private fun <T> guard(step: String, block: () -> T): T? = try {
+        AppLog.d(LOGT, "> $step")
+        block()
+    } catch (e: Throwable) {
+        AppLog.e(LOGT, "X $step FAILED", e)
+        null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLog.i(LOGT, "onCreate (savedState=${savedInstanceState != null}, API ${Build.VERSION.SDK_INT})")
         try { supportActionBar?.hide() } catch (e: Exception) { }
         prefs = getSharedPreferences("app_state", MODE_PRIVATE)
-        DlEngine.init(applicationContext)
-        globalDesktopMode = prefs.getBoolean(KEY_DESKTOP_MODE, false)
-        initCamera()
-        checkPermissionAndShowDialog()
-        if (!isDefaultLauncher() && !prefs.getBoolean("asked_default_launcher", false)) {
-            prefs.edit().putBoolean("asked_default_launcher", true).apply()
-            requestDefaultLauncher()
+        guard("DlEngine.init") { DlEngine.init(applicationContext) }
+        globalDesktopMode = guard("read prefs") { prefs.getBoolean(KEY_DESKTOP_MODE, false) } ?: false
+        guard("initCamera") { initCamera() }
+        val permOk = guard("checkPermissionAndShowDialog") { checkPermissionAndShowDialog() }
+        if (permOk == null && !isUIInitialized) {
+            // The permission step itself threw: still try to bring the UI up.
+            guard("initUI (fallback after permission step)") { initUI() }
+        }
+        guard("default launcher request") {
+            if (!isDefaultLauncher() && !prefs.getBoolean("asked_default_launcher", false)) {
+                prefs.edit().putBoolean("asked_default_launcher", true).apply()
+                requestDefaultLauncher()
+            }
+            Unit
+        }
+        guard("show previous crash") { showLastCrashIfAny() }
+    }
+
+    /** If the previous run crashed, show it in a dialog (full text, Copy / Open log). */
+    private fun showLastCrashIfAny() {
+        val crash = AppLog.takeLastCrash() ?: return
+        AppLog.w(LOGT, "previous run crashed:\n$crash")
+        showErrorDialog("⚠ App crashed last time", crash, null)
+    }
+
+    /** Error dialog: scrollable stack text + Copy / Open log / (Retry) / Close buttons. */
+    private fun showErrorDialog(title: String, text: String, onRetry: (() -> Unit)?) {
+        try {
+            val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val sv = ScrollView(this)
+            sv.addView(TextView(this).apply {
+                this.text = text
+                setTextColor(Color.rgb(200, 255, 200))
+                typeface = Typeface.MONOSPACE
+                textSize = 10f
+                setTextIsSelectable(true)
+                setPadding(8, 8, 8, 8)
+            })
+            box.addView(sv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            var dlg: Dialog? = null
+            fun addBtn(label: String, action: () -> Unit) {
+                row.addView(Button(this).apply {
+                    this.text = label
+                    textSize = 11f
+                    setOnClickListener {
+                        try { action() } catch (t: Throwable) { AppLog.e(LOGT, "dialog button $label failed", t) }
+                    }
+                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            addBtn("Copy") {
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("Win11 error", text))
+                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+            }
+            addBtn("Open log") { startActivity(Intent(this, DebugLogActivity::class.java)) }
+            if (onRetry != null) addBtn("Retry") { dlg?.dismiss(); onRetry() }
+            addBtn("Close") { dlg?.dismiss() }
+            box.addView(row)
+            val h = (resources.displayMetrics.heightPixels * 0.6f).toInt()
+            box.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h)
+            dlg = W11Dialog.Builder(this).setTitle(title).setView(box).setCancelable(true).show()
+        } catch (t: Throwable) {
+            AppLog.e(LOGT, "showErrorDialog failed", t)
+            try {
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(title).setMessage(text.take(1500)).setPositiveButton("OK", null).show()
+            } catch (_: Throwable) { }
         }
     }
 
     override fun onStart() {
         super.onStart()
-        if (!WhatsAppNotificationListener.isEnabled(this)) requestNotificationAccess()
-        else registerChatReceiver()
+        AppLog.d(LOGT, "onStart")
+        guard("notification access check") {
+            if (!WhatsAppNotificationListener.isEnabled(this)) requestNotificationAccess()
+            else registerChatReceiver()
+        }
     }
 
     override fun onStop() {
         super.onStop()
+        AppLog.d(LOGT, "onStop")
         unregisterChatReceiver()
     }
 
     override fun onPause() {
         super.onPause()
+        AppLog.d(LOGT, "onPause")
         saveState()
         webTabs.forEach { try { it.webView.onPause() } catch (e: Exception) { } }
     }
 
     override fun onResume() {
         super.onResume()
+        AppLog.d(LOGT, "onResume (uiReady=$isUIInitialized)")
         if (isUIInitialized) ViewCompat.requestApplyInsets(rootLayout)
         webTabs.getOrNull(currentTabIndex)?.let {
             try { it.webView.onResume() } catch (e: Exception) { }
@@ -327,6 +419,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        AppLog.i(LOGT, "onDestroy (finishing=$isFinishing)")
         try { if (::shell.isInitialized) shell.stopClock() } catch (e: Exception) { }
         try {
             saveState()
@@ -588,8 +681,57 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    /** Builds the UI. If anything fails: log it and show an on-screen error page (with log + retry). */
     private fun initUI() {
+        if (isUIInitialized) return
+        AppLog.i(LOGT, "initUI: begin")
+        try {
+            buildUi()
+            AppLog.i(LOGT, "initUI: done")
+        } catch (e: Throwable) {
+            AppLog.e(LOGT, "initUI: FAILED", e)
+            isUIInitialized = false
+            showStartupError(e)
+        }
+    }
+
+    private fun showStartupError(e: Throwable) {
+        try {
+            setContentView(FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#202020")) })
+        } catch (t: Throwable) {
+            AppLog.e(LOGT, "showStartupError: blank view failed", t)
+        }
+        showErrorDialog("⚠ Startup error", AppLog.deviceInfo() + "\n\n" + AppLog.stack(e)) {
+            AppLog.i(LOGT, "retry initUI")
+            initUI()
+        }
+    }
+
+    /** One screen of the app: if its builder throws, show a small error panel instead of crashing. */
+    private fun safeSection(name: String, block: () -> LinearLayout): LinearLayout = try {
+        AppLog.d(LOGT, "build section: $name")
+        block()
+    } catch (e: Throwable) {
+        AppLog.e(LOGT, "build section '$name' FAILED", e)
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#202020"))
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            visibility = View.GONE
+            addView(TextView(this@MainActivity).apply {
+                text = "⚠ $name could not load\n${e.javaClass.simpleName}: ${e.message}\n\n(see Quick Settings → Debug log)"
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(32, 32, 32, 32)
+            })
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun buildUi() {
         if (isUIInitialized) return
         isUIInitialized = true
 
@@ -620,15 +762,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        tabLayout = shell.buildTaskbar()
-        // Windows-like Quick Settings / Notification Center shortcut on the taskbar.
-        val quickButton = TextView(this).apply {
-            text = "⚙  ◉"; textSize = 16f; gravity = Gravity.CENTER
-            setTextColor(Color.WHITE); setPadding(12, 0, 12, 0)
-            contentDescription = "Quick Settings and Notifications"
-            setOnClickListener { startActivity(Intent(this@MainActivity, QuickControlsActivity::class.java)) }
+        shell.onQuick = {
+            AppLog.i(LOGT, "open QuickControlsActivity")
+            try { startActivity(Intent(this@MainActivity, QuickControlsActivity::class.java)) }
+            catch (e: Throwable) { AppLog.e(LOGT, "cannot open QuickControlsActivity", e) }
         }
-        tabLayout.addView(quickButton, LinearLayout.LayoutParams(-2, -1))
+        tabLayout = shell.buildTaskbar()
         desktopView = shell.buildDesktop()
 
         contentFrame = FrameLayout(this).apply {
@@ -637,10 +776,10 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        fileManagerView = createFileManagerView()
-        browserView = createBrowserView()
-        dialerView = createDialerView()
-        smsView = createSmsView()
+        fileManagerView = safeSection("Files") { createFileManagerView() }
+        browserView = safeSection("Browser") { createBrowserView() }
+        dialerView = safeSection("Phone") { createDialerView() }
+        smsView = safeSection("Messages") { createSmsView() }
 
         contentFrame.addView(desktopView)
         contentFrame.addView(fileManagerView)
@@ -4137,6 +4276,11 @@ class MainActivity : AppCompatActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (!isUIInitialized) {
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
+            return
+        }
         when {
             ::shell.isInitialized && shell.isStartOpen() -> { if (!shell.handleBack()) shell.closeStart() }
             ::downloadsView.isInitialized && downloadsView.visibility == View.VISIBLE -> hideDownloads()

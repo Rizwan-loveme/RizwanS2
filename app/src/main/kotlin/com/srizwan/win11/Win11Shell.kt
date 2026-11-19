@@ -257,6 +257,9 @@ class Win11Shell(
     var startFooterSlot: FrameLayout? = null
         private set
 
+    /** Set by MainActivity: opens Quick Settings / Notification Center. */
+    var onQuick: (() -> Unit)? = null
+
     private var clockView: TextView? = null
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
@@ -305,9 +308,19 @@ class Win11Shell(
             )
         }
 
-        // left spacer keeps the icon group truly centered
-        row.addView(View(ctx).apply {
+        // left slot (same width as before, so the icon group stays truly centered):
+        // Quick Settings / Notification Center shortcut.
+        row.addView(TextView(ctx).apply {
+            text = "\u2699"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(W11.TEXT)
+            contentDescription = "Quick Settings and Notifications"
+            isClickable = true
             layoutParams = LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.MATCH_PARENT)
+            setOnClickListener {
+                try { onQuick?.invoke() } catch (e: Throwable) { AppLog.e("Shell", "quick button failed", e) }
+            }
         })
 
         val center = LinearLayout(ctx).apply {

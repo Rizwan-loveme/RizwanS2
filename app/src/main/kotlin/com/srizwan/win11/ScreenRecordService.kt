@@ -94,6 +94,7 @@ class ScreenRecordService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        AppLog.i("Recorder", "onStartCommand action=${intent?.action} recording=$isRecording")
         if (intent?.action == actionStop(this)) {
             finishRecording()
             return START_NOT_STICKY
@@ -123,6 +124,7 @@ class ScreenRecordService : Service() {
                 startForeground(NOTIF_ID, notif)
             }
         } catch (e: Exception) {
+            AppLog.e("Recorder", "startForeground failed", e)
             toast("Could not start recorder: ${e.message}")
             stopSelf()
             return START_NOT_STICKY
@@ -187,6 +189,7 @@ class ScreenRecordService : Service() {
             startedAt = System.currentTimeMillis()
             postNotification(NOTIF_ID, buildNotification(if (mic) "Recording screen + microphone" else "Recording screen", true))
         } catch (e: Exception) {
+            AppLog.e("Recorder", "beginCapture failed", e)
             toast("Could not start recording: ${e.message ?: e.javaClass.simpleName}")
             abortCapture()
         }

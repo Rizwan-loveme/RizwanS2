@@ -81,6 +81,7 @@ class ScreenshotService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        AppLog.i("Screenshot", "onStartCommand")
         if (!running.compareAndSet(false, true)) return START_NOT_STICKY
         val code = intent?.getIntExtra(EXTRA_CODE, 0) ?: 0
         val data = readData(intent)
@@ -100,6 +101,7 @@ class ScreenshotService : Service() {
                 startForeground(NOTIF_ID, notif)
             }
         } catch (e: Exception) {
+            AppLog.e("Screenshot", "startForeground failed", e)
             toast("Could not start screenshot: ${e.message}")
             running.set(false)
             stopSelf()
@@ -144,7 +146,8 @@ class ScreenshotService : Service() {
                         val bmp = toBitmap(img, w, h)
                         saved = saveBitmap(bmp)
                         bmp.recycle()
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        AppLog.e("Screenshot", "saving image failed", e)
                     } finally {
                         img.close()
                     }
@@ -165,6 +168,7 @@ class ScreenshotService : Service() {
                 }
             }, TIMEOUT_MS)
         } catch (e: Exception) {
+            AppLog.e("Screenshot", "capture failed", e)
             toast("Could not take screenshot: ${e.message ?: e.javaClass.simpleName}")
             complete(null, silent = true)
         }

@@ -26,6 +26,8 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,7 +39,9 @@ class QuickControlsActivity : AppCompatActivity() {
     private val accent = Color.rgb(76, 194, 255)
     private var torchOn = false
     private var notifSection: LinearLayout? = null
-    private val storeListener: () -> Unit = { renderNotifications() }
+    private val storeListener: () -> Unit = {
+        try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
+    }
     private var recorderTile: FrameLayout? = null
     private var flashTile: FrameLayout? = null
     private var torchId: String? = null
@@ -88,8 +92,13 @@ class QuickControlsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = bg
-        window.navigationBarColor = bg
+        AppLog.i("Quick", "onCreate")
+        try {
+            @Suppress("DEPRECATION")
+            window.statusBarColor = bg
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = bg
+        } catch (e: Throwable) { AppLog.w("Quick", "system bar colors failed", e) }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -117,12 +126,13 @@ class QuickControlsActivity : AppCompatActivity() {
         addTile(grid, R.drawable.ic_qs_volume_down, "Volume down") { volume(AudioManager.ADJUST_LOWER) }
         addTile(grid, R.drawable.ic_qs_airplane, "Airplane mode settings") { startActivity(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) }
         flashTile = addTile(grid, R.drawable.ic_qs_flashlight, "Flashlight") { toggleTorch() }
+        addTile(grid, R.drawable.ic_qs_notifications, "Debug log") { startActivity(Intent(this, DebugLogActivity::class.java)) }
 
         // Windows-style notification center (filled by renderNotifications()).
         val section = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(section)
         notifSection = section
-        renderNotifications()
+        try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(ImageButton(this).apply {
             setImageResource(R.drawable.ic_qs_close)
@@ -133,6 +143,17 @@ class QuickControlsActivity : AppCompatActivity() {
             setOnClickListener { finish() }
         }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { gravity = Gravity.END })
         setContentView(root)
+
+        // Android 15+ draws edge-to-edge: keep the panel clear of the status / navigation bars.
+        val pad = dp(12)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            v.setPadding(bars.left + pad, bars.top + pad, bars.right + pad, bars.bottom + pad)
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(root)
     }
 
     private fun addTile(parent: GridLayout, iconRes: Int, description: String, action: () -> Unit): FrameLayout {
@@ -141,9 +162,15 @@ class QuickControlsActivity : AppCompatActivity() {
             isClickable = true
             isFocusable = true
             contentDescription = description
-            setOnClickListener { action() }
+            setOnClickListener {
+                AppLog.d("Quick", "tap: $description")
+                try { action() } catch (e: Throwable) {
+                    AppLog.e("Quick", "tile '$description' failed", e)
+                    Toast.makeText(this@QuickControlsActivity, "$description: not available on this device", Toast.LENGTH_SHORT).show()
+                }
+            }
             val icon = ImageView(this@QuickControlsActivity).apply {
-                setImageResource(iconRes)
+                try { setImageResource(iconRes) } catch (e: Throwable) { AppLog.e("Quick", "icon for '$description' failed", e) }
                 contentDescription = description
                 setColorFilter(Color.WHITE)
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -190,7 +217,7 @@ class QuickControlsActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         NotificationStore.addListener(storeListener)
-        renderNotifications()
+        try { renderNotifications() } catch (e: Throwable) { AppLog.e("Quick", "renderNotifications failed", e) }
         try {
             val cm = getSystemService(Context.CAMERA_SERVICE) as CameraManager
             if (torchId == null) torchId = findTorchId(cm)
