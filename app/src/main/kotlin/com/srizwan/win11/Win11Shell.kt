@@ -53,7 +53,7 @@ object W11 {
     val DOT = Color.parseColor("#9AFFFFFF")
     val TEXT = Color.WHITE
     val TEXT_DIM = Color.parseColor("#B3FFFFFF")
-    val START_BG = Color.parseColor("#C71E2230")
+    val START_BG = Color.parseColor("#EB1E2230")
     val START_BORDER = Color.parseColor("#40FFFFFF")
     val START_SEARCH_BG = Color.parseColor("#33FFFFFF")
     val START_FOOTER_BG = Color.parseColor("#33000000")

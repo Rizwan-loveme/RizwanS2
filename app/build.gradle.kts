@@ -13,8 +13,8 @@ android {
         applicationId = "com.srizwan.win11"
         minSdk = 24
         targetSdk = 37
-        versionCode = 104
-        versionName = "2.1.2"
+        versionCode = 105
+        versionName = "2.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

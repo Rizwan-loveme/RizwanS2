@@ -105,7 +105,21 @@ class GlassMenu(
         pw.elevation = dp(10).toFloat()
         popup = pw
         try {
-            pw.showAsDropDown(anchor, 0, 0, gravity)
+            // PopupWindow does not flip by itself: if the menu would run past the bottom of the screen
+            // (e.g. the Power button in the Start footer), open it upward over the anchor instead.
+            card.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            val h = card.measuredHeight
+            val frame = android.graphics.Rect()
+            anchor.getWindowVisibleDisplayFrame(frame)
+            val loc = IntArray(2)
+            anchor.getLocationOnScreen(loc)
+            val below = frame.bottom - (loc[1] + anchor.height)
+            val above = loc[1] - frame.top
+            val yoff = if (h > below && above > below) -(anchor.height + h) else 0
+            pw.showAsDropDown(anchor, 0, yoff, gravity)
         } catch (t: Throwable) {
             AppLog.e("GlassMenu", "show failed", t)
         }
