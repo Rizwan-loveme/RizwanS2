@@ -254,9 +254,8 @@ class QuickControlsActivity : AppCompatActivity() {
         t("loc", R.drawable.ic_qs_location, "Location / GPS") { onLocationTap() }
         t("rot", R.drawable.ic_qs_rotate, "Auto-rotate") { onRotateTap() }
         t("torch", R.drawable.ic_qs_flashlight, "Flashlight") { toggleTorch() }
-        t("ring", R.drawable.ic_qs_ring, "Normal ring mode") { setRinger(AudioManager.RINGER_MODE_NORMAL) }
-        t("vib", R.drawable.ic_qs_vibrate, "Vibrate mode") { setRinger(AudioManager.RINGER_MODE_VIBRATE) }
-        t("silent", R.drawable.ic_qs_silent, "Silent mode") { setRinger(AudioManager.RINGER_MODE_SILENT) }
+        // One button for Ring -> Vibrate -> Mute (tap to cycle; the icon shows the current mode)
+        t("ringer", R.drawable.ic_qs_ring, "Ring") { cycleRinger() }
         t("rec", R.drawable.ic_qs_recorder, "Screen recorder") { onRecorderTap() }
         t("shot", R.drawable.ic_qs_screenshot, "Capture screenshot") { onScreenshotTap() }
         t("power", R.drawable.ic_qs_power, "Power menu") { onPowerTap() }
@@ -335,9 +334,7 @@ class QuickControlsActivity : AppCompatActivity() {
         setTile("loc", SystemToggles.locationOn(this))
         setTile("rot", SystemToggles.autoRotate(this))
         val rm = try { audio.ringerMode } catch (_: Throwable) { AudioManager.RINGER_MODE_NORMAL }
-        setTile("ring", rm == AudioManager.RINGER_MODE_NORMAL)
-        setTile("vib", rm == AudioManager.RINGER_MODE_VIBRATE)
-        setTile("silent", rm == AudioManager.RINGER_MODE_SILENT)
+        updateRingerTile(rm)
         updateFlashTile()
         updateRecorderTile()
         syncSliders()
@@ -408,6 +405,34 @@ class QuickControlsActivity : AppCompatActivity() {
         act()
     }
 
+    private fun ringerName(mode: Int) = when (mode) {
+        AudioManager.RINGER_MODE_NORMAL -> "Ring"
+        AudioManager.RINGER_MODE_VIBRATE -> "Vibrate"
+        else -> "Mute"
+    }
+
+    /** Single Ring / Vibrate / Mute button: Ring -> Vibrate -> Mute -> Ring. */
+    private fun cycleRinger() {
+        val cur = try { audio.ringerMode } catch (_: Throwable) { AudioManager.RINGER_MODE_NORMAL }
+        setRinger(when (cur) {
+            AudioManager.RINGER_MODE_NORMAL -> AudioManager.RINGER_MODE_VIBRATE
+            AudioManager.RINGER_MODE_VIBRATE -> AudioManager.RINGER_MODE_SILENT
+            else -> AudioManager.RINGER_MODE_NORMAL
+        })
+    }
+
+    /** The one tile shows the current mode's icon; highlighted while Vibrate or Mute is active. */
+    private fun updateRingerTile(rm: Int) {
+        val t = tiles["ringer"] ?: return
+        t.icon.setImageResource(when (rm) {
+            AudioManager.RINGER_MODE_NORMAL -> R.drawable.ic_qs_ring
+            AudioManager.RINGER_MODE_VIBRATE -> R.drawable.ic_qs_vibrate
+            else -> R.drawable.ic_qs_silent
+        })
+        t.frame.contentDescription = "Sound mode: ${ringerName(rm)}. Tap to change"
+        setTile("ringer", rm != AudioManager.RINGER_MODE_NORMAL)
+    }
+
     private fun setRinger(mode: Int) {
         try {
             if (mode == AudioManager.RINGER_MODE_SILENT && !SystemToggles.hasPolicyAccess(this)) {
@@ -415,6 +440,7 @@ class QuickControlsActivity : AppCompatActivity() {
                 return
             }
             audio.ringerMode = mode
+            Toast.makeText(this, ringerName(mode), Toast.LENGTH_SHORT).show()
         } catch (_: SecurityException) {
             askPolicyAccess { setRinger(mode) }
         } catch (_: Exception) { Toast.makeText(this, "This mode is restricted by Android", Toast.LENGTH_SHORT).show() }
@@ -701,6 +727,16 @@ class QuickControlsActivity : AppCompatActivity() {
                     renderNotifications()
                 })
             }
+            val popOn = NotifPrefs.isPkgOn(this, pkg)
+            gh.addView(iconButton(
+                if (popOn) R.drawable.ic_qs_notifications else R.drawable.ic_qs_bell_off,
+                if (popOn) "Pop-ups from ${list.first().app} are on. Tap to turn off"
+                else "Pop-ups from ${list.first().app} are off. Tap to turn on",
+                if (popOn) Color.LTGRAY else accent, padDp = 7
+            ) {
+                NotifPrefs.setPkgOn(this, pkg, !popOn)
+                renderNotifications()
+            })
             gh.addView(iconButton(R.drawable.ic_qs_close, "Clear notifications from ${list.first().app}", Color.LTGRAY, padDp = 9) {
                 NotificationStore.clearApp(pkg)
             })

@@ -1,8 +1,8 @@
 plugins {
     id("com.android.application")
-    // FIX: AGP 9.x-এ Kotlin সাপোর্ট বিল্ট-ইন। আলাদা করে
-    // id("org.jetbrains.kotlin.android") দিলে "plugin is no longer required
-    // for Kotlin support since AGP 9.0" এরর দিয়ে বিল্ড ফেইল করে — তাই সরানো হয়েছে।
+    // AGP 8.13.2 (needed by the BlackBox engine): Kotlin is NOT built in, so the plugin is applied.
+    // (With AGP 9 this line must be removed again.)
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -13,8 +13,8 @@ android {
         applicationId = "com.srizwan.win11"
         minSdk = 24
         targetSdk = 37
-        versionCode = 105
-        versionName = "2.1.3"
+        versionCode = 114
+        versionName = "2.2.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,8 +26,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    // BlackBox needs the native libs extracted to disk (also android:extractNativeLibs in the manifest)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
     
     // Compose প্রয়োজন নেই তাই এগুলো ফলস করে দেওয়া হলো
@@ -37,14 +44,15 @@ android {
     }
 }
 
-// FIX: AGP 9-এ android { kotlinOptions {} } আর নেই; এর বদলে kotlin { compilerOptions {} }।
 kotlin {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }
 
 dependencies {
+    // BlackBox virtual-space engine (parallel apps)
+    implementation(project(":Bcore"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

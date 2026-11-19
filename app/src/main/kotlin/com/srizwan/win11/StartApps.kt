@@ -83,6 +83,9 @@ class AppRepository(private val ctx: Context) {
     private val pinnedKeys: MutableList<String> = (prefs.getString(KEY_PINNED, null)
         ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()).toMutableList()
 
+    private val recentKeys: MutableList<String> = (prefs.getString(KEY_RECENT, null)
+        ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()).toMutableList()
+
     private val hiddenKeys: MutableSet<String> = (prefs.getString(KEY_HIDDEN, null)
         ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()).toMutableSet()
 
@@ -90,15 +93,16 @@ class AppRepository(private val ctx: Context) {
         private const val KEY_PINNED = "pinned"
         private const val KEY_HIDDEN = "hidden"
         private const val DEFAULT_COUNT = 12
-        private const val KEY_BROWSER_SEEDED = "builtin_browser_seeded"
+        private const val KEY_RECENT = "recent"
+        private const val KEY_RECENT_MODEL = "recent_model_v1"
+        private const val MAX_RECENT = 12
         private const val BUILTIN_CLS_BROWSER = "builtin.browser"
-        private const val KEY_PHONE_SEEDED = "builtin_phone_seeded"
-        private const val KEY_FILES_SEEDED = "builtin_files_seeded"
-        private const val KEY_SMS_SEEDED = "builtin_sms_seeded"
-        private const val KEY_NOTIF_SEEDED = "builtin_notif_seeded"
         private const val BUILTIN_CLS_NOTIF = "builtin.notifications"
-        private const val KEY_CALC_SEEDED = "builtin_calc_seeded"
         private const val BUILTIN_CLS_CALC = "builtin.calculator"
+        private const val BUILTIN_CLS_PARALLEL = "builtin.parallel"
+        /** Two overlapping sheets (copy icon): the Parallel manager. */
+        private const val PARALLEL_PATH =
+            "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
 
         // Calculator glyph (same path as ic_w_calculator.xml, even-odd fill)
         private const val CALC_PATH =
@@ -155,74 +159,16 @@ class AppRepository(private val ctx: Context) {
                 val changed = list.map { it.key } != apps.map { it.key }
                 apps = list
                 migrateBuiltInPhone()
-                if (!prefs.contains(KEY_PINNED)) {
-                    pinnedKeys.clear()
-                    pinnedKeys.addAll(defaultPins(list))
-                    save()
-                    prefs.edit().putBoolean(KEY_BROWSER_SEEDED, true)
-                        .putBoolean(KEY_PHONE_SEEDED, true)
-                        .putBoolean(KEY_FILES_SEEDED, true)
-                        .putBoolean(KEY_SMS_SEEDED, true)
-                        .putBoolean(KEY_NOTIF_SEEDED, true)
-                        .putBoolean(KEY_CALC_SEEDED, true).apply()
+                if (!prefs.getBoolean(KEY_RECENT_MODEL, false)) {
+                    // One-time switch to "Recent by default": Start no longer auto-pins apps.
+                    // Pins that are only the old auto-seeded defaults are cleared; anything the user
+                    // pinned on purpose (an app outside the old default set) is kept.
+                    val defaults = defaultPins(list).toSet()
+                    if (pinnedKeys.all { it in defaults }) { pinnedKeys.clear(); save() }
+                    prefs.edit().putBoolean(KEY_RECENT_MODEL, true).apply()
                     onDone(true)
                 } else {
-                    // Existing installs: pin built-in Browser once (unpinning later is respected)
-                    var seeded = false
-                    val bk = "${ctx.packageName}/$BUILTIN_CLS_BROWSER"
-                    if (!prefs.getBoolean(KEY_BROWSER_SEEDED, false)) {
-                        if (!pinnedKeys.contains(bk)) { pinnedKeys.add(0, bk); save() }
-                        prefs.edit().putBoolean(KEY_BROWSER_SEEDED, true).apply()
-                        seeded = true
-                    }
-                    // Phone built-in: pinned once too (right after Browser if it is pinned)
-                    val pk = systemPhoneKey ?: "${ctx.packageName}/$BUILTIN_CLS_PHONE"
-                    if (!prefs.getBoolean(KEY_PHONE_SEEDED, false)) {
-                        if (!pinnedKeys.contains(pk)) {
-                            val at = pinnedKeys.indexOf(bk)
-                            pinnedKeys.add(if (at >= 0) at + 1 else 0, pk); save()
-                        }
-                        prefs.edit().putBoolean(KEY_PHONE_SEEDED, true).apply()
-                        seeded = true
-                    }
-                    // Files built-in: pinned once, at the front (taskbar order: Files, Browser, Phone)
-                    val fk = "${ctx.packageName}/$BUILTIN_CLS_FILES"
-                    if (!prefs.getBoolean(KEY_FILES_SEEDED, false)) {
-                        if (!pinnedKeys.contains(fk)) { pinnedKeys.add(0, fk); save() }
-                        prefs.edit().putBoolean(KEY_FILES_SEEDED, true).apply()
-                        seeded = true
-                    }
-                    // Messages built-in: pinned once, after Phone (Files, Browser, Phone, Messages)
-                    val mk = "${ctx.packageName}/$BUILTIN_CLS_SMS"
-                    if (!prefs.getBoolean(KEY_SMS_SEEDED, false)) {
-                        if (!pinnedKeys.contains(mk)) {
-                            val at = pinnedKeys.indexOf(pk)
-                            pinnedKeys.add(if (at >= 0) at + 1 else pinnedKeys.size.coerceAtMost(3), mk); save()
-                        }
-                        prefs.edit().putBoolean(KEY_SMS_SEEDED, true).apply()
-                        seeded = true
-                    }
-                    // Notifications built-in: pinned once, after Messages
-                    val nk = "${ctx.packageName}/$BUILTIN_CLS_NOTIF"
-                    if (!prefs.getBoolean(KEY_NOTIF_SEEDED, false)) {
-                        if (!pinnedKeys.contains(nk)) {
-                            val at = pinnedKeys.indexOf(mk)
-                            pinnedKeys.add(if (at >= 0) at + 1 else pinnedKeys.size.coerceAtMost(4), nk); save()
-                        }
-                        prefs.edit().putBoolean(KEY_NOTIF_SEEDED, true).apply()
-                        seeded = true
-                    }
-                    // Calculator built-in: pinned once, after Notifications
-                    val ck = "${ctx.packageName}/$BUILTIN_CLS_CALC"
-                    if (!prefs.getBoolean(KEY_CALC_SEEDED, false)) {
-                        if (!pinnedKeys.contains(ck)) {
-                            val at = pinnedKeys.indexOf(nk)
-                            pinnedKeys.add(if (at >= 0) at + 1 else pinnedKeys.size.coerceAtMost(5), ck); save()
-                        }
-                        prefs.edit().putBoolean(KEY_CALC_SEEDED, true).apply()
-                        seeded = true
-                    }
-                    onDone(if (seeded) true else changed)
+                    onDone(changed)
                 }
             }
         }
@@ -254,6 +200,12 @@ class AppRepository(private val ctx: Context) {
             "Calculator", ctx.packageName, BUILTIN_CLS_CALC,
             BuiltInIconDrawable(CALC_PATH, Color.parseColor("#9AA7FF"), evenOdd = true),
             section = "calculator"
+        ),
+        // Parallel apps manager (BlackBox virtual space): see parallel/ParallelActivity.kt
+        AppEntry(
+            "Parallel", ctx.packageName, BUILTIN_CLS_PARALLEL,
+            BuiltInIconDrawable(PARALLEL_PATH, Color.parseColor("#8C7BFF")),
+            section = "parallel"
         )
     )
 
@@ -345,6 +297,28 @@ class AppRepository(private val ctx: Context) {
     fun pinned(): List<AppEntry> {
         val map = apps.associateBy { it.key }
         return pinnedKeys.mapNotNull { map[it] }.filter { it.key !in hiddenKeys }
+    }
+
+    // ── Recent apps: most recently opened from Start first; pinned / hidden apps are left out ──
+    fun recent(): List<AppEntry> {
+        val map = apps.associateBy { it.key }
+        return recentKeys.mapNotNull { map[it] }
+            .filter { it.key !in hiddenKeys && it.key !in pinnedKeys }
+    }
+
+    fun addRecent(e: AppEntry) {
+        recentKeys.remove(e.key)
+        recentKeys.add(0, e.key)
+        while (recentKeys.size > MAX_RECENT) recentKeys.removeAt(recentKeys.size - 1)
+        saveRecent()
+    }
+
+    fun removeRecent(e: AppEntry) {
+        if (recentKeys.remove(e.key)) saveRecent()
+    }
+
+    private fun saveRecent() {
+        prefs.edit().putString(KEY_RECENT, recentKeys.joinToString("\n")).apply()
     }
 
     // ── Hidden apps (Step 4.3) ───────────────────────────────────

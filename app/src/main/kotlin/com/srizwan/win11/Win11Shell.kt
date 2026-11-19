@@ -229,8 +229,7 @@ class Win11Shell(
 
     // ── Pinned apps (Step 4.2) ───────────────────────────────────
     val appRepo = AppRepository(ctx)
-    private var pinnedGrid: GridLayout? = null
-    private var pinnedEmpty: TextView? = null
+    private var startHolder: LinearLayout? = null
     private var cellW = 0
 
     // ── All apps (Step 4.3) ──────────────────────────────────────
@@ -602,7 +601,6 @@ class Win11Shell(
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         }
-        pPage.addView(sectionHeader("Pinned", "All apps  ›") { showAllAppsPage() })
         pPage.addView(buildPinnedGrid(panelW))
         val aPage = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -929,7 +927,7 @@ class Win11Shell(
 
     // ── Pages: Pinned <-> All apps (Step 4.3) ────────────────────
 
-    private fun sectionHeader(title: String, action: String, onAction: () -> Unit): FrameLayout =
+    private fun sectionHeader(title: String, action: String?, onAction: () -> Unit = {}): FrameLayout =
         FrameLayout(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(32))
             addView(TextView(ctx).apply {
@@ -943,7 +941,7 @@ class Win11Shell(
                     Gravity.START
                 )
             })
-            addView(TextView(ctx).apply {
+            if (action != null) addView(TextView(ctx).apply {
                 text = action
                 setTextColor(W11.TEXT)
                 textSize = 12f
@@ -1212,9 +1210,11 @@ class Win11Shell(
             menu.menu.add(0, 2, 0, if (appRepo.isPinned(e)) "Unpin from Start" else "Pin to Start")
             menu.menu.add(0, 3, 1, "Hide app")
         }
-        if (!e.isBuiltIn) menu.menu.add(0, 4, 2, "App info")
+        if (!e.isBuiltIn) menu.menu.add(0, 6, 2, ParallelApps.MENU_TEXT)
+        if (!e.isBuiltIn) menu.menu.add(0, 4, 3, "App info")
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                6 -> openParallel(e)
                 1 -> { appRepo.unhide(e); refreshAllApps() }
                 2 -> { appRepo.togglePin(e); refreshAllApps() }
                 3 -> {
@@ -1226,6 +1226,11 @@ class Win11Shell(
             true
         }
         menu.show()
+    }
+
+    /** "Open in black box (parallel)": runs a second copy of the app in the virtual space (see ParallelApps.kt). */
+    private fun openParallel(e: AppEntry) {
+        if (ParallelApps.open(ctx, e.pkg, e.label)) closeStart(animated = false)
     }
 
     private fun openAppInfo(e: AppEntry) {
@@ -1255,36 +1260,56 @@ class Win11Shell(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
         }
-        val grid = GridLayout(ctx).apply { columnCount = PIN_COLUMNS }
-        val empty = TextView(ctx).apply {
-            text = "No pinned apps.\nUse All apps to pin them here."
-            setTextColor(W11.TEXT_DIM)
-            textSize = 12f
-            gravity = Gravity.CENTER
-            setPadding(0, dp(40), 0, 0)
-            visibility = View.GONE
-        }
-        holder.addView(grid)
-        holder.addView(empty)
         scroll.addView(holder)
-        pinnedGrid = grid
-        pinnedEmpty = empty
+        startHolder = holder
 
         refreshPinnedGrid()
         appRepo.load { changed -> if (changed) refreshAll() }
         return scroll
     }
 
+    private fun appGrid(apps: List<AppEntry>, recent: Boolean): GridLayout =
+        GridLayout(ctx).apply {
+            columnCount = PIN_COLUMNS
+            for (e in apps) addView(startCell(e, recent))
+        }
+
+    /**
+     * Start home page. "Recent" (apps opened from Start) is always there; the "Pinned" section
+     * only appears once at least one app is pinned. The first header carries "All apps >".
+     */
     fun refreshPinnedGrid() {
-        val grid = pinnedGrid ?: return
-        grid.removeAllViews()
+        val holder = startHolder ?: return
+        holder.removeAllViews()
         val pins = appRepo.pinned()
-        pinnedEmpty?.visibility =
-            if (pins.isEmpty() && appRepo.apps.isNotEmpty()) View.VISIBLE else View.GONE
-        for (e in pins) grid.addView(pinnedCell(e))
+        val recents = appRepo.recent()
+        var allAppsBtn = true
+        fun header(title: String, topGap: Boolean): View =
+            sectionHeader(title, if (allAppsBtn) "All apps  ›" else null) { showAllAppsPage() }.also {
+                allAppsBtn = false
+                if (topGap) (it.layoutParams as LinearLayout.LayoutParams).topMargin = dp(8)
+            }
+        if (pins.isNotEmpty()) {
+            holder.addView(header("Pinned", false))
+            holder.addView(appGrid(pins, recent = false))
+        }
+        if (recents.isNotEmpty() || pins.isEmpty()) {
+            holder.addView(header("Recent", pins.isNotEmpty()))
+            if (recents.isNotEmpty()) holder.addView(appGrid(recents, recent = true))
+            else if (appRepo.apps.isNotEmpty()) holder.addView(TextView(ctx).apply {
+                text = "No recent apps.\nApps you open will show up here."
+                setTextColor(W11.TEXT_DIM)
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(0, dp(40), 0, 0)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            })
+        }
     }
 
-    private fun pinnedCell(e: AppEntry): LinearLayout {
+    private fun startCell(e: AppEntry, recent: Boolean): LinearLayout {
         return LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -1318,23 +1343,49 @@ class Win11Shell(
                 false
             }
             setOnClickListener { launchApp(e) }
-            setOnLongClickListener { showPinMenu(this, e); true }
+            setOnLongClickListener { if (recent) showRecentMenu(this, e) else showPinMenu(this, e); true }
         }
     }
 
     fun launchApp(e: AppEntry) {
         // Built-in apps (e.g. Browser) open inside Win11 itself
         e.section?.let { sec ->
+            appRepo.addRecent(e)
             closeStart(animated = false)
             onNavigate(sec)
             return
         }
         try {
             ctx.startActivity(e.launchIntent())
+            appRepo.addRecent(e)
             closeStart(animated = false)
         } catch (ex: Exception) {
             Toast.makeText(ctx, "Can't open ${e.label}", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** Long-press menu on a Recent app: pin it (adds the Pinned section), forget it, hide it, app info. */
+    private fun showRecentMenu(anchor: View, e: AppEntry) {
+        val menu = GlassMenu(ctx, anchor)
+        menu.menu.add(0, 1, 0, "Pin to Start")
+        menu.menu.add(0, 2, 1, "Remove from recent")
+        menu.menu.add(0, 5, 2, "Hide app")
+        if (!e.isBuiltIn) menu.menu.add(0, 6, 3, ParallelApps.MENU_TEXT)
+        if (!e.isBuiltIn) menu.menu.add(0, 3, 4, "App info")
+        menu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                6 -> openParallel(e)
+                1 -> { appRepo.pin(e); refreshPinnedGrid() }
+                2 -> { appRepo.removeRecent(e); refreshPinnedGrid() }
+                3 -> openAppInfo(e)
+                5 -> {
+                    appRepo.hide(e); refreshPinnedGrid()
+                    Toast.makeText(ctx, "${e.label} hidden. Find it in All apps > Hidden apps.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            true
+        }
+        menu.show()
     }
 
     private fun showPinMenu(anchor: View, e: AppEntry) {
@@ -1342,9 +1393,11 @@ class Win11Shell(
         menu.menu.add(0, 1, 0, "Unpin from Start")
         menu.menu.add(0, 2, 1, "Move to front")
         menu.menu.add(0, 5, 2, "Hide app")
-        if (!e.isBuiltIn) menu.menu.add(0, 3, 3, "App info")
+        if (!e.isBuiltIn) menu.menu.add(0, 6, 3, ParallelApps.MENU_TEXT)
+        if (!e.isBuiltIn) menu.menu.add(0, 3, 4, "App info")
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                6 -> openParallel(e)
                 1 -> { appRepo.unpin(e); refreshPinnedGrid() }
                 2 -> { appRepo.moveToFront(e); refreshPinnedGrid() }
                 3 -> openAppInfo(e)

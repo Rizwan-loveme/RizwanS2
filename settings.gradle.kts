@@ -11,8 +11,14 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // FreeReflection (used by the BlackBox engine in :Bcore)
+        maven { url = uri("https://www.jitpack.io") }
     }
 }
 
 rootProject.name = "Win11"
 include(":app")
+// BlackBox engine (parallel apps / "Open in black box"): see NOTICE-BlackBox.md
+include(":Bcore")
+include(":black-reflection")
+include(":compiler")

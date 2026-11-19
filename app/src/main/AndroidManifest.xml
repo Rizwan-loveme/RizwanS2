@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Default SMS app (part 7): MMS / WAP push hooks required by the SMS role -->
+    <uses-permission android:name="android.permission.RECEIVE_MMS" />
+    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
@@ -40,7 +43,7 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- WhatsApp Notification Listener এর জন্য দরকার -->
+    <!-- Notification Listener (সব অ্যাপের নোটিফিকেশন পপআপ ও Notification Center) এর জন্য দরকার -->
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -56,9 +59,16 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Notification pop-ups: vibrate in Vibrate mode, and draw the glass pop-up card over other apps
+         (user grants "Display over other apps" once from Notifications settings) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- ───────────── APPLICATION ───────────── -->
     <application
         android:name=".App"
+        android:extractNativeLibs="true"
+        android:largeHeap="true"
         android:enableOnBackInvokedCallback="false"
         android:allowBackup="true"
         android:label="RizwanS2"
@@ -112,6 +122,16 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="rizwans2" />
             </intent-filter>
+            <!-- sms: / smsto: / mms: / mmsto: links (needed for the default SMS app role) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
         </activity>
 
         <!-- ── Start the launcher when the device boots ── -->
@@ -124,6 +144,50 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+
+        <!-- ── Default SMS app (part 7): incoming SMS, MMS push hook, quick reply, send status ── -->
+        <receiver
+            android:name=".SmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_DELIVER" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".MmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_WAP_PUSH">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
+        <service
+            android:name=".RespondViaMessageService"
+            android:exported="true"
+            android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+        </service>
+        <receiver
+            android:name=".SmsSentReceiver"
+            android:exported="false" />
+
+        <!-- ── Parallel apps manager (BlackBox engine: clones, open, clear data, remove) ── -->
+        <activity
+            android:name=".parallel.ParallelActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:label="Parallel"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- ── Built-in Calculator ── -->
         <activity
@@ -170,7 +234,7 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
-        <!-- ── WhatsApp Notification Listener Service ── -->
+        <!-- ── Notification Listener Service (every app: pop-ups + Notification Center) ── -->
         <service
             android:name=".WhatsAppNotificationListener"
             android:label="WhatsApp Notification Monitor"

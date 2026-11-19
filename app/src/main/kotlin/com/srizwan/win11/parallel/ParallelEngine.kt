@@ -1,0 +1,199 @@
+package com.srizwan.win11.parallel
+
+import android.content.pm.ApplicationInfo
+import android.graphics.drawable.Drawable
+import top.niunaijun.blackbox.BlackBoxCore
+import top.niunaijun.blackbox.core.GmsCore
+import top.niunaijun.blackbox.utils.AbiUtils
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
+/** A cloned app living inside the virtual space [userId]. */
+data class CloneItem(val label: String, val icon: Drawable?, val packageName: String, val userId: Int)
+
+/** An app installed on the phone that can be cloned. */
+data class DeviceApp(val label: String, val icon: Drawable?, val packageName: String)
+
+/** Thin wrapper around BlackBoxCore. Every call is safe to use from a background thread. */
+object Engine {
+    const val MAX_SPACES = 10
+
+    /** One background thread for all engine work (lives longer than any Activity). */
+    val io = Executors.newSingleThreadExecutor()
+
+    private val core: BlackBoxCore get() = BlackBoxCore.get()
+
+    private fun labelOf(ai: ApplicationInfo): String = try {
+        BlackBoxCore.getPackageManager().getApplicationLabel(ai).toString()
+    } catch (e: Throwable) {
+        ai.packageName ?: "?"
+    }
+
+    private fun iconOf(ai: ApplicationInfo): Drawable? = try {
+        BlackBoxCore.getPackageManager().getApplicationIcon(ai)
+    } catch (e: Throwable) {
+        null
+    }
+
+    fun onReady(callback: () -> Unit) {
+        try {
+            core.addServiceAvailableCallback(Runnable { callback() })
+        } catch (e: Throwable) {
+            // refresh() is also called directly, so a missing callback is not fatal
+        }
+    }
+
+    fun listClones(): List<CloneItem> {
+        val out = ArrayList<CloneItem>()
+        val users = try { core.users } catch (e: Throwable) { null } ?: return out
+        for (u in users) {
+            val apps = try { core.getInstalledApplications(0, u.id) } catch (e: Throwable) { null } ?: continue
+            for (ai in apps) {
+                val pkg = ai.packageName ?: continue
+                // Google Play Services / Play Store / GSF / ConfigUpdater / etc. get
+                // auto-installed into a space as background support for the app the
+                // user actually cloned there (see clone()). They are real, needed
+                // packages, but they are not something the user asked to clone, so
+                // don't show them as their own entries in the clone list.
+                if (GmsCore.isGoogleAppOrService(pkg)) continue
+                out.add(CloneItem(labelOf(ai), iconOf(ai), pkg, u.id))
+            }
+        }
+        return out
+    }
+
+    fun deviceApps(): List<DeviceApp> {
+        val pm = BlackBoxCore.getPackageManager()
+        val host = BlackBoxCore.getHostPkg()
+        val out = ArrayList<DeviceApp>()
+        for (ai in pm.getInstalledApplications(0)) {
+            val pkg = ai.packageName ?: continue
+            if ((ai.flags and ApplicationInfo.FLAG_SYSTEM) != 0) continue
+            if (pkg == host) continue
+            val src = ai.sourceDir ?: continue
+            try {
+                if (!AbiUtils.isSupport(File(src))) continue
+                if (core.isBlackBoxApp(pkg)) continue
+            } catch (e: Throwable) {
+                continue
+            }
+            out.add(DeviceApp(labelOf(ai), iconOf(ai), pkg))
+        }
+        out.sortBy { it.label.lowercase() }
+        return out
+    }
+
+    /** Clones [pkg] into the first free space. Returns null on success, else an error text. */
+    fun clone(pkg: String): String? {
+        var space = -1
+        for (i in 0 until MAX_SPACES) {
+            // NOTE: core.isInstalled() falls back to the HOST package manager when the engine
+            // service is not ready, and then answers "true" for every space (=> false "max 10"
+            // error). So we ask the engine's own per-space app list instead.
+            val used = try {
+                core.getInstalledApplications(0, i)?.any { it.packageName == pkg } ?: false
+            } catch (e: Throwable) { false }
+            if (!used) { space = i; break }
+        }
+        if (space < 0) return "সর্বোচ্চ $MAX_SPACES টি কপি তৈরি করা যায়"
+        return try {
+            val r = core.installPackageAsUser(pkg, space)
+            if (r != null && r.success) {
+                // Best-effort: clone (fake) Google Play Services into this space too.
+                // Apps like Facebook Lite fall back to broken/legacy code paths when
+                // they can't find com.google.android.gms (e.g. a PendingIntent created
+                // without FLAG_IMMUTABLE/FLAG_MUTABLE from their Firebase InstanceID
+                // fallback, which throws IllegalArgumentException on Android 12+ and
+                // crashes the whole cloned app). This only works if the HOST device
+                // itself actually has real Google Play Services installed — if not,
+                // isSupportGms() is false and this is a no-op.
+                try {
+                    if (core.isSupportGms() && !core.isInstallGms(space)) {
+                        core.installGms(space)
+                    }
+                } catch (e: Throwable) {
+                    // Non-fatal: the app clone itself already succeeded above.
+                }
+                null
+            } else (r?.msg ?: "ইনস্টল ব্যর্থ হয়েছে")
+        } catch (e: Throwable) {
+            e.message ?: "ইনস্টল ব্যর্থ হয়েছে"
+        }
+    }
+
+    /** Blocks (max [timeoutMs]) until the engine services are available. Call from a background thread. */
+    fun awaitReady(timeoutMs: Long = 6000L) {
+        val latch = CountDownLatch(1)
+        try {
+            // runs the callback at once when the engine is already up
+            core.addServiceAvailableCallback(Runnable { latch.countDown() })
+        } catch (e: Throwable) {
+            return
+        }
+        try { latch.await(timeoutMs, TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { }
+    }
+
+    /** The space that already holds a copy of [pkg], or -1. */
+    fun spaceOf(pkg: String): Int {
+        for (i in 0 until MAX_SPACES) {
+            val has = try {
+                core.getInstalledApplications(0, i)?.any { it.packageName == pkg } ?: false
+            } catch (e: Throwable) { false }
+            if (has) return i
+        }
+        return -1
+    }
+
+    /**
+     * "Open in black box (parallel)": starts the copy of [pkg] that lives in the virtual space; when there
+     * is none yet it is cloned first. Returns null on success, else an error text. Background thread only.
+     */
+    fun openOrClone(pkg: String): String? {
+        awaitReady()
+        var space = spaceOf(pkg)
+        if (space < 0) {
+            val err = clone(pkg)
+            if (err != null) return err
+            space = spaceOf(pkg)
+        }
+        if (space < 0) return "Copy was not created"
+        return if (launch(pkg, space)) null else "Can't start the app"
+    }
+
+    fun launch(pkg: String, userId: Int): Boolean = try {
+        core.launchApk(pkg, userId)
+    } catch (e: Throwable) {
+        false
+    }
+
+    fun clearData(pkg: String, userId: Int) {
+        try { core.clearPackage(pkg, userId) } catch (e: Throwable) { }
+    }
+
+    fun remove(pkg: String, userId: Int) {
+        try { core.uninstallPackageAsUser(pkg, userId) } catch (e: Throwable) { }
+        trimEmptySpaces()
+    }
+
+    /** Drops trailing spaces that no longer hold any app. */
+    private fun trimEmptySpaces() {
+        try {
+            while (true) {
+                val users = core.users
+                if (users.isNullOrEmpty()) return
+                val last = users.last().id
+                val apps = core.getInstalledApplications(0, last)
+                // Ignore the auto-installed Google support packages here too, otherwise
+                // a space whose real app was removed never gets trimmed because it
+                // still "contains" GMS/Play Store/etc.
+                val realApps = apps?.filter { !GmsCore.isGoogleAppOrService(it.packageName ?: "") }
+                if (!realApps.isNullOrEmpty()) return
+                core.deleteUser(last)
+            }
+        } catch (e: Throwable) {
+            // best effort
+        }
+    }
+}
