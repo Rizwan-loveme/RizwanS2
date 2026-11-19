@@ -7,7 +7,7 @@ Android security restrictions apply: Wi-Fi/Bluetooth/Location/Airplane Mode and 
 
 ## Quick Settings flyout (v2.1.0)
 
-- **Windows 11 layout, docked to the right** just above the taskbar. **Notifications and calendar are on top, Quick Settings are at the bottom** (tiles, then brightness and volume sliders). There is no close button: tap anywhere outside the panel (or press Back) to dismiss it. The taskbar gear and the tray clock both open it.
+- **Windows 11 layout, docked to the right** just above the taskbar. **Notifications and calendar are on top, Quick Settings are at the bottom** (tiles, then brightness and volume sliders). There is no close button: tap anywhere outside the panel (or press Back) to dismiss it. The tray clock opens it (the taskbar gear is hidden).
 - **Win11 sliders:** a brightness slider and a volume slider (tap the speaker icon to mute / unmute). The volume slider follows the hardware volume keys.
 - **Tiles show real state** (accent fill when on): Wi-Fi, Bluetooth, Airplane, Location, Auto-rotate, Flashlight, Normal / Vibrate / Silent, Screen recorder.
 - **Settings are applied automatically where Android allows it:**
@@ -24,7 +24,7 @@ Android security restrictions apply: Wi-Fi/Bluetooth/Location/Airplane Mode and 
 
 The app now keeps its own log so problems can be diagnosed on the phone itself:
 
-- **View it:** Quick Settings (gear at the left of the taskbar) → *Debug log* tile → Refresh / Copy / Share / Clear.
+- **View it:** Quick Settings (tap the tray clock at the right of the taskbar) → *Debug log* tile → Refresh / Copy / Share / Clear.
 - **File location:** `Android/data/com.srizwan.win11/files/logs/app.log` (rotates at 512 KB; `app.old.log` is the previous one).
 - **Crashes:** any uncaught exception is saved and shown in a dialog the next time the app opens, with a button to open the full log.
 - **Startup is fault-tolerant:** every startup step is guarded. If one screen (Files / Browser / Phone / Messages) fails to build, a small error panel replaces it and the rest of the app still opens. If the whole UI fails, an on-screen "Startup error" page shows the stack trace with *Open log* and *Retry*.
@@ -34,3 +34,15 @@ The app now keeps its own log so problems can be diagnosed on the phone itself:
 
 - **No emoji anywhere:** every emoji and symbol glyph used as an icon (phone, contacts, recent calls, torch, zip, download, warning, play/pause, close, refresh, settings, orientation buttons, etc.) is now a vector drawable (`ic_w_*`, plus the existing `ic_qs_*`) set through the `Ico.kt` helpers (`iconOnly`, `iconStart`). Toasts and list items that only had a leading emoji now show plain text. `W11Dialog.Builder.setIcon()` puts a vector icon before a dialog title.
 - **Full glass look:** the main window draws the wallpaper bloom behind a translucent taskbar; the Start menu, search boxes, dialogs (frosted card, light border, blur behind on Android 12+ devices that support it), the Quick Settings / Notification panel, the Notification settings screen and the toast card all use translucent surfaces with a thin light border. Android 8.0 uses an opaque dark window instead of a translucent one (platform crash with locked orientation).
+
+## Deep link (rizwans2://)
+
+The launcher opens from links that use the custom scheme `rizwans2://` (no domain needed):
+
+- `rizwans2://open` opens the desktop; `files`, `browser`, `dialer`, `sms`, `start` and `quick` open that screen (e.g. `rizwans2://quick` opens Quick Settings; `rizwans2://calculator` opens the Calculator).
+- Works from an HTML link (`<a href="rizwans2://open">`), another app, or `adb shell am start -a android.intent.action.VIEW -d "rizwans2://open"`.
+- Plain browser address bars treat it as a search, so a typed `rizwans2://open` may not launch; use a link on a web page instead.
+
+## Calculator (built-in)
+
+A built-in **Calculator** app appears in Start (pinned after Notifications) and in All apps. Glass UI with vector icons only: digits, `+ - × ÷`, `%` (`200 + 10%` = 220), `±`, backspace (long-press = clear), `C`, `=`, a live result preview line, divide-by-zero error, and hardware-keyboard support. Code: `CalculatorActivity.kt`.

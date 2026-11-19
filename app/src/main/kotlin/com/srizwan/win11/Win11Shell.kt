@@ -307,17 +307,10 @@ class Win11Shell(
             )
         }
 
-        // left slot (same width as before, so the icon group stays truly centered):
-        // Quick Settings / Notification Center shortcut.
-        row.addView(TextView(ctx).apply {
-            iconOnly(R.drawable.ic_w_settings, 22, W11.TEXT)
-            setTextColor(W11.TEXT)
-            contentDescription = "Quick Settings and Notifications"
-            isClickable = true
+        // left slot: kept as an empty spacer (same width) so the icon group stays truly centered.
+        // The Quick Settings gear is hidden; Quick Settings opens from the tray clock instead.
+        row.addView(View(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.MATCH_PARENT)
-            setOnClickListener {
-                try { onQuick?.invoke() } catch (e: Throwable) { AppLog.e("Shell", "quick button failed", e) }
-            }
         })
 
         val center = LinearLayout(ctx).apply {

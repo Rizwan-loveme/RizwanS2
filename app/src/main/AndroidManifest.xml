@@ -105,6 +105,13 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, start, quick) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rizwans2" />
+            </intent-filter>
         </activity>
 
         <!-- ── Start the launcher when the device boots ── -->
@@ -117,6 +124,14 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+
+        <!-- ── Built-in Calculator ── -->
+        <activity
+            android:name=".CalculatorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Win11.Glass"
+            android:label="Calculator"
+            android:screenOrientation="portrait" />
 
         <!-- ── Notification settings (per-app on/off for chat alerts) ── -->
         <activity

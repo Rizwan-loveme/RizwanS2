@@ -230,6 +230,7 @@ class MainActivity : AppCompatActivity() {
     private val KEY_DESKTOP_MODE = "desktop_mode"
 
     private var isUIInitialized = false
+    private var pendingDeepLink: Uri? = null
 
     // ── Downloads ────────────────────────────────────────────────
     private val activeDownloads = mutableMapOf<Long, String>()
@@ -331,6 +332,11 @@ class MainActivity : AppCompatActivity() {
             Unit
         }
         guard("show previous crash") { showLastCrashIfAny() }
+        guard("deep link (cold start)") {
+            val d = intent?.data
+            if (intent?.action == Intent.ACTION_VIEW && d?.scheme == "rizwans2") handleDeepLink(d)
+            Unit
+        }
     }
 
     /** If the previous run crashed, show it in a dialog (full text, Copy / Open log). */
@@ -746,6 +752,9 @@ class MainActivity : AppCompatActivity() {
                 shell.closeStart(animated = false)
                 if (section == "notifications") {
                     startActivity(Intent(this, NotificationSettingsActivity::class.java))
+                } else if (section == "calculator") {
+                    try { startActivity(Intent(this, CalculatorActivity::class.java)) }
+                    catch (e: Throwable) { AppLog.e(LOGT, "cannot open CalculatorActivity", e) }
                 } else {
                     switchToSection(section)
                 }
@@ -855,6 +864,30 @@ class MainActivity : AppCompatActivity() {
 
         val savedIsFileManager = prefs.getBoolean(KEY_IS_FILE_MANAGER, true)
         switchToSection("desktop")
+
+        // A rizwans2:// link that arrived before the UI was ready.
+        pendingDeepLink?.let { pendingDeepLink = null; handleDeepLink(it) }
+    }
+
+    /** rizwans2://open | files | browser | dialer | sms | start | quick  (anything else just opens the launcher). */
+    private fun handleDeepLink(uri: Uri) {
+        AppLog.i(LOGT, "deep link: $uri")
+        if (!isUIInitialized || !::shell.isInitialized) { pendingDeepLink = uri; return }
+        try {
+            when ((uri.host ?: "").lowercase()) {
+                "files", "browser", "dialer", "sms" -> {
+                    shell.closeStart(animated = false)
+                    switchToSection(uri.host!!.lowercase())
+                }
+                "start" -> { switchToSection("desktop"); shell.openStart() }
+                "quick" -> shell.onQuick?.invoke()
+                "calculator", "calc" -> startActivity(Intent(this, CalculatorActivity::class.java))
+                else -> { // "open" and anything unknown
+                    if (shell.isStartOpen()) shell.closeStart()
+                    switchToSection("desktop")
+                }
+            }
+        } catch (e: Throwable) { AppLog.e(LOGT, "deep link failed", e) }
     }
 
     private fun switchToSection(section: String) {
@@ -4259,6 +4292,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        if (intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "rizwans2") {
+            handleDeepLink(intent.data!!)
+        }
         if (intent?.hasCategory(Intent.CATEGORY_HOME) == true && isUIInitialized) {
             if (shell.isStartOpen()) shell.closeStart()
             switchToSection("desktop")

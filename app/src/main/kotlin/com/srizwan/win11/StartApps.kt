@@ -38,8 +38,10 @@ class AppEntry(
 }
 
 /** Vector-only icon for built-in apps (same path data as the taskbar icons, no emoji/bitmaps). */
-class BuiltInIconDrawable(pathData: String, private val tint: Int) : Drawable() {
-    private val path = PathParser.createPathFromPathData(pathData)
+class BuiltInIconDrawable(pathData: String, private val tint: Int, evenOdd: Boolean = false) : Drawable() {
+    private val path = PathParser.createPathFromPathData(pathData)?.also {
+        if (evenOdd) it.fillType = android.graphics.Path.FillType.EVEN_ODD
+    }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL; color = tint }
 
     override fun draw(canvas: Canvas) {
@@ -90,6 +92,12 @@ class AppRepository(private val ctx: Context) {
         private const val KEY_SMS_SEEDED = "builtin_sms_seeded"
         private const val KEY_NOTIF_SEEDED = "builtin_notif_seeded"
         private const val BUILTIN_CLS_NOTIF = "builtin.notifications"
+        private const val KEY_CALC_SEEDED = "builtin_calc_seeded"
+        private const val BUILTIN_CLS_CALC = "builtin.calculator"
+
+        // Calculator glyph (same path as ic_w_calculator.xml, even-odd fill)
+        private const val CALC_PATH =
+            "M5,2h14a2,2 0 0 1 2,2v16a2,2 0 0 1 -2,2H5a2,2 0 0 1 -2,-2V4a2,2 0 0 1 2,-2z M6.5,4.5h11v4h-11z M6.5,11h3v2.5h-3z M10.5,11h3v2.5h-3z M14.5,11h3v2.5h-3z M6.5,14.8h3v2.5h-3z M10.5,14.8h3v2.5h-3z M14.5,14.8h3v2.5h-3z M6.5,18.6h3v2h-3z M10.5,18.6h3v2h-3z M14.5,18.6h3v2h-3z"
 
         // Same bell path as VectorIconView.BELL
         private const val NOTIF_PATH =
@@ -149,7 +157,8 @@ class AppRepository(private val ctx: Context) {
                         .putBoolean(KEY_PHONE_SEEDED, true)
                         .putBoolean(KEY_FILES_SEEDED, true)
                         .putBoolean(KEY_SMS_SEEDED, true)
-                        .putBoolean(KEY_NOTIF_SEEDED, true).apply()
+                        .putBoolean(KEY_NOTIF_SEEDED, true)
+                        .putBoolean(KEY_CALC_SEEDED, true).apply()
                     onDone(true)
                 } else {
                     // Existing installs: pin built-in Browser once (unpinning later is respected)
@@ -197,6 +206,16 @@ class AppRepository(private val ctx: Context) {
                         prefs.edit().putBoolean(KEY_NOTIF_SEEDED, true).apply()
                         seeded = true
                     }
+                    // Calculator built-in: pinned once, after Notifications
+                    val ck = "${ctx.packageName}/$BUILTIN_CLS_CALC"
+                    if (!prefs.getBoolean(KEY_CALC_SEEDED, false)) {
+                        if (!pinnedKeys.contains(ck)) {
+                            val at = pinnedKeys.indexOf(nk)
+                            pinnedKeys.add(if (at >= 0) at + 1 else pinnedKeys.size.coerceAtMost(5), ck); save()
+                        }
+                        prefs.edit().putBoolean(KEY_CALC_SEEDED, true).apply()
+                        seeded = true
+                    }
                     onDone(if (seeded) true else changed)
                 }
             }
@@ -228,6 +247,11 @@ class AppRepository(private val ctx: Context) {
             "Phone", ctx.packageName, BUILTIN_CLS_PHONE,
             BuiltInIconDrawable(PHONE_PATH, Color.parseColor("#6CCB5F")),
             section = "dialer"
+        ),
+        AppEntry(
+            "Calculator", ctx.packageName, BUILTIN_CLS_CALC,
+            BuiltInIconDrawable(CALC_PATH, Color.parseColor("#9AA7FF"), evenOdd = true),
+            section = "calculator"
         )
     )
 
@@ -260,6 +284,7 @@ class AppRepository(private val ctx: Context) {
         list.firstOrNull { it.isBuiltIn && it.section == "dialer" }?.let { out.add(it.key) }
         list.firstOrNull { it.isBuiltIn && it.section == "sms" }?.let { out.add(it.key) }
         list.firstOrNull { it.isBuiltIn && it.section == "notifications" }?.let { out.add(it.key) }
+        list.firstOrNull { it.isBuiltIn && it.section == "calculator" }?.let { out.add(it.key) }
         for (p in PREFERRED) {
             list.firstOrNull { it.pkg == p }?.let { out.add(it.key) }
             if (out.size >= DEFAULT_COUNT) break
