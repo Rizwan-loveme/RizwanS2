@@ -259,6 +259,9 @@ class Win11Shell(
     /** Set by MainActivity: opens Quick Settings / Notification Center. */
     var onQuick: (() -> Unit)? = null
 
+    /** Set by MainActivity: minimizes the active app (taskbar toggle, like Windows 11). */
+    var onMinimize: (() -> Unit)? = null
+
     private var clockView: TextView? = null
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
@@ -374,7 +377,14 @@ class Win11Shell(
             }
             false
         }
-        frame.setOnClickListener { onNavigate(key) }
+        frame.setOnClickListener {
+            // Windows 11: clicking the pinned app that is already in front minimizes it; otherwise open / restore it.
+            val minimize = key != "start" && key == active && !startOpen
+            val hook = onMinimize
+            if (minimize && hook != null) {
+                try { hook() } catch (e: Throwable) { AppLog.e("Shell", "minimize failed", e) }
+            } else onNavigate(key)
+        }
         items[key] = TaskItem(frame, indicator)
         return frame
     }

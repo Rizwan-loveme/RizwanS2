@@ -760,6 +760,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        // Win11 behaviour: tapping the already-active taskbar app minimizes it (back to the desktop).
+        shell.onMinimize = {
+            AppLog.i(LOGT, "taskbar toggle: minimize $activeSection")
+            shell.closeStart(animated = false)
+            switchToSection("desktop")
+        }
         shell.onQuick = {
             AppLog.i(LOGT, "open QuickControlsActivity")
             try { startActivity(Intent(this@MainActivity, QuickControlsActivity::class.java)) }
@@ -893,6 +899,10 @@ class MainActivity : AppCompatActivity() {
     private fun switchToSection(section: String) {
         val target = if (section == "start") "desktop" else section
         activeSection = target
+        // Phone / Messages are glass screens: let the wallpaper bloom show through them.
+        contentFrame.setBackgroundColor(
+            if (target == "dialer" || target == "sms") Color.TRANSPARENT else Color.parseColor("#202020")
+        )
         desktopView.visibility = View.GONE
         fileManagerView.visibility = View.GONE
         browserView.visibility = View.GONE
@@ -1104,10 +1114,35 @@ class MainActivity : AppCompatActivity() {
     private var dialInput: EditText? = null
     private var torchBtn: Button? = null
 
+    // ── Glass helpers (Dialer / Messages) ──────────────────────────────
+    private val GLASS_BAR = Color.argb(110, 20, 24, 34)
+    private val GLASS_FILL = Color.argb(64, 255, 255, 255)
+    private val GLASS_FILL_STRONG = Color.argb(84, 255, 255, 255)
+
+    /** Rounded translucent card with the thin light glass border. */
+    private fun glassCard(fill: Int, radiusDp: Int): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            setColor(fill)
+            cornerRadius = dp(radiusDp).toFloat()
+            setStroke(dp(1), Color.argb(28, 255, 255, 255))
+        }
+
+    /** Glass button: translucent rounded fill + ripple, no Material elevation / shadow. */
+    private fun Button.glass(fill: Int, radiusDp: Int = 8) {
+        val mask = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.WHITE); cornerRadius = dp(radiusDp).toFloat()
+        }
+        background = android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(Color.argb(70, 255, 255, 255)),
+            glassCard(fill, radiusDp), mask
+        )
+        stateListAnimator = null
+    }
+
     private fun createDialerView(): LinearLayout {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#121212"))
+            setBackgroundColor(Color.TRANSPARENT)
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -1116,7 +1151,7 @@ class MainActivity : AppCompatActivity() {
         // ── Header ──
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#1E1E1E"))
+            setBackgroundColor(GLASS_BAR)
             setPadding(dp(16), dp(12), dp(16), dp(12))
             gravity = Gravity.CENTER_VERTICAL
         }
@@ -1132,7 +1167,7 @@ class MainActivity : AppCompatActivity() {
         torchBtn = Button(this).apply {
             text = "ON"
             iconStart(R.drawable.ic_qs_flashlight, 18, Color.WHITE, 6)
-            setBackgroundColor(Color.parseColor("#444444"))
+            glass(Color.argb(70, 255, 255, 255))
             setTextColor(Color.WHITE)
             textSize = 13f
             layoutParams = LinearLayout.LayoutParams(dp(90), dp(40))
@@ -1150,7 +1185,7 @@ class MainActivity : AppCompatActivity() {
         val inner = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(12), dp(16), dp(16))
-            setBackgroundColor(Color.parseColor("#121212"))
+            setBackgroundColor(Color.TRANSPARENT)
         }
 
         // ── Display field ──
@@ -1160,7 +1195,7 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setHintTextColor(Color.GRAY)
-            setBackgroundColor(Color.parseColor("#1E1E1E"))
+            background = glassCard(GLASS_FILL, 8)
             setPadding(dp(12), dp(12), dp(12), dp(12))
             isFocusable = true
             isFocusableInTouchMode = true
@@ -1191,7 +1226,7 @@ class MainActivity : AppCompatActivity() {
                     textSize = 22f
                     typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#2A2A2A"))
+                    glass(GLASS_FILL_STRONG)
                     layoutParams =
                         LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
                             setMargins(dp(4), 0, dp(4), 0)
@@ -1219,7 +1254,7 @@ class MainActivity : AppCompatActivity() {
             iconOnly(R.drawable.ic_w_backspace, 24, Color.WHITE)
             textSize = 22f
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#333333"))
+            glass(Color.argb(56, 255, 255, 255))
             layoutParams =
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
                     setMargins(dp(4), 0, dp(4), 0)
@@ -1236,7 +1271,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#4CAF50"))
+            glass(Color.argb(235, 76, 175, 80))
             layoutParams =
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2f).apply {
                     setMargins(dp(4), 0, dp(4), 0)
@@ -1247,7 +1282,7 @@ class MainActivity : AppCompatActivity() {
             iconOnly(R.drawable.ic_w_person, 24, Color.WHITE)
             textSize = 22f
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#1565C0"))
+            glass(Color.argb(230, 21, 101, 192))
             layoutParams =
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
                     setMargins(dp(4), 0, dp(4), 0)
@@ -1460,7 +1495,7 @@ class MainActivity : AppCompatActivity() {
                     val row = LinearLayout(this).apply {
                         orientation = LinearLayout.HORIZONTAL
                         gravity = Gravity.CENTER_VERTICAL
-                        setBackgroundColor(Color.parseColor("#1E1E1E"))
+                        background = glassCard(GLASS_FILL, 8)
                         setPadding(dp(10), dp(10), dp(10), dp(10))
                         layoutParams = LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1493,7 +1528,7 @@ class MainActivity : AppCompatActivity() {
                         iconOnly(R.drawable.ic_w_phone, 22, Color.WHITE)
                         textSize = 18f
                         setTextColor(Color.WHITE)
-                        setBackgroundColor(Color.parseColor("#4CAF50"))
+                        glass(Color.argb(235, 76, 175, 80))
                         layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
                         setPadding(0, 0, 0, 0)
                         setOnClickListener {
@@ -1610,7 +1645,7 @@ class MainActivity : AppCompatActivity() {
 
         val root = LinearLayout(a)
         root.orientation = LinearLayout.VERTICAL
-        root.setBackgroundColor(Color.parseColor("#202020"))
+        root.setBackgroundColor(Color.TRANSPARENT)
         root.layoutParams = ViewGroup.LayoutParams(mp, mp)
 
         // ── Window title bar ──
@@ -1637,7 +1672,7 @@ class MainActivity : AppCompatActivity() {
         // ── LEFT PANE: search + new message + conversation list ──
         val listPane = LinearLayout(a)
         listPane.orientation = LinearLayout.VERTICAL
-        listPane.setBackgroundColor(Color.parseColor("#272727"))
+        listPane.setBackgroundColor(Color.argb(96, 18, 22, 32))
         listPane.layoutParams =
             if (smsWide) LinearLayout.LayoutParams(dp(320), mp)
             else LinearLayout.LayoutParams(0, mp, 1f)
@@ -1732,7 +1767,7 @@ class MainActivity : AppCompatActivity() {
         // ── RIGHT PANE: placeholder (wide only) or the open conversation ──
         val threadPane = LinearLayout(a)
         threadPane.orientation = LinearLayout.VERTICAL
-        threadPane.setBackgroundColor(Color.parseColor("#1F1F1F"))
+        threadPane.setBackgroundColor(Color.argb(72, 10, 12, 20))
         threadPane.layoutParams = LinearLayout.LayoutParams(0, mp, 1f)
 
         val placeholder = LinearLayout(a)
@@ -2135,7 +2170,7 @@ class MainActivity : AppCompatActivity() {
             val bubble = SmsBubbleLayout(ctx, if (smsWide) 0.7f else 0.8f)
             bubble.orientation = LinearLayout.VERTICAL
             bubble.background =
-                smsRound(if (sent) Color.parseColor("#0A5CAD") else Color.parseColor("#3A3A3A"), 8)
+                smsRound(if (sent) Color.argb(228, 10, 92, 173) else Color.argb(92, 255, 255, 255), 8)
             bubble.setPadding(dp(12), dp(8), dp(12), dp(6))
             bubble.layoutParams = FrameLayout.LayoutParams(
                 wc, wc, if (sent) Gravity.END else Gravity.START
@@ -2210,7 +2245,7 @@ class MainActivity : AppCompatActivity() {
         val header = LinearLayout(a)
         header.orientation = LinearLayout.HORIZONTAL
         header.gravity = Gravity.CENTER_VERTICAL
-        header.setBackgroundColor(Color.parseColor("#262626"))
+        header.setBackgroundColor(GLASS_BAR)
         header.setPadding(dp(8), dp(8), dp(12), dp(8))
         header.layoutParams = LinearLayout.LayoutParams(mp, wc)
         if (!smsWide) {
@@ -2279,13 +2314,13 @@ class MainActivity : AppCompatActivity() {
         val replyBar = LinearLayout(a)
         replyBar.orientation = LinearLayout.HORIZONTAL
         replyBar.gravity = Gravity.CENTER_VERTICAL
-        replyBar.setBackgroundColor(Color.parseColor("#262626"))
+        replyBar.setBackgroundColor(GLASS_BAR)
         replyBar.setPadding(dp(10), dp(8), dp(10), dp(8))
         replyBar.layoutParams = LinearLayout.LayoutParams(mp, wc)
         val inputBox = LinearLayout(a)
         inputBox.orientation = LinearLayout.HORIZONTAL
         inputBox.gravity = Gravity.CENTER_VERTICAL
-        inputBox.background = smsRound(Color.parseColor("#333333"), 8)
+        inputBox.background = smsRound(GLASS_FILL_STRONG, 8)
         inputBox.setPadding(dp(12), dp(2), dp(12), dp(2))
         inputBox.layoutParams = LinearLayout.LayoutParams(0, wc, 1f)
         val replyEdit = EditText(a)

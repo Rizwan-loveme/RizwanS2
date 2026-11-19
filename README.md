@@ -45,4 +45,10 @@ The launcher opens from links that use the custom scheme `rizwans2://` (no domai
 
 ## Calculator (built-in)
 
-A built-in **Calculator** app appears in Start (pinned after Notifications) and in All apps. Glass UI with vector icons only: digits, `+ - × ÷`, `%` (`200 + 10%` = 220), `±`, backspace (long-press = clear), `C`, `=`, a live result preview line, divide-by-zero error, and hardware-keyboard support. Code: `CalculatorActivity.kt`.
+A built-in **Calculator** app appears in Start (pinned after Notifications) and in All apps. Floating glass panel docked above the taskbar (like the Quick Settings flyout; tap outside it to close) with vector icons only, centered in their keys: digits, `+ - × ÷`, `%` (`200 + 10%` = 220), `±`, backspace (long-press = clear), `C`, `=`, a live result preview line, divide-by-zero error, and hardware-keyboard support. Code: `CalculatorActivity.kt`.
+
+## Taskbar toggle, centered icons, glass Phone / Messages
+
+- **Taskbar toggle (Windows 11 behaviour):** tapping a pinned taskbar app that is **not** open opens it; tapping the one that is **already in front** minimizes it back to the desktop (its state, e.g. an open conversation or browser tabs, is kept). Opening an app from the Start menu or the desktop never minimizes. Code: `Win11Shell.onMinimize` (set in `MainActivity`).
+- **Centered icons:** icon-only buttons (and icon + text buttons with centered text) used to draw their vector icon at the left edge. `Ico.kt` now centers them (`iconOnly` / `iconStart` add a layout listener; wrap_content views are untouched). This fixes the Calculator keys and the Phone buttons (backspace, contacts, Call, call-back).
+- **Glass Phone & Messages:** both screens are translucent now (glass bars, cards, keys with a thin light border and ripple; sent / received bubbles and the composer too) and the wallpaper bloom shows through behind them. The other sections keep their solid backgrounds.

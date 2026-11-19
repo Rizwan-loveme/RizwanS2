@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- view tag: the layout listener that centers a compound-drawable icon (see Ico.kt) -->
+    <item name="tag_center_icon" type="id" />
+</resources>

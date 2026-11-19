@@ -76,14 +76,33 @@ class CalculatorActivity : AppCompatActivity() {
     private fun buildScreen(): View {
         val mp = ViewGroup.LayoutParams.MATCH_PARENT
 
+        // Outer: transparent full-screen layer (tap it to close, like clicking away from a Win11 flyout).
+        val outer = FrameLayout(this)
+        outer.setBackgroundColor(Color.argb(60, 0, 0, 0))
+        outer.layoutParams = ViewGroup.LayoutParams(mp, mp)
+        outer.setOnClickListener { finish() }
+
+        // Panel: glass card docked above the taskbar (same spot as the Quick Settings flyout).
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
-        root.setBackgroundColor(if (glassBlur) Color.argb(150, 24, 27, 34) else Color.argb(228, 24, 27, 34))
-        root.layoutParams = ViewGroup.LayoutParams(mp, mp)
-        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
-            val b = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(b.left, b.top, b.right, b.bottom)
-            insets
+        root.isClickable = true // taps on the panel must not reach the "tap outside to close" layer
+        root.background = GradientDrawable().apply {
+            setColor(if (glassBlur) Color.argb(178, 28, 32, 44) else Color.argb(232, 28, 32, 44))
+            cornerRadius = dp(16).toFloat()
+            setStroke(dp(1), Color.argb(46, 255, 255, 255))
+        }
+        val panelW = minOf(resources.displayMetrics.widthPixels - dp(16), dp(440))
+        val panelLp = FrameLayout.LayoutParams(panelW, mp, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+            .apply { setMargins(dp(8), dp(8), dp(8), dp(TASKBAR_DP + 8)) }
+        outer.addView(root, panelLp)
+        ViewCompat.setOnApplyWindowInsetsListener(outer) { _, insets ->
+            val b = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            val lp = root.layoutParams as FrameLayout.LayoutParams
+            lp.setMargins(b.left + dp(8), b.top + dp(8), b.right + dp(8), b.bottom + dp(TASKBAR_DP + 8))
+            root.layoutParams = lp
+            WindowInsetsCompat.CONSUMED
         }
 
         // ── Title bar: back + calculator icon + title ──
@@ -140,7 +159,7 @@ class CalculatorActivity : AppCompatActivity() {
         // ── Keypad (5 rows x 4) ──
         val pad = LinearLayout(this)
         pad.orientation = LinearLayout.VERTICAL
-        pad.setPadding(dp(8), dp(4), dp(8), dp(10))
+        pad.setPadding(dp(8), dp(4), dp(8), dp(8))
         pad.layoutParams = LinearLayout.LayoutParams(mp, 0, 2.5f)
 
         pad.addView(row(
@@ -171,7 +190,8 @@ class CalculatorActivity : AppCompatActivity() {
             iconKey(R.drawable.ic_calc_equals, EQUALS, { equalsPressed() })
         ))
         root.addView(pad)
-        return root
+        ViewCompat.requestApplyInsets(outer)
+        return outer
     }
 
     private fun backButton(): FrameLayout {
@@ -194,6 +214,7 @@ class CalculatorActivity : AppCompatActivity() {
         const val FUNC = 1
         const val EQUALS = 2
         const val MAX_LEN = 40
+        const val TASKBAR_DP = 53 // launcher taskbar height (same value as QuickControlsActivity)
     }
 
     private fun row(vararg keys: View): LinearLayout {
