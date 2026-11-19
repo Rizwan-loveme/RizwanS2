@@ -172,7 +172,7 @@ jobs:
       - name: Install NDK and SDK Platform
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${NDK_VERSION}" "platforms;android-37" "build-tools;35.0.0"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${NDK_VERSION}" "platforms;android-37" "build-tools;35.0.0" "cmake;3.22.1"
 
       # If gradlew is missing from the repo, regenerate it from the committed
       # wrapper properties instead of failing with "No such file or directory".

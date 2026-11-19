@@ -176,7 +176,7 @@ jobs:
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           # "yes: Broken pipe" নিরীহ — sdkmanager আগেই পড়া শেষ করে পাইপ বন্ধ করে দেয়
           yes | "$SDKM" --licenses > /dev/null 2>&1 || true
-          "$SDKM" "ndk;${NDK_VERSION}" "platforms;android-37.0" "build-tools;36.0.0"
+          "$SDKM" "ndk;${NDK_VERSION}" "platforms;android-37.0" "build-tools;36.0.0" "cmake;3.22.1"
           echo "== Installed platforms =="
           ls "$ANDROID_HOME/platforms"
 
