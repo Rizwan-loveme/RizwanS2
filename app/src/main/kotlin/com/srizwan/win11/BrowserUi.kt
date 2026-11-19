@@ -1196,7 +1196,7 @@ internal fun MainActivity.registerDownloadReceiver() {
         registerReceiver(
             downloadReceiver,
             IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            RECEIVER_NOT_EXPORTED
+            Context.RECEIVER_NOT_EXPORTED
         )
     } else {
         @Suppress("UnspecifiedRegisterReceiverFlag")
