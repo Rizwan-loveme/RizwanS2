@@ -39,7 +39,7 @@ The app now keeps its own log so problems can be diagnosed on the phone itself:
 
 The launcher opens from links that use the custom scheme `rizwans2://` (no domain needed):
 
-- `rizwans2://open` opens the desktop; `files`, `browser`, `dialer`, `sms`, `start` and `quick` open that screen (e.g. `rizwans2://quick` opens Quick Settings; `rizwans2://calculator` opens the Calculator).
+- `rizwans2://open` opens the desktop; `files`, `browser`, `sms`, `start` and `quick` open that screen (`dialer` opens the system Phone app) (e.g. `rizwans2://quick` opens Quick Settings; `rizwans2://calculator` opens the Calculator).
 - Works from an HTML link (`<a href="rizwans2://open">`), another app, or `adb shell am start -a android.intent.action.VIEW -d "rizwans2://open"`.
 - Plain browser address bars treat it as a search, so a typed `rizwans2://open` may not launch; use a link on a web page instead.
 
@@ -51,4 +51,12 @@ A built-in **Calculator** app appears in Start (pinned after Notifications) and 
 
 - **Taskbar toggle (Windows 11 behaviour):** tapping a pinned taskbar app that is **not** open opens it; tapping the one that is **already in front** minimizes it back to the desktop (its state, e.g. an open conversation or browser tabs, is kept). Opening an app from the Start menu or the desktop never minimizes. Code: `Win11Shell.onMinimize` (set in `MainActivity`).
 - **Centered icons:** icon-only buttons (and icon + text buttons with centered text) used to draw their vector icon at the left edge. `Ico.kt` now centers them (`iconOnly` / `iconStart` add a layout listener; wrap_content views are untouched). This fixes the Calculator keys and the Phone buttons (backspace, contacts, Call, call-back).
-- **Glass Phone & Messages:** both screens are translucent now (glass bars, cards, keys with a thin light border and ripple; sent / received bubbles and the composer too) and the wallpaper bloom shows through behind them. The other sections keep their solid backgrounds.
+- **Glass Phone & Messages:** both screens were made translucent (the Phone screen is now hidden, see below) (glass bars, cards, keys with a thin light border and ripple; sent / received bubbles and the composer too) and the wallpaper bloom shows through behind them. The other sections keep their solid backgrounds.
+
+## System Phone instead of the built-in Phone
+
+- **Phone now opens the device's own Phone (dialer) app** from the taskbar Phone icon, the desktop Phone icon, the Start menu / All apps and `rizwans2://dialer`. The icon is unchanged: the same green built-in phone vector, in the taskbar, on the desktop and in Start (the system Phone app is listed as "Phone" with that icon).
+- **The built-in Phone screen is hidden** (no entry in Start / All apps, no taskbar switch). Its code (`createDialerView`, recent calls, contacts picker) is kept in `MainActivity.kt` but is never shown.
+- **Messages:** "Call" in a conversation (header phone button and the long-press menu) opens the system dialer with that number pre-filled (`ACTION_DIAL`, nothing is called until you press call there).
+- **Existing installs:** if the built-in Phone was pinned in Start, that pin is moved to the system Phone app at the same position (a hidden built-in Phone becomes a hidden system Phone). The system Phone app is the device's default dialer (`TelecomManager.getDefaultDialerPackage`, falling back to whatever handles `ACTION_DIAL`).
+- Since the Phone is an external app, it has no "running" dot on the taskbar and tapping its icon always opens it (the minimize toggle applies to Files, Browser and Messages).

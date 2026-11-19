@@ -752,6 +752,8 @@ class MainActivity : AppCompatActivity() {
                 shell.closeStart(animated = false)
                 if (section == "notifications") {
                     startActivity(Intent(this, NotificationSettingsActivity::class.java))
+                } else if (section == "dialer") {
+                    openSystemDialer()
                 } else if (section == "calculator") {
                     try { startActivity(Intent(this, CalculatorActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open CalculatorActivity", e) }
@@ -896,7 +898,22 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Throwable) { AppLog.e(LOGT, "deep link failed", e) }
     }
 
+    /** Phone uses the system dialer app (the built-in Phone screen is hidden). Optional number is pre-filled. */
+    private fun openSystemDialer(number: String? = null) {
+        try {
+            val i = Intent(Intent.ACTION_DIAL).apply {
+                if (!number.isNullOrBlank()) data = Uri.fromParts("tel", number.trim(), null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(i)
+        } catch (e: Throwable) {
+            AppLog.e(LOGT, "cannot open the system dialer", e)
+            Toast.makeText(this, "No phone app found", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun switchToSection(section: String) {
+        if (section == "dialer") { openSystemDialer(); return } // built-in Phone is hidden
         val target = if (section == "start") "desktop" else section
         activeSection = target
         // Phone / Messages are glass screens: let the wallpaper bloom show through them.
@@ -2092,8 +2109,7 @@ class MainActivity : AppCompatActivity() {
                 menu.setOnMenuItemClickListener { item ->
                     when (item.itemId) {
                         1 -> {
-                            dialInput?.setText(c.address)
-                            switchToSection("dialer")
+                            openSystemDialer(c.address)
                         }
                         2 -> showComposeSmsDialog(c.address, "")
                         3 -> deleteSmsThread(c.address)
@@ -2283,7 +2299,7 @@ class MainActivity : AppCompatActivity() {
         header.addView(nameBlock)
 
         header.addView(smsIconButton(VectorIconView.PHONE, 40, Color.parseColor("#6CCB5F"), null) {
-            smsCurrentAddress?.let { dialInput?.setText(it); switchToSection("dialer") }
+            smsCurrentAddress?.let { openSystemDialer(it) }
         })
         header.addView(smsIconButton(VectorIconView.DELETE, 40, Color.parseColor("#FF99A4"), null) {
             smsCurrentAddress?.let { deleteSmsThread(it) }

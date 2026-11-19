@@ -75,6 +75,11 @@ class AppRepository(private val ctx: Context) {
     var apps: List<AppEntry> = emptyList()
         private set
 
+    /** Key of the system Phone (dialer) app entry, shown with the built-in phone icon; null if the device has none. */
+    @Volatile
+    var systemPhoneKey: String? = null
+        private set
+
     private val pinnedKeys: MutableList<String> = (prefs.getString(KEY_PINNED, null)
         ?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()).toMutableList()
 
@@ -149,6 +154,7 @@ class AppRepository(private val ctx: Context) {
                 if (list == null) return@post
                 val changed = list.map { it.key } != apps.map { it.key }
                 apps = list
+                migrateBuiltInPhone()
                 if (!prefs.contains(KEY_PINNED)) {
                     pinnedKeys.clear()
                     pinnedKeys.addAll(defaultPins(list))
@@ -170,7 +176,7 @@ class AppRepository(private val ctx: Context) {
                         seeded = true
                     }
                     // Phone built-in: pinned once too (right after Browser if it is pinned)
-                    val pk = "${ctx.packageName}/$BUILTIN_CLS_PHONE"
+                    val pk = systemPhoneKey ?: "${ctx.packageName}/$BUILTIN_CLS_PHONE"
                     if (!prefs.getBoolean(KEY_PHONE_SEEDED, false)) {
                         if (!pinnedKeys.contains(pk)) {
                             val at = pinnedKeys.indexOf(bk)
@@ -243,11 +249,7 @@ class AppRepository(private val ctx: Context) {
             BuiltInIconDrawable(SMS_PATH, Color.parseColor("#7AB8FF")),
             section = "sms"
         ),
-        AppEntry(
-            "Phone", ctx.packageName, BUILTIN_CLS_PHONE,
-            BuiltInIconDrawable(PHONE_PATH, Color.parseColor("#6CCB5F")),
-            section = "dialer"
-        ),
+        // The built-in Phone screen is hidden: the system Phone app (see query()) is used instead.
         AppEntry(
             "Calculator", ctx.packageName, BUILTIN_CLS_CALC,
             BuiltInIconDrawable(CALC_PATH, Color.parseColor("#9AA7FF"), evenOdd = true),
@@ -255,33 +257,68 @@ class AppRepository(private val ctx: Context) {
         )
     )
 
+    /** Package of the device's default Phone / dialer app (null if none can be found). */
+    private fun systemDialerPackage(): String? {
+        try {
+            val tm = ctx.getSystemService(Context.TELECOM_SERVICE) as? android.telecom.TelecomManager
+            tm?.defaultDialerPackage?.let { if (it.isNotBlank()) return it }
+        } catch (e: Throwable) { }
+        return try {
+            pm.resolveActivity(Intent(Intent.ACTION_DIAL), PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo?.packageName
+        } catch (e: Throwable) { null }
+    }
+
     @Suppress("DEPRECATION")
     private fun query(): List<AppEntry> {
         val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val res = if (Build.VERSION.SDK_INT >= 33)
             pm.queryIntentActivities(i, PackageManager.ResolveInfoFlags.of(0L))
         else pm.queryIntentActivities(i, 0)
-        return res.asSequence()
+        val dialerPkg = systemDialerPackage()
+        var phoneKey: String? = null
+        val list = res.asSequence()
             .filter { it.activityInfo != null && it.activityInfo.packageName != ctx.packageName }
             .map {
-                AppEntry(
-                    it.loadLabel(pm).toString(),
-                    it.activityInfo.packageName,
-                    it.activityInfo.name,
-                    it.loadIcon(pm)
-                )
+                val pkg = it.activityInfo.packageName
+                if (pkg == dialerPkg && phoneKey == null) {
+                    // The system Phone app replaces the built-in Phone: real app, built-in vector icon.
+                    phoneKey = "$pkg/${it.activityInfo.name}"
+                    AppEntry(
+                        "Phone", pkg, it.activityInfo.name,
+                        BuiltInIconDrawable(PHONE_PATH, Color.parseColor("#6CCB5F"))
+                    )
+                } else AppEntry(it.loadLabel(pm).toString(), pkg, it.activityInfo.name, it.loadIcon(pm))
             }
             .plus(builtInApps())
             .distinctBy { it.key }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
             .toList()
+        systemPhoneKey = phoneKey
+        return list
+    }
+
+    /** Old installs pinned / hid the built-in Phone: move that pin (same position) to the system Phone app. */
+    private fun migrateBuiltInPhone() {
+        val old = "${ctx.packageName}/$BUILTIN_CLS_PHONE"
+        val sys = systemPhoneKey
+        val at = pinnedKeys.indexOf(old)
+        if (at >= 0) {
+            pinnedKeys.removeAt(at)
+            if (sys != null && !pinnedKeys.contains(sys)) pinnedKeys.add(at.coerceAtMost(pinnedKeys.size), sys)
+            save()
+        }
+        if (hiddenKeys.remove(old)) {
+            if (sys != null) hiddenKeys.add(sys)
+            saveHidden()
+        }
     }
 
     private fun defaultPins(list: List<AppEntry>): List<String> {
         val out = LinkedHashSet<String>()
         list.firstOrNull { it.isBuiltIn && it.section == "files" }?.let { out.add(it.key) }
         list.firstOrNull { it.isBuiltIn && it.section == "browser" }?.let { out.add(it.key) }
-        list.firstOrNull { it.isBuiltIn && it.section == "dialer" }?.let { out.add(it.key) }
+        systemPhoneKey?.let { k -> list.firstOrNull { it.key == k }?.let { out.add(it.key) } }
         list.firstOrNull { it.isBuiltIn && it.section == "sms" }?.let { out.add(it.key) }
         list.firstOrNull { it.isBuiltIn && it.section == "notifications" }?.let { out.add(it.key) }
         list.firstOrNull { it.isBuiltIn && it.section == "calculator" }?.let { out.add(it.key) }
