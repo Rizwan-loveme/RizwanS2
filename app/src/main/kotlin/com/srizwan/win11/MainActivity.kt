@@ -104,10 +104,17 @@ class WhatsAppNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         sbn ?: return
-        if (sbn.packageName !in SUPPORTED_PACKAGES) return
         val extras = sbn.notification?.extras ?: return
         val sender = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val message = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        if (sender.isNotEmpty() || message.isNotEmpty()) {
+            synchronized(NotificationStore.items) {
+                NotificationStore.items.removeAll { it.first == sender && it.second == message }
+                NotificationStore.items.add((getAppLabel(sbn.packageName) + " · " + sender) to message)
+                while (NotificationStore.items.size > 60) NotificationStore.items.removeAt(0)
+            }
+        }
+        if (sbn.packageName !in SUPPORTED_PACKAGES) return
         if (sender.isEmpty() && message.isEmpty()) return
         // Notification settings: master switch + per-app on/off
         if (!NotifPrefs.isAllowed(this, sbn.packageName)) return
@@ -601,6 +608,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
         tabLayout = shell.buildTaskbar()
+        // Windows-like Quick Settings / Notification Center shortcut on the taskbar.
+        val quickButton = TextView(this).apply {
+            text = "⚙  ◉"; textSize = 16f; gravity = Gravity.CENTER
+            setTextColor(Color.WHITE); setPadding(12, 0, 12, 0)
+            contentDescription = "Quick Settings and Notifications"
+            setOnClickListener { startActivity(Intent(this@MainActivity, QuickControlsActivity::class.java)) }
+        }
+        tabLayout.addView(quickButton, LinearLayout.LayoutParams(-2, -1))
         desktopView = shell.buildDesktop()
 
         contentFrame = FrameLayout(this).apply {

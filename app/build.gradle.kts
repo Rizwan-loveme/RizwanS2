@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.srizwan.win11"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.srizwan.win11"
