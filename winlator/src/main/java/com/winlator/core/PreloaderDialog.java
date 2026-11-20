@@ -23,6 +23,7 @@ public class PreloaderDialog {
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
         dialog.setContentView(R.layout.preloader_dialog);
+        GlassStyle.apply(activity, dialog.findViewById(R.id.LLCard)); // Win11 glass look (part 9)
 
         Window window = dialog.getWindow();
         if (window != null) {

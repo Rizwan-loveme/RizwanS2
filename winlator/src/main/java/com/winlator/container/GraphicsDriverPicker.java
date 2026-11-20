@@ -7,6 +7,7 @@ import android.widget.LinearLayout;
 import com.winlator.contentdialog.TurnipConfigDialog;
 import com.winlator.contentdialog.VirGLConfigDialog;
 import com.winlator.contentdialog.VortekConfigDialog;
+import com.winlator.core.DeviceProfile;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.StringUtils;
 import com.winlator.widget.TaggedSelectionBox;
@@ -19,13 +20,15 @@ public class GraphicsDriverPicker {
         final Context context = container.getContext();
         container.removeAllViews();
         String[] identifiers = GraphicsDrivers.parseIdentifiers(selectedGraphicsDriver);
+        // Part 8: a container saved with Turnip (made elsewhere / before) shows Vortek where Turnip cannot run
+        if (identifiers[0].equals(GraphicsDrivers.TURNIP) && !DeviceProfile.isTurnipAvailable(context)) identifiers[0] = GraphicsDrivers.VORTEK;
         KeyValueSet[] configs = GraphicsDrivers.parseConfigs(selectedGraphicsDriver, graphicsDriverConfig);
 
         final String[] apiNames = {"Vulkan", "OpenGL"};
         for (int i = 0; i < apiNames.length; i++) {
             final TaggedSelectionBox taggedSelectionBox = new TaggedSelectionBox(context);
             taggedSelectionBox.setLabel(apiNames[i]);
-            taggedSelectionBox.setItems(GraphicsDrivers.getItems(apiNames[i]));
+            taggedSelectionBox.setItems(GraphicsDrivers.getItems(context, apiNames[i]));
             taggedSelectionBox.setSelectedItem(GraphicsDrivers.getName(identifiers[i]));
             taggedSelectionBox.setTag(configs[i].toString());
             taggedSelectionBox.setOnButtonClickListener(() -> {

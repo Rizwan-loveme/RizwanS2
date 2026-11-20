@@ -2,6 +2,7 @@ package com.winlator.container;
 
 import android.content.Context;
 
+import com.winlator.core.DeviceProfile;
 import com.winlator.core.GPUHelper;
 import com.winlator.core.KeyValueSet;
 
@@ -43,6 +44,14 @@ public abstract class GraphicsDrivers {
         else return new String[0];
     }
 
+    /** Part 8: same list, but without Turnip on phones whose GPU is not an Adreno (e.g. the Mali of the Tecno Spark Go 3). */
+    public static String[] getItems(Context context, String apiName) {
+        if (apiName.equalsIgnoreCase("VULKAN") && !DeviceProfile.isTurnipAvailable(context)) {
+            return new String[]{getName(VORTEK)};
+        }
+        return getItems(apiName);
+    }
+
     public static String[] parseIdentifiers(String graphicsDriver) {
         if (graphicsDriver == null || graphicsDriver.isEmpty()) return new String[]{DEFAULT_VULKAN_DRIVER, DEFAULT_OPENGL_DRIVER};
         if (graphicsDriver.contains(",")) {
@@ -79,6 +88,9 @@ public abstract class GraphicsDrivers {
     }
 
     public static String getDefaultDriver(Context context) {
-        return GPUHelper.getAdrenoModelId(context) > 0 ? GraphicsDrivers.TURNIP+","+GraphicsDrivers.DEFAULT_OPENGL_DRIVER : GraphicsDrivers.VORTEK+","+GraphicsDrivers.DEFAULT_OPENGL_DRIVER;
+        if (GPUHelper.getAdrenoModelId(context) > 0) return GraphicsDrivers.TURNIP+","+GraphicsDrivers.DEFAULT_OPENGL_DRIVER;
+        // Part 8: Mali -> VirGL for OpenGL (Vortek stays as the Vulkan entry for DXVK)
+        if (DeviceProfile.isMali(context)) return GraphicsDrivers.VORTEK+","+GraphicsDrivers.VIRGL;
+        return GraphicsDrivers.VORTEK+","+GraphicsDrivers.DEFAULT_OPENGL_DRIVER;
     }
 }

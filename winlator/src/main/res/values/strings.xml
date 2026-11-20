@@ -12,6 +12,16 @@
     <string name="new_container">New Container</string>
     <string name="edit_container">Edit Container</string>
     <string name="creating_container">Creating Container...</string>
+    <string name="setting_up_winlator">Setting up Winlator...</string>
+    <string name="installing_system_files_step">Step 1 of 2: installing system files</string>
+    <string name="creating_first_container_step">Step 2 of 2: creating the first container</string>
+    <string name="setup_hint">One time only. About 400 MB, a few minutes. Keep the screen on.</string>
+    <string name="not_enough_storage">Not enough free storage. Winlator needs at least 1.5 GB free for the first set-up. Free some space and try again.</string>
+    <string name="setup_failed_retry">Unable to finish the set-up of Winlator. Try again?</string>
+    <string name="unable_to_create_first_container">Unable to create the first container</string>
+    <string name="unable_to_start_program">Unable to start the Windows program. The reason is saved in the Debug log (Quick Settings).</string>
+    <string name="cancel_starting_program">Stop starting this Windows program and go back?</string>
+    <string name="running_file_after_setup">Set-up done. Starting your file...</string>
     <string name="removing_container">Removing Container...</string>
     <string name="duplicating_container">Duplicating Container...</string>
     <string name="installing_system_files">Installing System Files...</string>

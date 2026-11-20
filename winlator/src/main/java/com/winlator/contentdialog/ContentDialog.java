@@ -18,6 +18,7 @@ import androidx.annotation.NonNull;
 import com.winlator.R;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
+import com.winlator.core.GlassStyle;
 
 import java.util.ArrayList;
 
@@ -54,6 +55,8 @@ public class ContentDialog extends Dialog {
         });
 
         setContentView(contentView);
+        // Part 9: Win11 glass look (dark theme only)
+        if (AppUtils.isDarkTheme(context) && getWindow() != null) getWindow().setBackgroundDrawable(GlassStyle.card(context));
     }
 
     public View getContentView() {

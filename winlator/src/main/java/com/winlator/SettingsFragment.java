@@ -44,6 +44,7 @@ import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.GamepadPlayerConfigDialog;
 import com.winlator.contentdialog.SoundFontTestDialog;
 import com.winlator.core.AppUtils;
+import com.winlator.core.DeviceProfile;
 import com.winlator.core.ArrayUtils;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
@@ -307,7 +308,7 @@ public class SettingsFragment extends Fragment {
         final Context context = getContext();
 
         Runnable updateSpinner = () -> {
-            Box64PresetManager.loadSpinner(sBox64Preset, preferences.getString("box64_preset", Box64Preset.DEFAULT));
+            Box64PresetManager.loadSpinner(sBox64Preset, preferences.getString("box64_preset", DeviceProfile.defaultBox64Preset(context)));
         };
 
         updateSpinner.run();

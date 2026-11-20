@@ -674,6 +674,8 @@ class MainActivity : AppCompatActivity() {
                 } else if (section == "calculator") {
                     try { startActivity(Intent(this, CalculatorActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open CalculatorActivity", e) }
+                } else if (section == WinlatorLauncher.SECTION) {
+                    WinlatorLauncher.open(this)
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -798,7 +800,7 @@ class MainActivity : AppCompatActivity() {
         pendingSendTo?.let { pendingSendTo = null; handleSendTo(it) }
     }
 
-    /** rizwans2://open | files | browser | dialer | sms | start | quick  (anything else just opens the launcher). */
+    /** rizwans2://open | files | browser | dialer | sms | winlator | start | quick  (anything else just opens the launcher). */
     internal fun handleDeepLink(uri: Uri) {
         AppLog.i(LOGT, "deep link: $uri")
         if (!isUIInitialized || !::shell.isInitialized) { pendingDeepLink = uri; return }
@@ -811,6 +813,7 @@ class MainActivity : AppCompatActivity() {
                 "start" -> { switchToSection("desktop"); shell.openStart() }
                 "quick" -> shell.onQuick?.invoke()
                 "calculator", "calc" -> startActivity(Intent(this, CalculatorActivity::class.java))
+                "winlator" -> WinlatorLauncher.open(this)
                 "parallel" -> startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java))
                 else -> { // "open" and anything unknown
                     if (shell.isStartOpen()) shell.closeStart()

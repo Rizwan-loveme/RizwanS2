@@ -43,6 +43,7 @@ import com.winlator.contentdialog.VortekConfigDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
 import com.winlator.container.DXWrapperPicker;
+import com.winlator.core.DeviceProfile;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.container.GraphicsDriverPicker;
@@ -134,14 +135,14 @@ public class ContainerDetailFragment extends Fragment {
         final Spinner sWineVersion = view.findViewById(R.id.SWineVersion);
         if (wineInfos.size() > 1) loadWineVersionSpinner(view, sWineVersion, wineInfos);
 
-        loadScreenSizeSpinner(view, isEditMode() ? container.getScreenSize() : Container.DEFAULT_SCREEN_SIZE);
+        loadScreenSizeSpinner(view, isEditMode() ? container.getScreenSize() : DeviceProfile.defaultScreenSize(context));
 
         final String oldGraphicsDriverConfig = isEditMode() ? container.getGraphicsDriverConfig() : "";
         String selectedGraphicsDriver = isEditMode() ? container.getGraphicsDriver() : GraphicsDrivers.getDefaultDriver(context);
         GraphicsDriverPicker graphicsDriverPicker = new GraphicsDriverPicker(view.findViewById(R.id.LLGraphicsDriver), selectedGraphicsDriver, oldGraphicsDriverConfig);
 
         String oldDXWrapperConfig = isEditMode() ? container.getDXWrapperConfig() : "";
-        String selectedDXWrapper = isEditMode() ? container.getDXWrapper() : Container.DEFAULT_DXWRAPPER;
+        String selectedDXWrapper = isEditMode() ? container.getDXWrapper() : DeviceProfile.defaultDXWrapper(context);
         DXWrapperPicker dxwrapperPicker = new DXWrapperPicker(view.findViewById(R.id.LLDXWrapper), graphicsDriverPicker, selectedDXWrapper, oldDXWrapperConfig);
 
         view.findViewById(R.id.BTHelpDXWrapper).setOnClickListener((v) -> AppUtils.showHelpBox(context, v, R.string.dxwrapper_help_content));
@@ -164,7 +165,7 @@ public class ContainerDetailFragment extends Fragment {
         sWinVersion.setTag((byte)-1);
 
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
-        Box64PresetManager.loadSpinner(sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box64Preset.DEFAULT));
+        Box64PresetManager.loadSpinner(sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", DeviceProfile.defaultBox64Preset(context)));
 
         final CPUListView cpuListView = view.findViewById(R.id.CPUListView);
         final CPUListView cpuListViewWoW64 = view.findViewById(R.id.CPUListViewWoW64);
@@ -436,7 +437,7 @@ public class ContainerDetailFragment extends Fragment {
     private EnvVarsView createEnvVarsTab(final View view) {
         final Context context = view.getContext();
         final EnvVarsView envVarsView = view.findViewById(R.id.EnvVarsView);
-        envVarsView.setEnvVars(new EnvVars(isEditMode() ? container.getEnvVars() : Container.DEFAULT_ENV_VARS));
+        envVarsView.setEnvVars(new EnvVars(isEditMode() ? container.getEnvVars() : DeviceProfile.defaultEnvVars(context)));
         view.findViewById(R.id.BTAddEnvVar).setOnClickListener((v) -> (new AddEnvVarDialog(context, envVarsView)).show());
         return envVarsView;
     }

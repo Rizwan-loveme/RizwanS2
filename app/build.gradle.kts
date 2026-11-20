@@ -16,8 +16,8 @@ android {
         // 28: Android blocks running programs from the app data folder above 28 (Winlator runs box64 / wine
         // there). Same reason the BlackBox engine prefers 28. See README "Winlator inside Win11", part 3.
         targetSdk = 28
-        versionCode = 115
-        versionName = "2.3.0"
+        versionCode = 116
+        versionName = "2.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

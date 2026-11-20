@@ -87,6 +87,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         const val DELETE = "delete"
         const val BELL = "bell"
         const val DOWNLOAD = "download"
+        const val WINLATOR = "winlator"
 
         private fun data(type: String): String? = when (type) {
             FILES -> "M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z"
@@ -104,6 +105,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             DOWNLOAD -> "M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z"
             BELL -> "M12,22c1.1,0 2,-0.9 2,-2h-4c0,1.1 0.89,2 2,2zM18,16v-5c0,-3.07 -1.64,-5.64 -4.5,-6.32V4c0,-0.83 -0.67,-1.5 -1.5,-1.5s-1.5,0.67 -1.5,1.5v0.68C7.63,5.36 6,7.92 6,11v5l-2,2v1h16v-1l-2,-2z"
             DELETE -> "M6,19c0,1.1 0.9,2 2,2h8c1.1,0 2,-0.9 2,-2V7H6v12zM19,4h-3.5l-1,-1h-5l-1,1H5v2h14V4z"
+            WINLATOR -> "M6,2 H18 L17.3,8.6 C16.9,11.9 14.8,14.2 12.9,14.8 V19.2 H16.2 V21.2 H7.8 V19.2 H11.1 V14.8 C9.2,14.2 7.1,11.9 6.7,8.6 Z M8.2,4 L8.6,8.3 C8.9,10.2 10.2,11.9 12,12.4 C13.8,11.9 15.1,10.2 15.4,8.3 L15.8,4 Z"
             else -> null
         }
 
@@ -114,6 +116,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             MESSAGES -> Color.parseColor("#7AB8FF")
             BELL -> Color.parseColor("#FFB900")
             PC -> Color.parseColor("#4CC2FF")
+            WINLATOR -> Color.parseColor("#C77DFF")
             START -> Color.parseColor("#4CC2FF")
             else -> Color.WHITE
         }
@@ -122,6 +125,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
     init {
         color = colorFor(type)
         data(type)?.let { path = PathParser.createPathFromPathData(it) }
+        if (type == WINLATOR) path?.fillType = Path.FillType.EVEN_ODD // hollow wine glass
     }
 
     fun setIconColor(c: Int) {
@@ -219,6 +223,8 @@ class Win11Shell(
     private fun dp(v: Int): Int = (v * density).toInt()
 
     private val items = LinkedHashMap<String, TaskItem>()
+    /** Width of one taskbar icon: 46 dp, smaller on narrow phones so six icons still fit between the side slots. */
+    private var itemSize = 0
     private val running = mutableSetOf<String>()
     private var active = "desktop"
 
@@ -320,11 +326,15 @@ class Win11Shell(
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
         }
+        val withWinlator = WinlatorLauncher.isSupported()
+        val avail = ctx.resources.displayMetrics.widthPixels - dp(60) - dp(74)
+        itemSize = minOf(dp(46), avail / (if (withWinlator) 6 else 5) - dp(2))
         center.addView(makeItem("start", VectorIconView.START))
         center.addView(makeItem("files", VectorIconView.FILES))
         center.addView(makeItem("browser", VectorIconView.BROWSER))
         center.addView(makeItem("dialer", VectorIconView.PHONE))
         center.addView(makeItem("sms", VectorIconView.MESSAGES))
+        if (withWinlator) center.addView(makeItem(WinlatorLauncher.SECTION, VectorIconView.WINLATOR))
         row.addView(center)
 
         // system tray clock (right)
@@ -352,7 +362,7 @@ class Win11Shell(
 
     private fun makeItem(key: String, iconType: String): FrameLayout {
         val frame = FrameLayout(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)).apply {
+            layoutParams = LinearLayout.LayoutParams(itemSize, dp(46)).apply {
                 setMargins(dp(1), 0, dp(1), 0)
             }
         }
@@ -1227,8 +1237,10 @@ class Win11Shell(
         }
         if (!e.isBuiltIn) menu.menu.add(0, 6, 2, ParallelApps.MENU_TEXT)
         if (!e.isBuiltIn) menu.menu.add(0, 4, 3, "App info")
+        if (e.section == WinlatorLauncher.SECTION) menu.menu.add(0, 7, 4, WinlatorLauncher.drawerMenuText(ctx))
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                7 -> toggleWinlatorDrawerIcon()
                 6 -> openParallel(e)
                 1 -> { appRepo.unhide(e); refreshAllApps() }
                 2 -> { appRepo.togglePin(e); refreshAllApps() }
@@ -1241,6 +1253,18 @@ class Win11Shell(
             true
         }
         menu.show()
+    }
+
+    /** Flips the optional "Winlator" icon in the Android app drawer (disabled alias in the :winlator manifest). */
+    private fun toggleWinlatorDrawerIcon() {
+        val on = !WinlatorLauncher.isDrawerIconEnabled(ctx)
+        WinlatorLauncher.setDrawerIconEnabled(ctx, on)
+        Toast.makeText(
+            ctx,
+            if (on) "Winlator icon added to the Android app drawer (the launcher may need a moment)"
+            else "Winlator icon removed from the Android app drawer",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     /** "Open in black box (parallel)": runs a second copy of the app in the virtual space (see ParallelApps.kt). */
@@ -1399,8 +1423,10 @@ class Win11Shell(
         menu.menu.add(0, 5, 2, "Hide app")
         if (!e.isBuiltIn) menu.menu.add(0, 6, 3, ParallelApps.MENU_TEXT)
         if (!e.isBuiltIn) menu.menu.add(0, 3, 4, "App info")
+        if (e.section == WinlatorLauncher.SECTION) menu.menu.add(0, 7, 5, WinlatorLauncher.drawerMenuText(ctx))
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                7 -> toggleWinlatorDrawerIcon()
                 6 -> openParallel(e)
                 1 -> { appRepo.pin(e); refreshPinnedGrid() }
                 2 -> { appRepo.removeRecent(e); refreshPinnedGrid() }
@@ -1422,8 +1448,10 @@ class Win11Shell(
         menu.menu.add(0, 5, 2, "Hide app")
         if (!e.isBuiltIn) menu.menu.add(0, 6, 3, ParallelApps.MENU_TEXT)
         if (!e.isBuiltIn) menu.menu.add(0, 3, 4, "App info")
+        if (e.section == WinlatorLauncher.SECTION) menu.menu.add(0, 7, 5, WinlatorLauncher.drawerMenuText(ctx))
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                7 -> toggleWinlatorDrawerIcon()
                 6 -> openParallel(e)
                 1 -> { appRepo.unpin(e); refreshPinnedGrid() }
                 2 -> { appRepo.moveToFront(e); refreshPinnedGrid() }
@@ -1463,6 +1491,7 @@ class Win11Shell(
         column.addView(desktopIcon(VectorIconView.BROWSER, "Browser", "browser"))
         column.addView(desktopIcon(VectorIconView.PHONE, "Phone", "dialer"))
         column.addView(desktopIcon(VectorIconView.MESSAGES, "Messages", "sms"))
+        if (WinlatorLauncher.isSupported()) column.addView(desktopIcon(VectorIconView.WINLATOR, "Winlator", WinlatorLauncher.SECTION))
         desktop.addView(column)
         return desktop
     }

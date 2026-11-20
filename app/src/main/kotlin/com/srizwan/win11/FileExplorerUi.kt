@@ -80,6 +80,7 @@ internal fun fileTypeColor(ext: String): Int = when (ext) {
     "ppt", "pptx" -> Color.parseColor("#D24726")
     "zip", "rar", "7z", "tar", "gz" -> Color.parseColor("#E8A33D")
     "apk" -> Color.parseColor("#4CAF50")
+    "exe", "msi", "bat", "lnk" -> Color.parseColor("#C77DFF") // Windows programs (run with Winlator)
     else -> Color.parseColor("#8A8A8A")
 }
 

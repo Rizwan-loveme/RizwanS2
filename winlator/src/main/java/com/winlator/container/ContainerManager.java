@@ -3,11 +3,15 @@ package com.winlator.container;
 import android.content.Context;
 import android.os.Handler;
 
+import androidx.preference.PreferenceManager;
+
 import com.winlator.R;
 import com.winlator.core.Callback;
+import com.winlator.core.DeviceProfile;
 import com.winlator.core.FileUtils;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
+import com.winlator.core.WinlatorLog;
 import com.winlator.xenvironment.RootFS;
 
 import org.json.JSONArray;
@@ -92,6 +96,52 @@ public class ContainerManager {
         Executors.newSingleThreadExecutor().execute(() -> {
             removeContainer(container);
             handler.post(callback);
+        });
+    }
+
+    /** Name of the container that part 7 creates by itself on the first set-up. */
+    public static final String DEFAULT_CONTAINER_NAME = "Win11";
+
+    /**
+     * Part 7: the first container, with the normal Winlator defaults (screen size, drivers and so on are
+     * tuned for the Tecno Spark Go 3 in part 8) and the default drives (D: Download, E: app storage,
+     * F: phone storage). Must run on a background thread (it unpacks container_pattern.tzst).
+     * Returns the first existing container when there already is one, or null if it could not be created.
+     */
+    public Container ensureDefaultContainer() {
+        if (!containers.isEmpty()) {
+            ArrayList<Container> sorted = new ArrayList<>(containers);
+            Collections.sort(sorted, (a, b) -> Integer.compare(a.id, b.id));
+            return sorted.get(0);
+        }
+        try {
+            JSONObject data = new JSONObject();
+            data.put("name", DEFAULT_CONTAINER_NAME);
+            data.put("drives", Container.DEFAULT_DRIVES);
+            // Part 8: defaults for this phone (Mali / 4 GB: VirGL + WineD3D, 854x480, Box64 Stability, lower memory use)
+            data.put("graphicsDriver", GraphicsDrivers.getDefaultDriver(context));
+            data.put("dxwrapper", DeviceProfile.defaultDXWrapper(context));
+            data.put("screenSize", DeviceProfile.defaultScreenSize(context));
+            data.put("envVars", DeviceProfile.defaultEnvVars(context));
+            data.put("box64Preset", PreferenceManager.getDefaultSharedPreferences(context).getString("box64_preset", DeviceProfile.defaultBox64Preset(context)));
+            data.put("cpuList", Container.getFallbackCPUList());
+            data.put("cpuListWoW64", Container.getFallbackCPUList());
+            Container container = createContainer(data);
+            if (container != null) WinlatorLog.i("Container", "default container created: id "+container.id+", graphics "+container.getGraphicsDriver()+", dxwrapper "+container.getDXWrapper()+", screen "+container.getScreenSize());
+            else WinlatorLog.e("Container", "default container could not be created (container_pattern.tzst / common_dlls.json / free space?)", null);
+            return container;
+        }
+        catch (JSONException e) {
+            WinlatorLog.e("Container", "default container data error", e);
+            return null;
+        }
+    }
+
+    public void ensureDefaultContainerAsync(Callback<Container> callback) {
+        final Handler handler = new Handler();
+        Executors.newSingleThreadExecutor().execute(() -> {
+            final Container container = ensureDefaultContainer();
+            handler.post(() -> callback.call(container));
         });
     }
 

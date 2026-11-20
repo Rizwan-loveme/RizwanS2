@@ -46,6 +46,8 @@ import com.winlator.contentdialog.VirGLConfigDialog;
 import com.winlator.contentdialog.WineD3DConfigDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.DefaultVersion;
+import com.winlator.core.DeviceProfile;
+import com.winlator.core.WinlatorLog;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.GeneralComponents;
@@ -100,6 +102,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.concurrent.Executors;
 
 public class XServerDisplayActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
@@ -137,10 +140,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private Win32AppWorkarounds win32AppWorkarounds;
     private String screenEffectProfile;
 
+    /** True from onCreate to onDestroy: one Wine session at a time (Win11 checks it before it starts another file). */
+    public static volatile boolean sessionRunning = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         AppUtils.setActivityTheme(this);
         super.onCreate(savedInstanceState);
+        sessionRunning = true;
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
         setContentView(R.layout.xserver_display_activity);
@@ -225,9 +232,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
 
             this.graphicsDriver = GraphicsDrivers.parseIdentifiers(graphicsDriver);
+            // Part 8: Turnip cannot run on a non-Adreno GPU; use Vortek instead of failing at start
+            if (this.graphicsDriver[0].equals(GraphicsDrivers.TURNIP) && !DeviceProfile.isTurnipAvailable(this)) this.graphicsDriver[0] = GraphicsDrivers.VORTEK;
             this.graphicsDriverConfig = GraphicsDrivers.parseConfigs(graphicsDriver, graphicsDriverConfig);
             this.dxwrapper = DXWrappers.parseIdentifier(dxwrapper);
             this.dxwrapperConfig = DXWrappers.parseConfigs(dxwrapper, dxwrapperConfig);
+
+            WinlatorLog.i("XServer", "start: container "+container.id+" ("+container.getName()+"), graphics "+this.graphicsDriver[0]+"/"+this.graphicsDriver[1]+
+                ", dxwrapper "+this.dxwrapper+", screen "+container.getScreenSize()+", box64 "+container.getBox64Preset()+
+                ", exec_path "+getIntent().getStringExtra("exec_path"));
         }
 
         preloaderDialog.show(R.string.starting_up);
@@ -268,12 +281,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         setupUI();
 
         Executors.newSingleThreadExecutor().execute(() -> {
-            if (!isGenerateWineprefix()) {
-                setupWineSystemFiles();
-                extractGraphicsDriverFiles();
-                changeWineAudioDriver();
+            try {
+                if (!isGenerateWineprefix()) {
+                    setupWineSystemFiles();
+                    extractGraphicsDriverFiles();
+                    changeWineAudioDriver();
+                }
+                setupXEnvironment();
             }
-            setupXEnvironment();
+            catch (Throwable e) {
+                // Part 9: before this the thread died, the whole app crashed and the reason was lost
+                WinlatorLog.e("XServer", "starting the Windows environment failed", e);
+                runOnUiThread(() -> {
+                    preloaderDialog.close();
+                    ContentDialog.alert(this, R.string.unable_to_start_program, this::exit);
+                });
+            }
         });
     }
 
@@ -341,6 +364,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     protected void onDestroy() {
+        sessionRunning = false;
+        WinlatorLog.i("XServer", "session closed");
         winHandler.stop();
         if (environment != null) environment.stopEnvironmentComponents();
         ForegroundService.stopSession(this);
@@ -354,6 +379,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 drawerLayout.openDrawer(GravityCompat.START);
             }
             else drawerLayout.closeDrawers();
+        }
+        else {
+            // Part 9: still starting (or start failed): Back used to do nothing, so the screen could not be left.
+            ContentDialog.confirm(this, R.string.cancel_starting_program, this::exit);
         }
     }
 
@@ -428,10 +457,19 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void exit() {
+        WinlatorLog.i("XServer", "exit (from_win11="+getIntent().getBooleanExtra(com.winlator.core.ExternalRun.EXTRA_FROM_WIN11, false)+")");
         winHandler.stop();
         if (environment != null) environment.stopEnvironmentComponents();
 
         Intent intent = getIntent();
+        if (intent.getBooleanExtra(com.winlator.core.ExternalRun.EXTRA_FROM_WIN11, false)) {
+            // Started from the Win11 File Manager: end this task, the process ends too (clean Wine / Box64
+            // state) and Android shows the Win11 home screen again. Part 9 makes this gentler.
+            ForegroundService.stopSession(this);
+            finishAndRemoveTask();
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> Runtime.getRuntime().exit(0), 400);
+            return;
+        }
         if (intent.hasExtra("exec_path")) {
             AppUtils.RestartApplicationOptions options = new AppUtils.RestartApplicationOptions();
             options.containerId = container.id;
@@ -556,7 +594,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         guestProgramLauncherComponent.setEnvVars(envVars);
-        guestProgramLauncherComponent.setTerminationCallback((status) -> exit());
+        guestProgramLauncherComponent.setTerminationCallback((status) -> {
+            if (status != null && status != 0) WinlatorLog.w("XServer", "Wine process ended with status "+status);
+            else WinlatorLog.i("XServer", "Wine process ended, status "+status);
+            exit();
+        });
         environment.addComponent(guestProgramLauncherComponent);
 
         if (isGenerateWineprefix()) {
@@ -967,9 +1009,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (intent.hasExtra("exec_path")) {
                 execPath = WineUtils.unixToDOSPath(intent.getStringExtra("exec_path"), container);
 
-                if (execPath.endsWith(".lnk")) {
+                if (execPath.toLowerCase(Locale.ENGLISH).endsWith(".lnk")) {
                     cmdArgs = "\""+execPath+"\"";
                     execPath = null;
+                }
+                else if (execPath.toLowerCase(Locale.ENGLISH).endsWith(".msi")) {
+                    // Win11: Windows installer package: run it with msiexec /i
+                    execArgs = " /i \""+execPath+"\"";
+                    execPath = "C:\\windows\\system32\\msiexec.exe";
                 }
             }
         }

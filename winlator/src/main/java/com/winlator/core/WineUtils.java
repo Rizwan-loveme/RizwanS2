@@ -249,7 +249,9 @@ public abstract class WineUtils {
         String driveLetter = "";
 
         for (Drive drive : container.drivesIterator()) {
-            if (unixPath.startsWith(drive.path)) {
+            // Win11: whole folder names only ("/x/Download" must not match "/x/Download2/a.exe")
+            String drivePath = StringUtils.removeEndSlash(drive.path);
+            if (unixPath.equals(drivePath) || unixPath.startsWith(drivePath+"/")) {
                 driveLetter = drive.letter+":";
                 dosPath = unixPath.substring(drive.path.length()).replace("/", "\\");
                 break;

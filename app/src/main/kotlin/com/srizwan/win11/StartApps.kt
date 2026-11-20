@@ -100,6 +100,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_NOTIF = "builtin.notifications"
         private const val BUILTIN_CLS_CALC = "builtin.calculator"
         private const val BUILTIN_CLS_PARALLEL = "builtin.parallel"
+        private const val BUILTIN_CLS_WINLATOR = "builtin.winlator"
+        /** Wine glass (Wine = Windows programs): Winlator. Even-odd fill makes the hollow bowl. */
+        private const val WINLATOR_PATH =
+            "M6,2 H18 L17.3,8.6 C16.9,11.9 14.8,14.2 12.9,14.8 V19.2 H16.2 V21.2 H7.8 V19.2 H11.1 V14.8 C9.2,14.2 7.1,11.9 6.7,8.6 Z M8.2,4 L8.6,8.3 C8.9,10.2 10.2,11.9 12,12.4 C13.8,11.9 15.1,10.2 15.4,8.3 L15.8,4 Z"
         /** Two overlapping sheets (copy icon): the Parallel manager. */
         private const val PARALLEL_PATH =
             "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
@@ -224,6 +228,15 @@ class AppRepository(private val ctx: Context) {
             BuiltInIconDrawable(PARALLEL_PATH, Color.parseColor("#8C7BFF")),
             section = "parallel"
         )
+    ) + (
+        // Winlator (PC software: .exe via Wine + Box64) exists only for 64-bit ARM phones.
+        if (WinlatorLauncher.isSupported()) listOf(
+            AppEntry(
+                "Winlator", ctx.packageName, BUILTIN_CLS_WINLATOR,
+                BuiltInIconDrawable(WINLATOR_PATH, Color.parseColor("#C77DFF"), evenOdd = true),
+                section = WinlatorLauncher.SECTION
+            )
+        ) else emptyList()
     )
 
     /** Package of the device's default Phone / dialer app (null if none can be found). */

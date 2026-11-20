@@ -41,6 +41,7 @@ class App : Application() {
         if (!isLauncherProcess()) return
         AppLog.init(this)
         AppLog.installCrashHandler()
+        WinlatorLauncher.installLogBridge()
         AppLog.i("App", "process start | ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
     }
 

@@ -44,6 +44,8 @@ import java.util.TimerTask;
 
 public abstract class AppUtils {
     public static final String DIRECTORY_DOWNLOADS = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath();
+    /** Win11: the whole phone storage (File Manager root, with Documents, Pictures, Music, Download, ...). It becomes drive F: of new containers (part 7). */
+    public static final String PHONE_STORAGE = Environment.getExternalStorageDirectory().getPath();
     public static final String INTERNAL_STORAGE = "/data/data/" + PathRelocator.DEFAULT_PACKAGE + "/storage";
     private static WeakReference<Toast> globalToastReference = null;
 
@@ -373,6 +375,12 @@ public abstract class AppUtils {
         TypedValue typedValue = new TypedValue();
         context.getTheme().resolveAttribute(attrId, typedValue, true);
         return typedValue.data;
+    }
+
+    /** Part 9: true when Winlator uses its dark theme (the default). */
+    public static boolean isDarkTheme(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getInt("app_theme", SettingsFragment.APP_THEME_DARK) != SettingsFragment.APP_THEME_LIGHT;
     }
 
     public static void setActivityTheme(Activity activity) {

@@ -116,6 +116,8 @@ internal fun MainActivity.openFile(file: File) {
         file.name.endsWith(".pdf", true) -> openPdfFile(file)
         file.name.endsWith(".zip", true) -> showZipOptions(file)
         isImageFile(file.name) -> openImageFile(file)
+        // .exe .msi .bat .lnk: PC software runs in the built-in Winlator (Wine + Box64)
+        WinlatorLauncher.isWindowsProgram(file.name) -> WinlatorLauncher.runFile(this, file)
         else -> Toast.makeText(this, "Unsupported file", Toast.LENGTH_SHORT).show()
     }
 }
@@ -170,11 +172,19 @@ internal fun MainActivity.createNewFolder() {
 
 internal fun MainActivity.showFileOptions(file: File) {
     val options = mutableListOf("Delete", "Rename", "Details")
+    if (file.isFile && WinlatorLauncher.isSupported()) {
+        if (WinlatorLauncher.isWindowsProgram(file.name)) {
+            options.add(0, "Run in container...")
+            options.add(0, "Run with Winlator")
+        } else options.add(0, "Open with Winlator")
+    }
     if (file.name.endsWith(".pdf", true)) options.add(1, "PDF to JPG")
     if (file.name.endsWith(".zip", true)) options.add(1, "Extract ZIP to DCIM")
     W11Dialog.Builder(this).setTitle(file.name)
         .setItems(options.toTypedArray()) { _, which ->
             when (options[which]) {
+                "Run with Winlator", "Open with Winlator" -> WinlatorLauncher.runFile(this, file)
+                "Run in container..." -> WinlatorLauncher.runFile(this, file, pickContainer = true)
                 "Delete" -> deleteFile(file)
                 "Rename" -> renameFile(file)
                 "PDF to JPG" -> pdfToJpg(file)

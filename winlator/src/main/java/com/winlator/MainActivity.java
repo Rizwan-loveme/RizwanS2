@@ -27,7 +27,11 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.navigation.NavigationView;
 import com.winlator.contentdialog.AboutDialog;
 import com.winlator.core.AppUtils;
+import com.winlator.container.Container;
+import com.winlator.container.ContainerManager;
 import com.winlator.core.Callback;
+import com.winlator.core.ExternalRun;
+import com.winlator.core.WinlatorLog;
 import com.winlator.core.LocaleHelper;
 import com.winlator.core.PreloaderDialog;
 import com.winlator.xenvironment.RootFSInstaller;
@@ -46,6 +50,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private Callback<Uri> openFileCallback;
     private SharedPreferences preferences;
     private Fragment currentFragment;
+    /** Part 7: a Windows file tapped in the Win11 File Manager before Winlator was set up; it starts by itself after the set-up. */
+    public static final String EXTRA_RUN_EXEC_PATH = "run_exec_path";
+    private String pendingExecPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +86,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             actionBar.setHomeAsUpIndicator(R.drawable.icon_action_bar_menu);
             onNavigationItemSelected(navigationView.getMenu().findItem(menuItemId));
             navigationView.setCheckedItem(menuItemId);
-            if (!requestAppPermissions()) RootFSInstaller.installIfNeeded(this);
+            pendingExecPath = intent.getStringExtra(EXTRA_RUN_EXEC_PATH);
+            if (!requestAppPermissions()) runSetup();
 
             int containerId = intent.getIntExtra("container_id", 0);
             String startPath = intent.getStringExtra("start_path");
@@ -99,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                RootFSInstaller.installIfNeeded(this);
+                runSetup();
             }
             else finish();
         }
@@ -142,6 +150,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public void setOpenFileCallback(Callback<Uri> openFileCallback) {
         this.openFileCallback = openFileCallback;
+    }
+
+    /** Part 7: rootfs install / update, first container, and the file that was waiting for the set-up. */
+    private void runSetup() {
+        final boolean needContainer = pendingExecPath != null;
+        RootFSInstaller.setupIfNeeded(this, needContainer, () -> {
+            if (currentFragment instanceof ContainersFragment) showFragment(new ContainersFragment());
+            runPendingFile();
+        });
+    }
+
+    private void runPendingFile() {
+        final String path = pendingExecPath;
+        pendingExecPath = null;
+        if (path == null) return;
+
+        Container container = (new ContainerManager(this)).ensureDefaultContainer();
+        if (container == null) {
+            AppUtils.showToast(this, R.string.unable_to_create_first_container);
+            return;
+        }
+        ExternalRun.ensureSharedDrive(container);
+        String execPath = ExternalRun.ensureDrive(container, path);
+        if (execPath == null) {
+            AppUtils.showToast(this, R.string.unable_to_create_first_container);
+            return;
+        }
+        WinlatorLog.i("Setup", "starting the waiting file in container "+container.id+": "+execPath);
+        AppUtils.showToast(this, R.string.running_file_after_setup);
+        startActivity(ExternalRun.buildRunIntent(this, container.id, execPath));
     }
 
     private boolean requestAppPermissions() {

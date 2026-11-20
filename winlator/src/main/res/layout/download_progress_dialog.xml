@@ -8,6 +8,7 @@
     android:focusable="false">
 
     <LinearLayout
+        android:id="@+id/LLCard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -56,6 +57,16 @@
                 android:textColor="?attr/colorPrimaryText"
                 android:text="@string/downloading_file" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/TVHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:maxWidth="320dp"
+            android:textSize="13dp"
+            android:textColor="?attr/colorPrimaryText"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/LLBottomBar"

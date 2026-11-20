@@ -1,3 +1,6 @@
+import java.net.URL
+import java.util.zip.ZipInputStream
+
 // Winlator engine as an Android library (part 1 of 10 of "Winlator inside Win11").
 // Source: https://github.com/brunodev85/winlator-app (v11.2). See NOTICE-Winlator.md.
 //
@@ -83,10 +86,10 @@ val fetchWinlatorAssets by tasks.registering {
         tmpZip.parentFile.mkdirs()
         val url = "https://github.com/brunodev85/winlator-app/archive/$winlatorCommit.zip"
         logger.lifecycle("Downloading Winlator assets from $url")
-        java.net.URL(url).openStream().use { input -> tmpZip.outputStream().use { input.copyTo(it) } }
+        URL(url).openStream().use { input -> tmpZip.outputStream().use { input.copyTo(it) } }
         val prefix = "winlator-app-$winlatorCommit/app/src/main/assets/"
         var count = 0
-        java.util.zip.ZipInputStream(tmpZip.inputStream().buffered()).use { zip ->
+        ZipInputStream(tmpZip.inputStream().buffered()).use { zip ->
             var e = zip.nextEntry
             while (e != null) {
                 if (!e.isDirectory && e.name.startsWith(prefix)) {
