@@ -1,0 +1,61 @@
+name: Restore project to commit 224955b
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "যে commit-এ ফিরে যেতে চান"
+        required: true
+        default: "224955b"
+      branch:
+        description: "যে branch restore হবে"
+        required: true
+        default: "main"
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Git config
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Verify commit exists
+        run: |
+          git cat-file -e "${{ inputs.commit_sha }}^{commit}" \
+            || { echo "::error::Commit ${{ inputs.commit_sha }} পাওয়া যায়নি"; exit 1; }
+
+      - name: Create backup branch (বর্তমান অবস্থা সংরক্ষণ)
+        run: |
+          BACKUP="backup-before-restore-$(date +%Y%m%d-%H%M%S)"
+          git branch "$BACKUP" HEAD
+          git push origin "$BACKUP"
+          echo "Backup branch: $BACKUP"
+
+      - name: Restore files from target commit
+        run: |
+          # index ও working tree পুরোপুরি ঐ commit-এর মতো করা (মুছে ফেলা ফাইলসহ)
+          git read-tree --reset -u "${{ inputs.commit_sha }}"
+
+          # workflow ফাইল বর্তমান অবস্থায় রাখা (GITHUB_TOKEN দিয়ে workflow বদলানো যায় না)
+          git rm -rf --quiet --ignore-unmatch .github/workflows
+          git checkout HEAD -- .github/workflows 2>/dev/null || true
+
+      - name: Commit & push
+        run: |
+          if git diff --cached --quiet; then
+            echo "কোনো পরিবর্তন নেই, আগে থেকেই ঐ অবস্থায় আছে।"
+            exit 0
+          fi
+          git commit -m "Restore project to commit ${{ inputs.commit_sha }}"
+          git push origin "${{ inputs.branch }}"
