@@ -13,9 +13,10 @@ android {
         applicationId = "com.srizwan.win11"
         // 26: required by the :winlator library (was 24)
         minSdk = 26
-        // 28: Android blocks running programs from the app data folder above 28 (Winlator runs box64 / wine
-        // there). Same reason the BlackBox engine prefers 28. See README "Winlator inside Win11", part 3.
-        targetSdk = 28
+        // 37: requested target. WARNING: above 28 Android blocks running programs from the app data folder
+        // (Winlator runs box64 / wine there) and the BlackBox engine also prefers 28. Was 28 before.
+        // If Winlator / parallel apps stop working, set this back to 28. See README "Target SDK 37".
+        targetSdk = 37
         versionCode = 116
         versionName = "2.4.0"
 
@@ -40,8 +41,8 @@ android {
         }
     }
     
-    // targetSdk = 28 is intentional (see above), so lint's "ExpiredTargetSdkVersion" (Google Play wants 33+)
-    // must not stop the release build. lintVitalRelease is skipped, same as in :winlator.
+    // lintVitalRelease is skipped, same as in :winlator. ExpiredTargetSdkVersion kept disabled in case
+    // targetSdk is lowered to 28 again.
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -66,6 +67,8 @@ dependencies {
     implementation(project(":Bcore"))
     // Winlator engine (Wine + Box64 for PC software), added in v2.3.0 part 1
     implementation(project(":winlator"))
+    // Apktool M (decompiled library module, not compiled yet). Enable after fixing its build errors:
+    // implementation(project(":apktool"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

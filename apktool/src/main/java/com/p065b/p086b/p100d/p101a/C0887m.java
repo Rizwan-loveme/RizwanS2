@@ -1,0 +1,39 @@
+package com.p065b.p086b.p100d.p101a;
+
+import com.p065b.p086b.p100d.EnumC0903k;
+
+/* compiled from: RegisterRangeDecodedInstruction.java */
+/* renamed from: com.b.b.d.a.m */
+/* loaded from: classes.dex */
+public final class C0887m extends AbstractC0880f {
+
+    /* renamed from: a */
+    private final int f5396a;
+
+    /* renamed from: b */
+    private final int f5397b;
+
+    public C0887m(EnumC0884j enumC0884j, int i, int i2, EnumC0903k enumC0903k, int i3, long j, int i4, int i5) {
+        super(enumC0884j, i, i2, enumC0903k, i3, j);
+        this.f5396a = i4;
+        this.f5397b = i5;
+    }
+
+    @Override // com.p065b.p086b.p100d.p101a.AbstractC0880f
+    /* renamed from: m */
+    public int mo7485m() {
+        return this.f5397b;
+    }
+
+    @Override // com.p065b.p086b.p100d.p101a.AbstractC0880f
+    /* renamed from: n */
+    public int mo7486n() {
+        return this.f5396a;
+    }
+
+    @Override // com.p065b.p086b.p100d.p101a.AbstractC0880f
+    /* renamed from: d */
+    public AbstractC0880f mo7476d(int i) {
+        return new C0887m(m7469a(), m7471b(), i, m7478f(), m7479g(), m7480h(), this.f5396a, this.f5397b);
+    }
+}

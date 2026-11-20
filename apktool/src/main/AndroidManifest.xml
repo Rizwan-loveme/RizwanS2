@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+
+>
+    
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT"/>
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"/>
+    <supports-screens
+        android:anyDensity="true"
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="true"
+        android:resizeable="true"
+        android:xlargeScreens="true"/>
+    <application>
+        <meta-data
+            android:name="android.max_aspect"
+            android:value="2.1"/>
+        <activity
+            android:theme="@style/SplashTheme"
+            android:label="@string/app_name"
+            android:name="ru.maximoff.apktool.SplashActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
+            android:noHistory="true">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <action android:name="android.intent.action.VIEW"/>
+                <action android:name="android.intent.action.EDIT"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="text/*"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:host="*"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apks"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:host="*"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.apkm"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:host="*"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.xapk"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="ru.maximoff.apktool.OPEN_APK"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:icon="@mipmap/ic_launcher_dark"
+            android:name="ru.maximoff.apktool.SplashDarkIcon"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity="ru.maximoff.apktool.SplashActivity"
+            android:roundIcon="@mipmap/ic_launcher_round_dark">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts_dark"/>
+        </activity-alias>
+        <activity-alias
+            android:icon="@mipmap/ic_launcher"
+            android:name="ru.maximoff.apktool.SplashLightIcon"
+            android:enabled="true"
+            android:exported="true"
+            android:targetActivity="ru.maximoff.apktool.SplashActivity"
+            android:roundIcon="@mipmap/ic_launcher_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts"/>
+        </activity-alias>
+        <activity
+            android:theme="@style/TransparentTheme"
+            android:label="@string/open_apk_mf"
+            android:name="ru.maximoff.apktool.OpenApk"
+            android:enabled="false"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/vnd.android.package-archive"/>
+                <data android:mimeType="application/octet-stream"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:host="*"/>
+                <data android:mimeType="application/vnd.android.package-archive"/>
+                <data android:mimeType="application/octet-stream"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:label="@string/app_name"
+            android:name="ru.maximoff.apktool.MainActivity"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/mtranslator"
+            android:name="ru.maximoff.apktool.TranslateActivity"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/converter"
+            android:name="ru.maximoff.apktool.Converter"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="ru.maximoff.apktool.CONVERTER_SHORTCUT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <action android:name="android.intent.action.SEND"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:label="@string/soeditor"
+            android:name="ru.maximoff.apktool.SoEditor"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/colors_editor"
+            android:name="ru.maximoff.apktool.ColorsEditor"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/strings_edit"
+            android:name="ru.maximoff.apktool.AxmlEdit"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/preview"
+            android:name="ru.maximoff.apktool.PreviewActivity"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/compare_text"
+            android:name="ru.maximoff.apktool.DiffText"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:theme="@style/TransparentTheme"
+            android:label="@string/create_shortcut"
+            android:name="ru.maximoff.apktool.CreateShortcut"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/settings"
+            android:name="ru.maximoff.apktool.SettingActivity"
+            android:exported="true"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_PREFERENCES"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="apktool"
+                    android:host="settings"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:label="@string/preview"
+            android:name="ru.maximoff.apktool.FontViewer"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:alwaysRetainTaskState="true"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:label="@string/crash_log"
+            android:name="ru.maximoff.apktool.CrashActivity"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <activity
+            android:theme="@style/TransparentTheme"
+            android:label="@string/act_list"
+            android:name="ru.maximoff.apktool.ActivityList"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
+            android:noHistory="true"/>
+        <activity
+            android:theme="@style/TransparentTheme"
+            android:label="@string/color_pipette"
+            android:name="ru.maximoff.apktool.ColorPipette"
+            android:launchMode="singleTask"
+            android:configChanges="smallestScreenSize|screenSize|uiMode|screenLayout|orientation|keyboardHidden|keyboard|locale"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
+        <service
+            android:name="ru.maximoff.apktool.util.sai.InstallService"
+            android:stopWithTask="true"/>
+        <service
+            android:label="@string/color_pipette"
+            android:icon="@drawable/ic_notification"
+            android:name="ru.maximoff.apktool.service.ColorPipetteTileService"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE"/>
+            </intent-filter>
+        </service>
+        <service
+            android:name="ru.maximoff.apktool.service.OngoingService"
+            android:stopWithTask="true">
+            <intent-filter>
+                <action android:name="ru.maximoff.apktool.OngoingService.ACTION_START"/>
+                <action android:name="ru.maximoff.apktool.OngoingService.ACTION_UPDATE"/>
+                <action android:name="ru.maximoff.apktool.OngoingService.STOP_SERVICE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </service>
+        <service
+            android:name="ru.maximoff.apktool.service.OngoingServiceBg"
+            android:stopWithTask="true">
+            <intent-filter>
+                <action android:name="ru.maximoff.apktool.OngoingServiceBg.ACTION_START"/>
+                <action android:name="ru.maximoff.apktool.OngoingServiceBg.ACTION_UPDATE"/>
+                <action android:name="ru.maximoff.apktool.OngoingServiceBg.STOP_SERVICE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </service>
+        <service
+            android:label="@string/app_name"
+            android:name="ru.maximoff.apktool.service.ActivityDetectingService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:stopWithTask="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service"/>
+        </service>
+        <service
+            android:label="@string/local_server"
+            android:name="ru.maximoff.apktool.service.LocalFileServerService"
+            android:exported="false"
+            android:stopWithTask="false"/>
+        <provider
+            android:name="ru.maximoff.apktool.FileProvider"
+            android:exported="false"
+            android:authorities="com.srizwan.apktool.fileprovider"
+            android:grantUriPermissions="true"/>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:exported="false"
+            android:authorities="com.srizwan.apktool.outprovider"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider"/>
+        </provider>
+        <provider
+            android:name="androidx.lifecycle.ProcessLifecycleOwnerInitializer"
+            android:exported="false"
+            android:multiprocess="true"
+            android:authorities="com.srizwan.apktool.lifecycle-process"/>
+    </application>
+</manifest>

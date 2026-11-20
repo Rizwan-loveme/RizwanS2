@@ -1,0 +1,40 @@
+// :apktool - Apktool M 2.4.0-260818 (package com.srizwan.apktool), jadx 1.5.1 decompile of the renamed APK
+// turned into a LIBRARY module (application -> library). Generated automatically, NOT compiled yet.
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'com.srizwan.apktool'
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk rootProject.ext.minSdk      // 21 (original Apktool M: 14)
+        // library: no applicationId / targetSdk (Apktool M's own targetSdk was 28; :app now targets 37)
+        vectorDrawables.useSupportLibrary = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    // same as :app / BlackBox: native libs must be extracted to disk
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+dependencies {
+    // TODO: the decompiled source already bundles androidx / support classes in src/main/java/androidx.
+    // After the first build, delete the bundled copy of anything you add here to avoid duplicate classes.
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+}

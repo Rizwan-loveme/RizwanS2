@@ -1,0 +1,20 @@
+:apktool  (Apktool M 2.4.0-260818, package com.srizwan.apktool)
+
+Layout
+  src/main/java      jadx Java source (package ru.maximoff.apktool.* + bundled libs; obfuscated names kept as p165d, p060c ...)
+  src/main/res       decoded resources        src/main/assets   original assets (incl. assets/android.dex)
+  src/main/jniLibs   native libs (arm64-v8a, armeabi-v7a, x86, x86_64)
+  src/main/resources non-class files (org/objectweb/asm/*.html, jadx/core/clsp/core.jcst)
+  prebuilt/          working, rebuilt APK (com.srizwan.apktool, debug-signed) - use this if the module does not compile
+
+Done automatically
+  - application -> library, namespace com.srizwan.apktool, no applicationId
+  - AndroidManifest: package / uses-sdk / launcher entries removed, <application> attributes removed
+    (the host :app owns them). Permissions and the 20+ activities / services are kept and merged into :app.
+  - platform stubs removed (java.*, javax.*, android.*), they cannot be compiled in a module
+
+Still to do (not done, not compiled)
+  1. app/build.gradle.kts: implementation(project(":apktool"))   (line is in the file as a comment)
+  2. Call ru.maximoff.apktool.ApktoolApplication logic from your own Application (it was the original app class).
+  3. Build, fix compile errors from jadx (6 methods failed to decompile; expect more, e.g. "case R.id." in library).
+  4. Start: startActivity(Intent().setClassName(packageName, "ru.maximoff.apktool.SplashActivity"))

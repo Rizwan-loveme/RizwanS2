@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="smali_help_names">
+        <item>レジスター</item>
+        <item>リテラル値</item>
+        <item>プリミティブデータ型</item>
+    </array>
+    <array name="smali_help_values">
+        <item>vA は、値の範囲が v0 ～ v15 の 4 ビット レジスタです。\nvAA は、値の範囲が v0 ～ v255 の 8 ビット レジスタです。\nvAAAA は、値の範囲が v0 ～ v65535 の 16 ビット レジスタです。</item>
+        <item>0xF、0xFFなどが使用されます。リテラル値を表すために。レジスタと同様に、数値 F は値の範囲を表すために使用されます。次に例を示します。\n0xF値の範囲は[-0x8, 0x7]で表されます。\n0xFFの値の範囲は[-0x80, 0x7F]で表されます</item>
+        <item>V - ボイド、Z - ブール値、B - バイト\nC - char、S - short、I - int\nJ - ロング、F - フロート、D - ダブル\nvoid: 戻り値の型にのみ使用できます。\nブール値: true または false の値を格納します。\nbyte: -128 ～ 127 の整数を格納し、1 バイトを占有します\nshort: -32768 ～ 32767 の整数を格納し、2 バイトを使用します。\nint: -2147483648 ～ 2147483647 の整数を格納し、4 バイトを占有します\nlong: -9223372036854775808 から 9223372036854775807 までの整数を格納し、8 バイトを占有します\ndouble: ±4.9*10³²⁴ ～ ±1.7976931348623157*10³⁰⁸ の浮動小数点数を格納し、8 バイトを占有します。ドットは、小数リテラルの小数点区切り文字として使用されます。\nfloat: -3.4*103⁸ から 3.4*103⁸ までの浮動小数点数を格納し、4 バイトを占有します。\nchar: UTF-16 エンコードで 1 つの文字を格納し、2 バイトを占有するため、格納される値の範囲は 0 ～ 65535 です。</item>
+        <item>アクションはありません。</item>
+        <item>レジスタ vB の値をレジスタ vA に移動します。</item>
+        <item>vBBBB レジスタの値を vAA レジスタに移動します。</item>
+        <item>vBBBB レジスタの値を vAAAA レジスタに移動します。</item>
+        <item>レジスタ ペア (vB、vB+1) のlong/double 値をレジスタ ペア vA、vA+1 に移動します。</item>
+        <item>レジスタ ペア (vBBBB、vBBBB+1) の long/double 値をレジスタ ペア vAA、vAA+1 に移動します。</item>
+        <item>レジスタ ペア (vBBBB、vBBBB+1) の long/double 値をレジスタ ペア vAAAA、vAAAA+1 に移動します。</item>
+        <item>オブジェクト参照を vB レジスタから vA レジスタに移動します。</item>
+        <item>オブジェクト参照を vBBBB レジスタから vAA レジスタに移動します。</item>
+        <item>オブジェクト参照を vBBBB レジスタから vAAAA レジスタに移動します。</item>
+        <item>以前に呼び出されたメソッドの戻り値を vAA レジスタに移動します。</item>
+        <item>以前に呼び出したメソッドによって返されたlong/double値をレジスタペアvAA、vAA+1に移動します。</item>
+        <item>以前に呼び出したメソッドによって返されたオブジェクト参照を vAA レジスタに移動します。</item>
+        <item>メソッド呼び出し中 (実行中) に発行された除外オブジェクトへの参照を vAA レジスタに移動します。</item>
+        <item>戻り値なしでリターンします。</item>
+        <item>vAA レジスタから値を返すことによって戻ります。</item>
+        <item>double/long 値をレジスタ vAA、vAA+1 のペアに返すことによって戻ります。</item>
+        <item>vAA レジスタからオブジェクト参照の値を返すことによって戻ります。</item>
+        <item>4 ビット定数を vA レジスタに配置します。</item>
+        <item>16 ビット定数を vAA レジスタに配置します。</item>
+        <item>整数定数を vAA レジスタに配置します。</item>
+        <item>16 ビット定数を vAA レジスタの上位ビットに配置します。 float (浮動小数点) 値を初期化するために使用されます。</item>
+        <item>16 ビットの整数定数をレジスタ ペア vAA、vAA+1 に配置し、整数定数を長整数定数に変換します。</item>
+        <item>32 ビットの整数定数をレジスタ ペア vAA、vAA+1 に配置し、整数定数を長整数定数に変換します。</item>
+        <item>64 ビット定数をレジスタ ペア vAA、vAA+1 に配置します。</item>
+        <item>16 ビット定数をレジスタ ペア vAA、vAA+1 の上位 16 ビットに配置します。 double (浮動小数点) 値を初期化するために使用されます。</item>
+        <item>指定された文字列への参照を vAA レジスタに配置します。</item>
+        <item>指定された文字列への参照を vAA レジスタに配置します。</item>
+        <item>string_id で識別される文字列定数 (string) への参照を vAA レジスタに配置します。</item>
+        <item>vAA レジスタによって参照されるオブジェクト モニターを取得します。</item>
+        <item>vAA レジスタによって参照されるオブジェクト モニターを解放します。</item>
+        <item>vAA レジスタに含まれるオブジェクト参照を type_id で識別されるクラスにキャストできるかどうかをチェックします。実行できない場合は ClassCastException をスローし、実行できない場合は実行を続行します。</item>
+        <item>vB レジスタの内容が type_id で識別されるクラスのインスタンスであるかどうかを確認します。レジスタ vA が存在する場合は非ゼロ、存在しない場合は 0 に設定します。\nvA = vB インスタンスのタイプ ? 10</item>
+        <item>vB レジスタから配列要素の数を決定し、その値を vA レジスタに配置します。\nvA = vB.長さ</item>
+        <item>オブジェクト タイプのインスタンスを作成し、作成されたインスタンスへの参照を vAA レジスタに配置します。</item>
+        <item>レジスタ vB 要素のサイズで type_id 変数の新しい配列を作成し、その配列への参照をレジスタ vA に配置します。</item>
+        <item>type_id 型の新しいデータ配列を作成し、パラメーターを入力します (つまり、long/double 配列は使用できませんが、参照型は許可されます)。新しく作成された配列への参照は、このステートメントの直後に move-result-object ステートメントを使用して取得できます (使用する場合)。</item>
+        <item>type_id 型の新しいデータ配列を作成し、パラメーターの範囲を入力します (つまり、long/double 配列は使用できませんが、参照型は許容されます)。新しく作成された配列への参照は、このステートメントの直後に move-result-object ステートメントを使用して取得できます (使用する場合)。</item>
+        <item>vAA レジスタで参照される配列に静的データを埋めます。データの位置は、現在の命令の位置とオフセットの合計です。</item>
+        <item>例外オブジェクトをスローします。 vAA レジスタ内の例外オブジェクトへの参照。</item>
+        <item>無条件に短い (整数) 8 ビット オフセットにジャンプします。</item>
+        <item>16 ビット オフセットへの無条件ジャンプ。</item>
+        <item>32 ビット オフセットへの無条件ジャンプ。</item>
+        <item>制御定数が互いに近い (連続している) 場合に Switch 演算子を実装します。この命令はインデックス テーブルを使用します。特定の場合の命令オフセットは、vAA インデックスによって決定されます。 vAA インデックスがテーブルを超える場合、実行は次のステートメントに続きます (デフォルト)。</item>
+        <item>スパース テーブルの場合に Switch 演算子を実装します。この命令では、各定数のオフセットを指定するテーブルを使用します。テーブル内に一致するものが見つからない場合は、次のステートメントが実行されます (デフォルトの場合)。</item>
+        <item>vBB と vCC の float (浮動小数点) 値を比較し、整数値を vAA レジスタに配置します。\nvAA = vBB &lt; vCC ?はい: 1、いいえ: -1、等しい: 0</item>
+        <item>vBB と vCC の float (浮動小数点) 値を比較し、整数値を vAA レジスタに配置します。\nvAA = vBB &lt; vCC ?はい: 1、いいえ: -1、等しい: 0</item>
+        <item>vBB と vCC の double (浮動小数点) 値を比較し、整数値を vAA レジスタに配置します。\nvAA = (vBB, vBB+1) &lt; (vCC, vCC+1) ? y\nはい: 1、いいえ: -1、等しい: 0</item>
+        <item>vBB と vCC の double (浮動小数点) 値を比較し、整数値を vAA レジスタに配置します。\nvAA = (vBB, vBB+1) &gt; (vCC, vCC+1) ?はい: 1、いいえ: -1、等しい: 0</item>
+        <item>vBB と vCC の Long (整数) 値を比較し、整数 (整数) 値を vAA レジスターに配置します。\nvAA = (vBB, vBB+1) &gt; (vCC, vCC+1) ?はい: 1、いいえ: -1、等しい: 0</item>
+        <item>vA == vB の場合、指定されたラベルにジャンプします。 vA と vB には整数値が含まれます。\n(eq は等しいの略です)</item>
+        <item>vA != vB の場合、指定されたラベルにジャンプします。 vA と vB には整数値が含まれます。\n(ne は Not Equals の略です)</item>
+        <item>vA &lt; vB の場合、指定されたラベルにジャンプします。 vA と vB には整数値が含まれます。\n(Less Than の略です)</item>
+        <item>vA &lt;= vB の場合、指定されたラベルにジャンプします。 vA と vB には整数値が含まれます。\n(le は Less than or Equal/以下の略語です)</item>
+        <item>vA &gt; vB の場合、指定されたラベルにジャンプします。 vA と vB には整数値が含まれます。\n(gt は Greater Than/More Than の略です)</item>
+        <item>vA &gt;= vB の場合、指定されたラベルにジャンプします。 vA と vB には整数値が含まれます。\n(ge は「以上」または「等しい」の略です)</item>
+        <item>vAA == 0 の場合、指定されたラベルにジャンプします。vAA には整数値が含まれます。\n(eqz はゼロに等しいの略です)</item>
+        <item>vAA != 0 の場合、指定されたラベルにジャンプします。vAA には整数値が含まれます。\n(nez は「ゼロに等しくない」の略です)</item>
+        <item>vAA &lt; 0 の場合、指定されたラベルにジャンプします。vAA には整数値が含まれます。\n(ltz は Less Than Zero の略です)</item>
+        <item>vAA &lt;= 0 の場合、指定されたラベルにジャンプします。vAA には整数値が含まれます。\n(lez は Less than or Equal to Zero/Less orequal to Zero の略称です)</item>
+        <item>vAA &gt; 0 の場合、指定されたラベルにジャンプします。vAA には整数値が含まれます。\n(gtz は Greater Than Zero の略です)</item>
+        <item>vAA &gt;= 0 の場合、指定されたラベルにジャンプします。vAA には整数値が含まれます。\n(gez は、Greater than or Equal to Zero の略語です)</item>
+        <item>vBB で参照される配列から vCC に含まれるインデックスの整数値を取得し、それを vAA レジスタに置きます。\nvAA = vBB[vCC]</item>
+        <item>vCC に含まれるインデックスで、vBB で参照される配列から double/long 値を取得し、それをレジスタ ペア vAA、vAA+1 に配置します。\n(vAA、vAA+1) = vBB[vCC]</item>
+        <item>vCC に含まれるインデックスで、vBB で参照される配列からオブジェクトへの参照を受け取り、それを vAA レジスタに置きます。\nvAA = vBB[vCC]</item>
+        <item>vCC に含まれるインデックスで、vBB で参照される配列からブール値を取得し、それを vAA レジスタに置きます。\nvAA = vBB[vCC]</item>
+        <item>vCC に含まれるインデックスで、vBB で参照される配列からバイト (整数) 値を取得し、それを vAA レジスタに置きます。\nvAA = vBB[vCC]</item>
+        <item>vCC に含まれるインデックスで、vBB で参照される配列から char 値を取得し、それを vAA レジスタに置きます。\nvAA = vBB[vCC]</item>
+        <item>vCC に含まれるインデックスで、vBB で参照される配列から short (整数) 値を取得し、それを vAA レジスタに置きます。\nvAA = vBB[vCC]</item>
+        <item>vAA からの整数値を、vCC レジスタを含む要素とともに vBB で参照される配列に配置します。\nvBB[vCC] = vAA</item>
+        <item>レジスタ ペア vAA、vAA+1 の double/long 値を、vCC レジスタを含む要素とともに vBB で参照される配列に配置します。\nvBB[vCC] = (vAA, vAA+1)</item>
+        <item>vCC レジスタを持つ要素を使用して、vAA からのオブジェクトへの参照を、vBB で参照される配列に配置します。\nvBB[vCC] = vAA</item>
+        <item>vAA からのブール値を、vCC レジスタを含む要素を持つ vBB によって参照される配列に配置します。\nvBB[vCC] = vAA</item>
+        <item>vAA からのバイト (整数) 値を、レジスタ vCC を含む要素を持つ vBB で参照される配列に配置します。\nvBB[vCC] = vAA</item>
+        <item>vAA からの char (文字) 値を、レジスタ vCC を持つ要素によって vBB で参照される配列に配置します。\nvBB[vCC] = vAA</item>
+        <item>vAA からの short (整数) 値を、vCC レジスタを含む要素を持つ vBB で参照される配列に配置します。\nvBB[vCC] = vAA</item>
+        <item>インスタンスフィールドから値を読み取り、それを vA レジスタに置きます。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvA = vB.フィールド</item>
+        <item>インスタンス フィールドから double/long 値を読み取り、それをレジスタのペア (vA、vA+1) に配置します。このフィールドを含むクラスへの参照は、vB レジスタにあります。\n(vA, vA+1) = vB.フィールド</item>
+        <item>インスタンス フィールドからオブジェクト参照を読み取り、vA レジスタに配置します。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvA = vB.フィールド</item>
+        <item>インスタンスフィールドからブール値を読み取り、それを vA レジスタに置きます。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvA = vB.フィールド</item>
+        <item>インスタンス フィールドからバイト (整数) 値を読み取り、それを vA レジスタに置きます。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvA = vB.フィールド</item>
+        <item>インスタンスフィールドから char 値を読み取り、それを vA レジスタに置きます。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvA = vB.フィールド</item>
+        <item>インスタンス フィールドから short (整数) 値を読み取り、それを vA レジスタに置きます。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvA = vB.フィールド</item>
+        <item>vA レジスタの値をインスタンス フィールドに配置します。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvB.フィールド = vA</item>
+        <item>レジスタ ペア (vA、vA+1) の double/long 値をインスタンス フィールドに配置します。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvB.フィールド = (vA, vA+1)</item>
+        <item>vA レジスタからのオブジェクトへの参照をインスタンス フィールドに配置します。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvB.フィールド = vA</item>
+        <item>vA レジスタのブール値をインスタンス フィールドに配置します。このフィールドを含むクラスへの参照は、vB レジスタにあります。\nvB.フィールド = vA</item>
+        <item>レジスタ vB によって参照されるインスタンス内の指定されたブール フィールドのバイト (整数) 値をレジスタ vA の値と等しく設定します。\nvB.フィールド = vA</item>
+        <item>レジスタ vB によって参照されるインスタンス内の指定されたブール フィールドの char (文字) 値を、レジスタ vA の値と等しくなるように設定します。\nvB.フィールド = vA</item>
+        <item>レジスタ vB によって参照されるインスタンス内の指定されたブール フィールドの short (整数) 値を、レジスタ vA の値と等しくなるように設定します。\nvB.フィールド = vA</item>
+        <item>静的フィールドから値を読み取り、それを vAA レジスタに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>静的フィールドから double/long 値を読み取り、それをレジスター vAA、vAA+1 のペアに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>静的フィールドからオブジェクト参照を読み取り、それを vAA レジスタに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>静的フィールドからブール値を読み取り、それを vAA レジスタに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>静的フィールドからバイト (整数) 値を読み取り、それを vAA レジスタに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>静的フィールドから char 値を読み取り、それを vAA レジスタに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>静的フィールドから short (整数) 値を読み取り、それを vAA レジスタに置きます。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>vAA レジスタの値をフィールド (静的フィールド) に配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>レジスタ vAA、vAA+1 のペアから double/long 値をフィールド (静的フィールド) に配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>オブジェクトへの参照を vAA レジスタからフィールド (静的フィールド) に配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>vAA レジスタのブール値をフィールド (静的フィールド) に配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>vAA レジスタのバイト (整数) 値をフィールド (静的フィールド) に配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>vAA レジスタからの char 値を静的フィールドに配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>vAA レジスタからの short (整数) 値を静的フィールドに配置します。このフィールドを含むクラスへの参照を含むレジスタは使用されません。</item>
+        <item>パラメータを指定して仮想メソッドを呼び出します (実行します)。パラメータは中括弧で囲まれています。最初のパラメータ (レジスタ v2) には、呼び出されるメソッドを含むクラスへの参照が含まれ、2 番目のパラメータ (レジスタ v3 の内容) は、呼び出されるメソッドに渡されます。</item>
+        <item>パラメータを使用して仮想メソッドを親クラスから直接呼び出します (実行します)。</item>
+        <item>仮想メソッドの権限を持たずにパラメータを指定してメソッドを呼び出します (実行します)。</item>
+        <item>パラメータを指定して静的メソッドを呼び出します (実行します)。パラメータは中括弧で囲まれています。パラメータ (レジスタ v3 の内容) は、呼び出されたメソッドに渡されます。呼び出されるメソッドを含むクラスは中括弧の後に示されます。</item>
+        <item>パラメータを指定してインターフェイス メソッドを呼び出します (実行します)。</item>
+        <item>パラメータを使用して仮想メソッドを呼び出し (実行) ますが、パラメータは番号付きのレジスタに順番に含まれている必要があります。</item>
+        <item>パラメータを使用して仮想メソッドを親クラスから直接呼び出し (実行) ますが、パラメータは連続番号のレジスタに含まれている必要があります。</item>
+        <item>仮想メソッド権限を持たないパラメーターを使用してメソッドを呼び出し (実行) ますが、パラメーターは連番のレジスターに含まれている必要があります。</item>
+        <item>パラメーターを使用して静的メソッドを呼び出し (実行) ますが、パラメーターは連続した番号を持つレジスターに含まれている必要があります。</item>
+        <item>パラメーターを使用してインターフェイス メソッドを呼び出し (実行) ますが、パラメーターは連続番号の付いたレジスターに含まれている必要があります。</item>
+        <item>整数型の値に対して vA = -vB を計算します。</item>
+        <item>整数値の vA = ~vB を計算します。\nvA = ~vB</item>
+        <item>long 型 (整数) の値に対して (vA, vA+1) = -(vB, vB+1) を計算します。</item>
+        <item>long 型 (整数) の値に対して (vA, vA+1) = ~(vB, vB+1) を計算します。</item>
+        <item>float 値の vA = -vB を計算します。</item>
+        <item>double (浮動小数点) 値の (vA, vA+1) = -(vB, vB+1) を計算します。</item>
+        <item>整数を vB から Long に変換し、レジスタ ペア vA、vA+1 に格納します。\n(vA, vA+1) = (ロング) vB</item>
+        <item>整数を vB から浮動小数点に変換し、vA レジスタに格納します。\nvA = (浮動小数点) vB</item>
+        <item>整数を vB から double (浮動小数点) に変換し、レジスタ ペア vA、vA+1 に格納します。\n(vA, vA+1) = (倍精度) vB</item>
+        <item>vB、vB+1 の Long (整数) 値を整数 (integer) に変換し、vA レジスタに格納します。\nvA = (int) (vB, vB+1)</item>
+        <item>Long (整数) 値を vB、vB+1 から float (浮動小数点) に変換し、vA レジスタに格納します。\nvA = (浮動小数点) (vB、vB+1)</item>
+        <item>Long (整数) 値を vB、vB+1 から double (浮動小数点) に変換し、レジスタ ペア vA、vA+1 に格納します。\n(vA, vA+1) = (倍精度) (vB, vB+1)</item>
+        <item>vB から float (浮動小数点) 値を整数 (整数) 値に変換し、vA レジスタに格納します。\nvA = (int)vB</item>
+        <item>float (浮動小数点) 値を vB から long (整数) 値に変換し、レジスタ ペア vA、vA+1 に格納します。\n(vA, vA+1) = (ロング) vB</item>
+        <item>float (浮動小数点) 値を vB から double (浮動小数点) 値に変換し、レジスタ ペア vA、vA+1 に格納します。\n(vA, vA+1) = (倍精度) vB</item>
+        <item>vB、vB+1 の double (浮動小数点) 値を整数 (整数) 値に変換し、vA レジスタに格納します。\nvA = (int) (vB, vB+1)</item>
+        <item>double (浮動小数点) 値を vB、vB+1 から long (整数) 値に変換し、レジスタ ペア vA、vA+1 に格納します。\n(vA, vA+1) = (ロング) (vB, vB+1)</item>
+        <item>vB、vB+1 の double (浮動小数点) 値を float (浮動小数点) 値に変換し、vA レジスタに格納します。\nvA = (浮動小数点) (vB、vB+1)</item>
+        <item>整数値を vB からバイト値に変換し、vA レジスタに格納します。\nvA = (バイト) vB</item>
+        <item>整数値を vB から char 値に変換し、vA レジスタに格納します。\nvA = (文字)vB</item>
+        <item>整数値を vB から short 値に変換し、vA レジスタに格納します。\nvA = (短い) vB</item>
+        <item>vBB + vCC を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB + vCC</item>
+        <item>vBB - vCC を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB - vCC</item>
+        <item>vBB * vCC を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB * vCC</item>
+        <item>vBB / vCC を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB / vCC</item>
+        <item>vBB % vCC を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB % vCC</item>
+        <item>vBB と vCC (論理積) を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB &amp; vCC</item>
+        <item>vBB を計算します | vCC (論理和) を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB | vCC</item>
+        <item>vBB ^ vCC (排他的論理和) を計算し、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB ^ vCC</item>
+        <item>vBB を vCC で指定されたビット数だけ左にシフトし、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB &lt;&lt; vCC</item>
+        <item>vBB を vCC で指定されたビット数だけ右にシフトし、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB &gt;&gt; vCC</item>
+        <item>vBB を符号を保持せずに vCC で指定されたビット数だけ右にシフトし、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB &gt;&gt;&gt; vCC</item>
+        <item>(vBB, vBB+1) + (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に保存します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) + (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) - (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) - (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) * (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に保存します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) * (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) / (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) / (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) % (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) % (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) &amp; (vCC, vCC+1) (論理積) を計算し、結果をレジスタ ペア vAA、vAA+1 に保存します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) &amp; (vCC、vCC+1)</item>
+        <item>計算 (vBB、vBB+1) | (vCC、vCC+1) (論理和) を計算し、結果をレジスタ vAA、vAA+1 のペアに格納します。すべての値はlo​​ng (整数) です。\n(vAA, vAA+1) = (vBB, vBB+1) | (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) ^ (vCC, vCC+1) (排他的 AND) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA, vAA+1) = (vBB, vBB+1) ^ (vCC, vCC+1)</item>
+        <item>vBB、vBB+1 を vCC で指定されたビット数だけ左にシフトし、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) &lt;&lt; vCC</item>
+        <item>vBB、vBB+1 を vCC で指定されたビット数だけ右シフトし、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) &gt;&gt; vCC</item>
+        <item>vBB、vBB+1 を vCC で指定されたビット数だけ符号を保たずに右にシフトし、結果を 1 組のレジスタ vAA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vAA、vAA+1) = (vBB、vBB+1) &gt;&gt;&gt; vCC</item>
+        <item>vBB + vCC を計算し、結果を vAA レジスタに保存します。すべての値は浮動小数点数です。\nvAA = vBB + vCC</item>
+        <item>vBB - vCC を計算し、結果を vAA レジスタに保存します。すべての値は浮動小数点数です。\nvAA = vBB - vCC</item>
+        <item>vBB * vCC を計算し、結果を vAA レジスタに保存します。すべての値は浮動小数点数です。\nvAA = vBB * vCC</item>
+        <item>vBB / vCC を計算し、結果を vAA レジスタに保存します。すべての値は浮動小数点数です。\nvAA = vBB / vCC</item>
+        <item>vBB % vCC を計算し、結果を vAA レジスタに保存します。すべての値は浮動小数点数です。\nvAA = vBB % vCC</item>
+        <item>(vBB, vBB+1) + (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に保存します。すべての値は double (浮動小数点) です。\n(vAA、vAA+1) = (vBB、vBB+1) + (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) - (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値は double (浮動小数点) です。\n(vAA、vAA+1) = (vBB、vBB+1) - (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) * (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に保存します。すべての値は double (浮動小数点) です。\n(vAA、vAA+1) = (vBB、vBB+1) * (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) / (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値は double (浮動小数点) です。\n(vAA、vAA+1) = (vBB、vBB+1) / (vCC、vCC+1)</item>
+        <item>(vBB, vBB+1) % (vCC, vCC+1) を計算し、結果をレジスタ ペア vAA、vAA+1 に格納します。すべての値は double (浮動小数点) です。\n(vAA、vAA+1) = (vBB、vBB+1) % (vCC、vCC+1)</item>
+        <item>vA + vB を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vA + vB</item>
+        <item>vA - vB を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vA - vB</item>
+        <item>vA * vB を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vA * vB</item>
+        <item>vA / vB を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vA / vB</item>
+        <item>vA % vB を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vA % vB</item>
+        <item>vA と vB (論理積) を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vA &amp; vB</item>
+        <item>vA を計算します | vB (論理和) を計算し、結果を vA レジスタに格納します。すべての値は整数です。\nvA = vA | vB</item>
+        <item>vA ^ vB (排他的論理和) を計算し、結果を vA レジスタに格納します。すべての値は整数です。\nvA = vA ^ vB</item>
+        <item>vA を vB で指定されたビット数だけ左にシフトし、結果を vA レジスタに格納します。すべての値は整数です。\nvA = vA &lt;&lt; vB</item>
+        <item>vA を vB で指定されたビット数だけ右にシフトし、結果を vA レジスタに格納します。すべての値は整数です。\nvA = vA &gt;&gt; vB</item>
+        <item>vA を符号を保持せずに vB で指定されたビット数だけ右にシフトし、結果を vA レジスタに格納します。すべての値は整数です。\nvA = vA &gt;&gt;&gt; vB</item>
+        <item>(vA、vA+1) + (vB、vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA、vA+1) = (vA、vA+1) + (vB、vB+1)</item>
+        <item>(vA、vA+1) - (vB、vB+1) を計算し、結果をレジスタ vA、vA+1 のペアに格納します。すべての値はlo​​ng (整数) です。\n(vA、vA+1) = (vA、vA+1) - (vB、vB+1)</item>
+        <item>(vA、vA+1) * (vB、vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA、vA+1) = (vA、vA+1) * (vB、vB+1)</item>
+        <item>(vA、vA+1) / (vB、vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA、vA+1) = (vA、vA+1) / (vB、vB+1)</item>
+        <item>(vA, vA+1) % (vB, vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) % (vB, vB+1)</item>
+        <item>(vA、vA+1) &amp; (vB、vB+1) (論理積) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) &amp; (vB, vB+1)</item>
+        <item>(vA、vA+1) を計算します。 (vB、vB+1) (論理和) を計算し、結果をレジスタ vA、vA+1 のペアに格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) | (vB、vB+1)</item>
+        <item>(vA、vA+1) &amp; (vB、vB+1) (排他的論理和) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) ^ (vB, vB+1)</item>
+        <item>vA、vA+1をvBで指定されたビット数だけ左シフトし、結果をレジスタペアvA、vA+1に格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) &lt;&lt; vB</item>
+        <item>vA、vA+1をvBで指定されたビット数だけ右シフトし、結果をレジスタペアvA、vA+1に格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) &gt;&gt; vB</item>
+        <item>vA、vA+1 を、符号を保持せずに vB で指定された桁数だけ右にシフトし、結果を 1 対のレジスタ vA、vA+1 に格納します。すべての値はlo​​ng (整数) です。\n(vA, vA+1) = (vA, vA+1) &gt;&gt;&gt; vB</item>
+        <item>vA + vB を計算し、結果を vA レジスタに保存します。すべての値は浮動小数点数です。\nvA = vA + vB</item>
+        <item>vA - vB を計算し、結果を vA レジスタに保存します。すべての値は浮動小数点数です。\nvA = vA - vB</item>
+        <item>vA * vB を計算し、結果を vA レジスタに保存します。すべての値は浮動小数点数です。\nvA = vA * vB</item>
+        <item>vA / vB を計算し、結果を vA レジスタに保存します。すべての値は浮動小数点数です。\nvA = vA / vB</item>
+        <item>vA % vB を計算し、結果を vA レジスタに保存します。すべての値は浮動小数点数です。\nvA = vA % vB</item>
+        <item>(vA、vA+1) + (vB、vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値は double (浮動小数点) です。\n(vA、vA+1) = (vA、vA+1) + (vB、vB+1)</item>
+        <item>(vA、vA+1) - (vB、vB+1) を計算し、結果をレジスタ vA、vA+1 のペアに格納します。すべての値は double (浮動小数点) です。\n(vA、vA+1) = (vA、vA+1) - (vB、vB+1)</item>
+        <item>(vA、vA+1) * (vB、vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値は double (浮動小数点) です。\n(vA、vA+1) = (vA、vA+1) * (vB、vB+1)</item>
+        <item>(vA、vA+1) / (vB、vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値は double (浮動小数点) です。\n(vA、vA+1) = (vA、vA+1) / (vB、vB+1)</item>
+        <item>(vA, vA+1) % (vB, vB+1) を計算し、結果をレジスタ ペア vA、vA+1 に格納します。すべての値は double (浮動小数点) です。\n(vA, vA+1) = (vA, vA+1) % (vB, vB+1)</item>
+        <item>vB + 0xFFFF を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vB + 0xFFFF</item>
+        <item>0xFFFF - vB を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = 0xFFFF - vB</item>
+        <item>vB * 0xFFFF を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vB * 0xFFFF</item>
+        <item>vB / 0xFFFF を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vB / 0xFFFF</item>
+        <item>vB % 0xFFFF を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vB % 0xFFFF</item>
+        <item>vB と 0xFFFF (論理積) を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vB &amp; 0xFFFF</item>
+        <item>vB を計算します | 0xFFFF (論理和) を計算し、結果を vA レジスタに保存します。すべての値は整数です。\nvA = vB | 0xFFFF</item>
+        <item>vB ^ 0xFFFF (排他的論理和) を計算し、結果を vA レジスタに格納します。すべての値は整数です。\nvA = vB ^ 0xFFFF</item>
+        <item>vBB + 0xFF を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB + 0xFF</item>
+        <item>0xFF - vBB を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = 0xFF - vBB</item>
+        <item>vBB * 0xFF を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB * 0xFF</item>
+        <item>vBB / 0xFF を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB / 0xFF</item>
+        <item>vBB % 0xFF を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB % 0xFF</item>
+        <item>vBB と 0xFF (論理 AND) を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB &amp; 0xFF</item>
+        <item>vBB を計算します | 0xFF (論理和) を計算し、結果を vAA レジスタに保存します。すべての値は整数です。\nvAA = vBB | 0xFF</item>
+        <item>vBB ^ 0xFF (排他的論理和) を計算し、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB ^ 0xFF</item>
+        <item>vBB を 0xFF で指定されたビット数だけ左にシフトし、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB &lt;&lt; 0xFF</item>
+        <item>vBB を 0xFF で指定されたビット数だけ右にシフトし、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB &gt;&gt; 0xFF</item>
+        <item>vBB を 0xFF で指定されたビット数だけ右に信号的にシフトし、結果を vAA レジスタに格納します。すべての値は整数です。\nvAA = vBB &gt;&gt;&gt; 0xFF</item>
+        <item>パラメーターを使用して多態性署名メソッドを呼び出します (実行します)。バージョン 038 以降の Dex ファイルに存在します。</item>
+        <item>パラメーターを使用して多態性署名メソッドを呼び出し (実行) ますが、パラメーターは連続番号の付いたレジスターに含まれている必要があります。バージョン 038 以降の Dex ファイルに存在します。</item>
+        <item>パラメーターを使用してサイトを呼び出すことを許可 (開始) します。バージョン 038 以降の Dex ファイルに存在します。</item>
+        <item>パラメータを使用したサイトの呼び出しを許可 (開始) しますが、パラメータは番号付きのレジスタに順番に含まれている必要があります。バージョン 038 以降の Dex ファイルに存在します。</item>
+        <item>vAA レジスタ内のメソッド ハンドルへの参照を配置します。バージョン 039 以降の Dex ファイルに存在します。</item>
+        <item>メソッド プロトタイプへの参照を vAA レジスタに配置します。バージョン 039 以降の Dex ファイルに存在します。</item>
+    </array>
+    <array name="years_or_days">
+        <item>年</item>
+        <item>日</item>
+    </array>
+    <array name="store_type">
+        <item>内蔵</item>
+        <item>カスタム</item>
+    </array>
+    <array name="jadx_sets">
+        <item>代替モード</item>
+        <item>難読化解除</item>
+        <item>Unicode エスケープ</item>
+        <item>一貫性のないコード表示</item>
+    </array>
+    <array name="copy_variants">
+        <item>名前変更</item>
+        <item>ファイル名のみ変更</item>
+        <item>置換</item>
+        <item>スキップ</item>
+    </array>
+    <array name="menu_pos">
+        <item>左</item>
+        <item>右</item>
+    </array>
+    <array name="checksum_names">
+        <item>全て大文字</item>
+        <item>コロン区切り</item>
+    </array>
+    <array name="refresh_res">
+        <item>新しいリソースを追加（ファイルのみ）</item>
+        <item>不足リソースを削除</item>
+    </array>
+    <array name="sort">
+        <item>名前</item>
+        <item>名前（逆順）</item>
+        <item>種類</item>
+        <item>種類（逆順）</item>
+        <item>サイズ</item>
+        <item>サイズ（逆順）</item>
+        <item>時間</item>
+        <item>時間（逆順）</item>
+    </array>
+    <array name="color_var">
+        <item>HEX 色</item>
+        <item>Smali コード</item>
+        <item>A,R,G,B</item>
+    </array>
+    <array name="format">
+        <item>@string/jks</item>
+        <item>@string/pkcs12</item>
+        <item>@string/bks</item>
+        <item>@string/pk8</item>
+    </array>
+    <array name="resDecodeMode">
+        <item>デコードしない</item>
+        <item>メインディレクトリにデコード</item>
+        <item>別ディレクトリにデコード</item>
+        <item>パッケージ結合（実験的）</item>
+    </array>
+    <array name="converter_items">
+        <item>テキスト &lt;-&gt; Base64</item>
+        <item>テキスト &lt;-&gt; Unicode</item>
+        <item>テキスト &lt;-&gt; URL エンコード</item>
+        <item>テキスト &lt;-&gt; MD5</item>
+        <item>テキスト &lt;-&gt; SHA-1</item>
+        <item>テキスト &lt;-&gt; SHA-224</item>
+        <item>テキスト &lt;-&gt; SHA-256</item>
+        <item>テキスト &lt;-&gt; SHA-384</item>
+        <item>テキスト &lt;-&gt; SHA-512</item>
+        <item>テキスト &lt;-&gt; 配列 (UTF-8)</item>
+        <item>テキスト &lt;-&gt; 配列 (UTF-16)</item>
+        <item>テキスト &lt;-&gt; 配列 (UTF-16LE)</item>
+        <item>テキスト &lt;-&gt; 配列 (UTF-16BE)</item>
+        <item>テキスト &lt;-&gt; 配列 (US-ASCII)</item>
+        <item>テキスト &lt;-&gt; 配列 (ISO-8859-1)</item>
+        <item>テキスト &lt;-&gt; 配列 (CP1251)</item>
+        <item>10進数 &lt;-&gt; 2進数</item>
+        <item>10進数 &lt;-&gt; 8進数</item>
+        <item>10進数 &lt;-&gt; 16進数</item>
+        <item>10進数 &lt;-&gt; 16進数 (0x0)</item>
+        <item>10進数 &lt;-&gt; 16進数 (0x00000000)</item>
+        <item>浮動小数点 &lt;-&gt; 2進数</item>
+        <item>浮動小数点 &lt;-&gt; 8進数</item>
+        <item>浮動小数点 &lt;-&gt; 16進数</item>
+        <item>浮動小数点 &lt;-&gt; 16進数 (0x0)</item>
+        <item>浮動小数点 &lt;-&gt; 16進数 (0x00000000)</item>
+        <item>色 &lt;-&gt; Smali</item>
+        <item>色 &lt;-&gt; 10進数</item>
+        <item>色 &lt;-&gt; A,R,G,B</item>
+        <item>日付 &lt;-&gt; ミリ秒</item>
+        <item>日付 &lt;-&gt; 16進数</item>
+    </array>
+    <array name="installLocation">
+        <item>設定しない</item>
+        <item>自動</item>
+        <item>内部のみ</item>
+        <item>外部優先</item>
+    </array>
+    <array name="xml_format_variants">
+        <item>デフォルト</item>
+        <item>Apktool</item>
+        <item>Android Studio</item>
+        <item>シンプルスタイル</item>
+    </array>
+    <array name="orientation_variants">
+        <item>デフォルト</item>
+        <item>横向き</item>
+        <item>縦向き</item>
+    </array>
+    <array name="auto_save_variants">
+        <item>オフ</item>
+        <item>15秒</item>
+        <item>30秒</item>
+        <item>1分</item>
+        <item>5分</item>
+    </array>
+    <array name="to_vector_values">
+        <item>変換した画像（低品質）</item>
+        <item>高品質画像（大きい）</item>
+        <item>SVG に変換</item>
+    </array>
+    <array name="backup_values">
+        <item>設定</item>
+        <item>ブックマーク</item>
+        <item>検索/置換履歴</item>
+        <item>辞書</item>
+    </array>
+    <array name="editor_themes">
+        <item>デフォルト</item>
+        <item>新テーマ</item>
+    </array>
+</resources>

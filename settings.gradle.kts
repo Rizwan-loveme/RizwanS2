@@ -24,3 +24,5 @@ include(":black-reflection")
 include(":compiler")
 // Winlator engine (run PC .exe from the File Manager / Start menu): see NOTICE-Winlator.md
 include(":winlator")
+// Apktool M (package com.srizwan.apktool) decompiled into a library module: see apktool/HOW_TO_USE.txt
+include(":apktool")

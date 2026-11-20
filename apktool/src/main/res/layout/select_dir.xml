@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <EditText
+        android:id="@+id/selectdirEditText1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:layout_weight="1"/>
+    <ImageButton
+        android:id="@+id/selectdirImageButton1"
+        android:background="@android:color/transparent"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginLeft="5dp"
+        android:src="@drawable/ic_folder"
+        android:scaleType="centerInside"
+        android:adjustViewBounds="true"/>
+</LinearLayout>
