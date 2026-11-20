@@ -31,6 +31,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+        // Needed by :youtube (NewPipeExtractor uses java.time / nio below minSdk 33)
+        isCoreLibraryDesugaringEnabled = true
     }
 
     // BlackBox needs the native libs extracted to disk (also android:extractNativeLibs in the manifest)
@@ -66,6 +68,8 @@ dependencies {
     implementation(project(":Bcore"))
     // Winlator engine (Wine + Box64 for PC software), added in v2.3.0 part 1
     implementation(project(":winlator"))
+    // Built-in YouTube app (package com.srizwan.YouTube)
+    implementation(project(":youtube"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")
@@ -74,4 +78,6 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     // Recycled lists for the Messages UI (smooth scrolling, no lag)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    // Desugaring for :youtube
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 }

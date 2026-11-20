@@ -1,0 +1,30 @@
+<resources>
+    <string name="yt_player_retry">Retry</string>
+    <string name="yt_player_error_generic">This video can\'t be played</string>
+    <string name="yt_player_error_no_stream">No playable stream was found for this video</string>
+    <string name="yt_player_error_network">Network problem. Check your connection and try again</string>
+    <string name="yt_player_speed_title">Playback speed</string>
+    <string name="yt_player_speed_normal">Normal</string>
+    <string name="yt_player_speed_button">Playback speed</string>
+    <string name="yt_player_quality_title">Quality</string>
+    <string name="yt_player_quality_button">Video quality</string>
+    <string name="yt_player_quality_auto">Auto</string>
+    <string name="yt_player_quality_auto_height">Auto (%1$dp)</string>
+    <string name="yt_player_quality_height">%1$dp</string>
+    <string name="yt_player_seek_back">-%1$ds</string>
+    <string name="yt_player_seek_forward">+%1$ds</string>
+    <string name="yt_player_gesture_volume">Volume %1$d%%</string>
+    <string name="yt_player_gesture_brightness">Brightness %1$d%%</string>
+    <string name="yt_player_background_button">Background playback</string>
+    <string name="yt_player_background_on">Background: on</string>
+    <string name="yt_player_background_off">Background: off</string>
+    <string name="yt_player_resume_hint">Continuing from %1$s</string>
+    <string name="yt_player_resume_restart">Start over</string>
+    <string name="yt_player_pip_button">Picture-in-picture</string>
+    <string name="yt_player_pip_chip">PiP</string>
+    <string name="yt_player_pip_unavailable">Picture-in-picture is turned off. Allow it in the app settings</string>
+    <string name="yt_player_pip_play">Play</string>
+    <string name="yt_player_pip_pause">Pause</string>
+    <string name="yt_player_pip_rewind">Back 10 seconds</string>
+    <string name="yt_player_pip_forward">Forward 10 seconds</string>
+</resources>

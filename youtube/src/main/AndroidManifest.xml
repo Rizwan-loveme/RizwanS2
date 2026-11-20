@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application>
+        <!-- Built-in YouTube app (opened from the Win11 Start menu) -->
+        <activity
+            android:name="com.srizwan.YouTube.YouTubeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTube"
+            android:label="YouTube"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:supportsPictureInPicture="true"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Video player of the built-in YouTube app (part 1 of the player plan).
+             Not exported: it is opened from inside Win11 with PlayerActivity.start().
+             Part 7: picture-in-picture (PiP chip, auto-enter when leaving while playing, play/pause and
+             +-10s buttons in the PiP window). configChanges below lets the window resize without a restart. -->
+        <activity
+            android:name="com.srizwan.YouTube.player.PlayerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTube"
+            android:label="YouTube"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode|layoutDirection"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true" />
+
+        <!-- Background playback (part 5): foreground MediaSessionService around the shared player.
+             Started with startForegroundService() from the visible player screen. -->
+        <service
+            android:name="com.srizwan.YouTube.player.PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

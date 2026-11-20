@@ -101,6 +101,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_CALC = "builtin.calculator"
         private const val BUILTIN_CLS_PARALLEL = "builtin.parallel"
         private const val BUILTIN_CLS_WINLATOR = "builtin.winlator"
+        private const val BUILTIN_CLS_YOUTUBE = "builtin.youtube"
+        /** Rounded screen with a hollow play triangle (even-odd fill): the built-in YouTube app. */
+        private const val YOUTUBE_PATH =
+            "M21.6,7.2c-0.2,-0.9 -0.9,-1.5 -1.8,-1.7C18.2,5 12,5 12,5s-6.2,0 -7.8,0.5c-0.9,0.2 -1.6,0.8 -1.8,1.7C2,8.8 2,12 2,12s0,3.2 0.4,4.8c0.2,0.9 0.9,1.5 1.8,1.7C5.8,19 12,19 12,19s6.2,0 7.8,-0.5c0.9,-0.2 1.6,-0.8 1.8,-1.7C22,15.2 22,12 22,12s0,-3.2 -0.4,-4.8z M10,15V9l5.2,3z"
         /** Wine glass (Wine = Windows programs): Winlator. Even-odd fill makes the hollow bowl. */
         private const val WINLATOR_PATH =
             "M6,2 H18 L17.3,8.6 C16.9,11.9 14.8,14.2 12.9,14.8 V19.2 H16.2 V21.2 H7.8 V19.2 H11.1 V14.8 C9.2,14.2 7.1,11.9 6.7,8.6 Z M8.2,4 L8.6,8.3 C8.9,10.2 10.2,11.9 12,12.4 C13.8,11.9 15.1,10.2 15.4,8.3 L15.8,4 Z"
@@ -227,6 +231,12 @@ class AppRepository(private val ctx: Context) {
             "Parallel", ctx.packageName, BUILTIN_CLS_PARALLEL,
             BuiltInIconDrawable(PARALLEL_PATH, Color.parseColor("#8C7BFF")),
             section = "parallel"
+        ),
+        // Built-in YouTube app (:youtube module, com.srizwan.YouTube.YouTubeActivity), vector icon only
+        AppEntry(
+            "YouTube", ctx.packageName, BUILTIN_CLS_YOUTUBE,
+            BuiltInIconDrawable(YOUTUBE_PATH, Color.parseColor("#FF3B30"), evenOdd = true),
+            section = "youtube"
         )
     ) + (
         // Winlator (PC software: .exe via Wine + Box64) exists only for 64-bit ARM phones.

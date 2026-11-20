@@ -1,0 +1,7 @@
+<resources>
+    <color name="yt_bg">#0F0F0F</color>
+    <color name="yt_surface">#212121</color>
+    <color name="yt_text">#FFFFFF</color>
+    <color name="yt_text_dim">#AAAAAA</color>
+    <color name="yt_red">#FF0000</color>
+</resources>

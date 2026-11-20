@@ -24,3 +24,5 @@ include(":black-reflection")
 include(":compiler")
 // Winlator engine (run PC .exe from the File Manager / Start menu): see NOTICE-Winlator.md
 include(":winlator")
+// Built-in YouTube app (native client: NewPipeExtractor + Media3), package com.srizwan.YouTube
+include(":youtube")

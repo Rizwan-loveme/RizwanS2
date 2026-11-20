@@ -676,6 +676,9 @@ class MainActivity : AppCompatActivity() {
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open CalculatorActivity", e) }
                 } else if (section == WinlatorLauncher.SECTION) {
                     WinlatorLauncher.open(this)
+                } else if (section == "youtube") {
+                    try { startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java)) }
+                    catch (e: Throwable) { AppLog.e(LOGT, "cannot open YouTubeActivity", e) }
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -800,7 +803,7 @@ class MainActivity : AppCompatActivity() {
         pendingSendTo?.let { pendingSendTo = null; handleSendTo(it) }
     }
 
-    /** rizwans2://open | files | browser | dialer | sms | winlator | start | quick  (anything else just opens the launcher). */
+    /** rizwans2://open | files | browser | dialer | sms | winlator | youtube | start | quick  (anything else just opens the launcher). */
     internal fun handleDeepLink(uri: Uri) {
         AppLog.i(LOGT, "deep link: $uri")
         if (!isUIInitialized || !::shell.isInitialized) { pendingDeepLink = uri; return }
@@ -815,6 +818,7 @@ class MainActivity : AppCompatActivity() {
                 "calculator", "calc" -> startActivity(Intent(this, CalculatorActivity::class.java))
                 "winlator" -> WinlatorLauncher.open(this)
                 "parallel" -> startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java))
+                "youtube" -> startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java))
                 else -> { // "open" and anything unknown
                     if (shell.isStartOpen()) shell.closeStart()
                     switchToSection("desktop")
