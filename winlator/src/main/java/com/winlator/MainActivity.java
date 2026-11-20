@@ -223,24 +223,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
 
-        switch (item.getItemId()) {
-            case R.id.menu_item_shortcuts:
-                preferences.edit().putBoolean("show_shortcuts_first", true).apply();
-                showFragment(new ShortcutsFragment());
-                break;
-            case R.id.menu_item_containers:
-                preferences.edit().putBoolean("show_shortcuts_first", false).apply();
-                showFragment(new ContainersFragment());
-                break;
-            case R.id.menu_item_input_controls:
-                showFragment(new InputControlsFragment(selectedProfileId));
-                break;
-            case R.id.menu_item_settings:
-                showFragment(new SettingsFragment());
-                break;
-            case R.id.menu_item_about:
-                (new AboutDialog(this)).show();
-                break;
+        int switchId1 = item.getItemId();
+        if (switchId1 == R.id.menu_item_shortcuts) {
+            preferences.edit().putBoolean("show_shortcuts_first", true).apply();
+            showFragment(new ShortcutsFragment());
+        }
+        else if (switchId1 == R.id.menu_item_containers) {
+            preferences.edit().putBoolean("show_shortcuts_first", false).apply();
+            showFragment(new ContainersFragment());
+        }
+        else if (switchId1 == R.id.menu_item_input_controls) {
+            showFragment(new InputControlsFragment(selectedProfileId));
+        }
+        else if (switchId1 == R.id.menu_item_settings) {
+            showFragment(new SettingsFragment());
+        }
+        else if (switchId1 == R.id.menu_item_about) {
+            (new AboutDialog(this)).show();
         }
         return true;
     }
