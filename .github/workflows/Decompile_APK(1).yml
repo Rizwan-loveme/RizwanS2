@@ -1,0 +1,592 @@
+name: Decompile APK (jadx -> Gradle project)
+
+# Downloads an APK (or uses one stored in the repo), decompiles it with jadx and uploads:
+#   1) decompile-report   : small txt report (package, SDK, native libs, obfuscation guess, error count)
+#   2) decompiled-project : the jadx Gradle project (Java source + decoded res + manifest)
+#                           + a ready-to-drop LIBRARY module copy (application -> library)
+#      The library copy is PREPARED automatically (input prepare_library): jadx R.java removed,
+#      third-party sources (androidx, kotlin, material, okhttp ...) replaced by Gradle dependencies,
+#      switch(R.id) converted to if/else, manifest cleaned, build.gradle.kts written.
+#      Details are in prepare-report.txt (inside decompile-report).
+#
+# How to give the APK (either one):
+#   * apk_url  : direct download link (GitHub Release asset, any direct https link).
+#                Google Drive / Telegram links usually do NOT work with curl - use a GitHub Release.
+#   * apk_path : path of an APK committed in this repo (default apk/app.apk). GitHub blocks single
+#                files over 100 MB, so a 92 MB APK still fits, but a Release link is cleaner.
+#
+# Nothing is committed or pushed. Results are only workflow artifacts (kept 14 days).
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Direct download URL of the APK (leave empty to use apk_path from the repo)'
+        required: false
+        default: ''
+        type: string
+      apk_path:
+        description: 'APK path inside the repo (used when apk_url is empty)'
+        required: false
+        default: 'apk/app.apk'
+        type: string
+      deobf:
+        description: 'Rename obfuscated names (a, b, c ...) to readable ones (--deobf)'
+        required: false
+        default: true
+        type: boolean
+      prepare_library:
+        description: 'Prepare the library module (prune third-party sources, fix switch(R.id), clean manifest)'
+        required: false
+        default: true
+        type: boolean
+      library_name:
+        description: 'Folder name of the library module copy (e.g. oldapp)'
+        required: false
+        default: 'oldapp'
+        type: string
+
+concurrency:
+  group: decompile-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  decompile:
+    name: Download & Decompile
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Get the APK
+        env:
+          APK_URL: ${{ inputs.apk_url }}
+          APK_PATH: ${{ inputs.apk_path }}
+        run: |
+          set -e
+          mkdir -p work
+          if [ -n "$APK_URL" ]; then
+            echo "== Downloading APK =="
+            curl -fL --retry 3 --retry-delay 5 -o work/input.apk "$APK_URL"
+          else
+            echo "== Using APK from the repo: $APK_PATH =="
+            if [ ! -f "$APK_PATH" ]; then
+              echo "::error::'$APK_PATH' not found in the repo. Give apk_url or commit the APK."
+              exit 1
+            fi
+            cp "$APK_PATH" work/input.apk
+          fi
+          ls -lh work/input.apk
+          # an APK is a zip file: refuse HTML pages (e.g. a Drive confirmation page)
+          if ! unzip -tq work/input.apk > /dev/null 2>&1; then
+            echo "::error::The downloaded file is not a valid APK/zip (a web page instead of the file?). Use a direct link or a GitHub Release asset."
+            head -c 300 work/input.apk | strings | head -n 5 || true
+            exit 1
+          fi
+          unzip -l work/input.apk | grep -q "AndroidManifest.xml" || { echo "::error::No AndroidManifest.xml inside - not an APK (an .aab/.xapk? extract the base APK first)"; exit 1; }
+
+      - name: Download jadx (latest release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release download --repo skylot/jadx --pattern 'jadx-[0-9]*.zip' --dir work
+          unzip -q work/jadx-*.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+          work/jadx/bin/jadx --version
+
+      - name: APK report (package, SDK, native libs)
+        run: |
+          set +e
+          APK=work/input.apk
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -n 1)
+          {
+            echo "=== APK REPORT ==="
+            ls -l "$APK"
+            echo
+            if [ -n "$AAPT2" ]; then
+              "$AAPT2" dump badging "$APK" 2>/dev/null | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|launchable-activity|native-code)" 
+              echo
+              echo "== Permissions =="
+              "$AAPT2" dump permissions "$APK" 2>/dev/null | head -n 60
+            else
+              echo "(aapt2 not found)"
+            fi
+            echo
+            echo "== Top-level folders in the APK =="
+            unzip -Z1 "$APK" | cut -d/ -f1 | sort | uniq -c | sort -rn | head -n 15
+            echo
+            echo "== Native libraries =="
+            unzip -Z1 "$APK" | grep -E '^lib/.*\.so$' | head -n 60
+            echo
+            echo "== dex files =="
+            unzip -Z1 "$APK" | grep -E '^classes[0-9]*\.dex$'
+            echo
+            echo "== Kotlin / frameworks hint =="
+            unzip -Z1 "$APK" | grep -E 'kotlin|\.kotlin_module|META-INF/.*\.version' | head -n 15
+          } > work/report.txt 2>&1
+          cat work/report.txt
+
+      - name: Decompile with jadx
+        env:
+          DEOBF: ${{ inputs.deobf }}
+          JADX_OPTS: '-Xmx6g'
+        run: |
+          set +e
+          OPTS="--export-gradle --show-bad-code -j 2"
+          if [ "$DEOBF" == "true" ]; then OPTS="$OPTS --deobf --deobf-min 3"; fi
+          echo "jadx options: $OPTS"
+          # jadx exits non-zero when some methods fail to decompile - that is normal, keep the output
+          work/jadx/bin/jadx $OPTS -d work/out work/input.apk 2>&1 | tee work/jadx.log | tail -n 40
+          echo "jadx exit code: ${PIPESTATUS[0]}"
+          test -d work/out || { echo "::error::jadx produced no output"; exit 1; }
+          echo "== Output layout =="
+          find work/out -maxdepth 3 -type d | head -n 30
+
+      - name: Add native libs and assets from the APK
+        run: |
+          set +e
+          # find the module folder jadx created (the one that has src/main)
+          MOD=$(find work/out -type d -path '*/src/main' | head -n 1)
+          if [ -z "$MOD" ]; then echo "::warning::src/main not found, skipping"; exit 0; fi
+          echo "module src/main: $MOD"
+          if unzip -Z1 work/input.apk | grep -q '^lib/'; then
+            mkdir -p "$MOD/jniLibs"
+            unzip -q -o work/input.apk 'lib/*' -d work/apk_extract
+            cp -r work/apk_extract/lib/* "$MOD/jniLibs/"
+            echo "native libs copied to jniLibs"
+          fi
+          if unzip -Z1 work/input.apk | grep -q '^assets/' && [ ! -d "$MOD/assets" ]; then
+            unzip -q -o work/input.apk 'assets/*' -d work/apk_extract
+            cp -r work/apk_extract/assets "$MOD/assets"
+            echo "assets copied"
+          fi
+
+      - name: Build report extras (errors, obfuscation guess)
+        run: |
+          set +e
+          {
+            echo
+            echo "=== DECOMPILE RESULT ==="
+            echo "jadx ERROR lines   : $(grep -c ' ERROR - ' work/jadx.log)"
+            echo "jadx WARN lines    : $(grep -c ' WARN  - ' work/jadx.log)"
+            JAVA_DIR=$(find work/out -type d -path '*/src/main/java' | head -n 1)
+            echo "Java files         : $(find "$JAVA_DIR" -name '*.java' 2>/dev/null | wc -l)"
+            echo "Files with JADX WARN/bad code: $(grep -rl 'JADX WARN\|JADX WARNING' "$JAVA_DIR" 2>/dev/null | wc -l)"
+            SHORT=$(find "$JAVA_DIR" -name '*.java' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/\.java$//' | awk 'length($0)<=2' | wc -l)
+            echo "Classes with 1-2 letter names (obfuscation hint): $SHORT"
+            echo "Files using 'case R.id.' (need if/else in a library module): $(grep -rl 'case R\.id\.' "$JAVA_DIR" 2>/dev/null | wc -l)"
+            echo
+            echo "== Manifest package / launcher =="
+            M=$(find work/out -name AndroidManifest.xml | head -n 1)
+            grep -E 'package=|<application|android:name=' "$M" | head -n 12
+          } >> work/report.txt
+          cat work/report.txt | tail -n 20
+
+      - name: Make a ready-to-drop LIBRARY module copy
+        env:
+          LIB_NAME: ${{ inputs.library_name }}
+        run: |
+          set +e
+          # module = the folder that holds the build.gradle next to src/main
+          MOD_SRC=$(find work/out -type d -path '*/src/main' | head -n 1)
+          MODULE=$(dirname "$(dirname "$MOD_SRC")")
+          echo "jadx module folder: $MODULE"
+          mkdir -p "work/library/$LIB_NAME"
+          cp -r "$MODULE"/. "work/library/$LIB_NAME/"
+          G="work/library/$LIB_NAME/build.gradle"
+          MANIFEST="work/library/$LIB_NAME/src/main/AndroidManifest.xml"
+          PKG=$(grep -o 'package="[^"]*"' "$MANIFEST" | head -n 1 | cut -d'"' -f2)
+          echo "package from manifest: $PKG"
+          if [ -f "$G" ]; then
+            sed -i "s/com\.android\.application/com.android.library/" "$G"
+            sed -i "/applicationId/d" "$G"
+            if ! grep -q "namespace" "$G"; then
+              sed -i "0,/android *{/s//android {\n    namespace '$PKG'/" "$G"
+            fi
+            echo "--- patched $G ---"; head -n 40 "$G"
+          fi
+          # a library has no launcher icon of its own and no <uses-sdk>
+          sed -i '/<uses-sdk/d' "$MANIFEST"
+          cat > "work/library/$LIB_NAME/HOW_TO_USE.txt" <<TXT
+          1. Copy this folder into your project root (next to app/).
+          2. settings.gradle.kts : include(":$LIB_NAME")
+          3. app/build.gradle.kts: implementation(project(":$LIB_NAME"))
+          4. gradle.properties   : android.nonTransitiveRClass=false
+          5. Read prepare-report.txt: it lists the dependencies that were added, the folders that still need a
+             mapping, the Application class, the launcher activities and files that need a manual fix.
+          6. The LAUNCHER category was removed from the manifest (no second app icon).
+          7. Build, then send the build-error-log txt to fix the remaining compile errors.
+          Start it with: startActivity(Intent(this, ${PKG}.<MainActivityName>::class.java))
+          TXT
+          sed -i 's/^          //' "work/library/$LIB_NAME/HOW_TO_USE.txt"
+
+      - name: Prepare the library module (prune third-party code, fix R.id switches, clean manifest)
+        if: ${{ inputs.prepare_library }}
+        env:
+          LIB_NAME: ${{ inputs.library_name }}
+        run: |
+          set +e
+          cat > work/prepare_lib.py <<'PYEOF'
+          #!/usr/bin/env python3
+          """Prepare a jadx-exported module as an Android LIBRARY module for another app.
+
+          usage: prepare_lib.py <module_dir> <report_file>
+
+           1. removes jadx's R.java (AGP generates R itself)
+           2. removes decompiled copies of well-known third-party libraries (androidx, kotlin, material, okhttp ...)
+              and declares them as normal Gradle dependencies instead (avoids "Duplicate class")
+           3. converts `switch (..) { case R.id.x: ... }` to if / else if (library R ids are not constants)
+           4. cleans the manifest (no package=, no application attributes, no launcher icon, no library components)
+           5. writes a fresh build.gradle.kts
+          """
+          import os, re, sys, shutil, collections
+
+          mod = sys.argv[1]
+          report_path = sys.argv[2]
+          R = []                       # report lines
+          def say(*a): R.append(' '.join(str(x) for x in a))
+
+          main = os.path.join(mod, 'src', 'main')
+          java = os.path.join(main, 'java')
+          manifest_path = os.path.join(main, 'AndroidManifest.xml')
+          mf = open(manifest_path, encoding='utf-8', errors='surrogateescape').read()
+          m = re.search(r'package="([^"]+)"', mf)
+          PKG = m.group(1) if m else 'com.example.oldapp'
+          say('=== PREPARE REPORT ===')
+          say('package (namespace):', PKG)
+
+          # ---------------------------------------------------------------- 1. R.java
+          removed_r = 0
+          for root, _, files in os.walk(java):
+              for f in files:
+                  if f == 'R.java':
+                      os.remove(os.path.join(root, f)); removed_r += 1
+          say('removed jadx R.java files:', removed_r)
+
+          # ---------------------------------------------------------------- 2. third party
+          # directory (relative to java/)  ->  gradle dependencies that replace it
+          KT = 'org.jetbrains.kotlin:kotlin-stdlib:2.2.10'
+          LC = '2.8.7'
+          MAP = {
+           'androidx/appcompat': ['androidx.appcompat:appcompat:1.7.0'],
+           'androidx/core': ['androidx.core:core-ktx:1.15.0'],
+           'androidx/fragment': ['androidx.fragment:fragment-ktx:1.8.5'],
+           'androidx/activity': ['androidx.activity:activity-ktx:1.9.3'],
+           'androidx/lifecycle': ['androidx.lifecycle:lifecycle-runtime-ktx:%s' % LC, 'androidx.lifecycle:lifecycle-viewmodel-ktx:%s' % LC,
+                                  'androidx.lifecycle:lifecycle-livedata-ktx:%s' % LC, 'androidx.lifecycle:lifecycle-process:%s' % LC],
+           'androidx/recyclerview': ['androidx.recyclerview:recyclerview:1.3.2'],
+           'androidx/constraintlayout': ['androidx.constraintlayout:constraintlayout:2.2.0'],
+           'androidx/preference': ['androidx.preference:preference-ktx:1.2.1'],
+           'androidx/viewpager2': ['androidx.viewpager2:viewpager2:1.1.0'],
+           'androidx/viewpager': ['androidx.viewpager:viewpager:1.0.0'],
+           'androidx/swiperefreshlayout': ['androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'],
+           'androidx/cardview': ['androidx.cardview:cardview:1.0.0'],
+           'androidx/coordinatorlayout': ['androidx.coordinatorlayout:coordinatorlayout:1.2.0'],
+           'androidx/drawerlayout': ['androidx.drawerlayout:drawerlayout:1.2.0'],
+           'androidx/documentfile': ['androidx.documentfile:documentfile:1.0.1'],
+           'androidx/webkit': ['androidx.webkit:webkit:1.12.1'],
+           'androidx/browser': ['androidx.browser:browser:1.8.0'],
+           'androidx/biometric': ['androidx.biometric:biometric:1.1.0'],
+           'androidx/work': ['androidx.work:work-runtime-ktx:2.10.0'],
+           'androidx/room': ['androidx.room:room-runtime:2.6.1', 'androidx.room:room-ktx:2.6.1'],
+           'androidx/sqlite': ['androidx.sqlite:sqlite-framework:2.4.0'],
+           'androidx/datastore': ['androidx.datastore:datastore-preferences:1.1.1'],
+           'androidx/media': ['androidx.media:media:1.7.0'],
+           'androidx/startup': ['androidx.startup:startup-runtime:1.2.0'],
+           'androidx/transition': ['androidx.transition:transition:1.5.1'],
+           'androidx/exifinterface': ['androidx.exifinterface:exifinterface:1.3.7'],
+           'androidx/vectordrawable': ['androidx.vectordrawable:vectordrawable-animated:1.2.0'],
+           'androidx/slidingpanelayout': ['androidx.slidingpanelayout:slidingpanelayout:1.2.0'],
+           'androidx/localbroadcastmanager': ['androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'],
+           'kotlin': [KT],
+           'kotlinx/coroutines': ['org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'],
+           'kotlinx/serialization': ['org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'],
+           'com/google/android/material': ['com.google.android.material:material:1.12.0'],
+           'com/google/gson': ['com.google.code.gson:gson:2.11.0'],
+           'okhttp3': ['com.squareup.okhttp3:okhttp:4.12.0'],
+           'okio': ['com.squareup.okio:okio:3.9.0'],
+          }
+          # pulled in by the dependencies above: remove the source copy, no extra dependency
+          TRANSITIVE = ['androidx/annotation', 'androidx/collection', 'androidx/arch', 'androidx/customview',
+                        'androidx/loader', 'androidx/versionedparcelable', 'androidx/tracing', 'androidx/interpolator',
+                        'androidx/emoji2', 'androidx/profileinstaller', 'androidx/savedstate', 'androidx/concurrent',
+                        'androidx/cursoradapter', 'androidx/resourceinspection', 'androidx/graphics', 'androidx/lifecycle',
+                        'androidx/print', 'androidx/legacy', 'androidx/asynclayoutinflater', 'androidx/core',
+                        'org/jetbrains/annotations', 'org/intellij/lang/annotations', 'kotlin/annotation']
+
+          deps = []
+          pruned = []
+          for d, ds in MAP.items():
+              p = os.path.join(java, d)
+              if os.path.isdir(p):
+                  shutil.rmtree(p); pruned.append(d)
+                  for x in ds:
+                      if x not in deps: deps.append(x)
+          for d in TRANSITIVE:
+              p = os.path.join(java, d)
+              if os.path.isdir(p):
+                  shutil.rmtree(p); pruned.append(d + ' (transitive)')
+          say('\npruned third-party source folders (%d):' % len(pruned))
+          for p in pruned: say('  -', p)
+          say('dependencies declared (%d):' % len(deps))
+          for x in deps: say('  +', x)
+
+          # what is left: androidx and other libraries that were NOT mapped
+          left = collections.Counter()
+          nfiles = 0
+          for root, _, files in os.walk(java):
+              for f in files:
+                  if f.endswith('.java'):
+                      nfiles += 1
+                      rel = os.path.relpath(root, java).split(os.sep)
+                      left['/'.join(rel[:3])] += 1
+          say('\nJava files left in the module:', nfiles)
+          say('androidx / unmapped library folders still in source (add a mapping if they cause duplicate-class errors):')
+          for k, v in sorted(left.items()):
+              if k.startswith('androidx') or k.split('/')[0] in ('android', 'kotlin', 'kotlinx', 'javax', 'dagger', 'io', 'retrofit2', 'coil', 'org'):
+                  say('  ?', k, v)
+          say('\nbiggest source folders (top 40):')
+          for k, v in left.most_common(40): say('  ', v, k)
+
+          # ---------------------------------------------------------------- 3. switch(R.id) -> if/else
+          def skip(s, i):
+              if s.startswith('//', i):
+                  j = s.find('\n', i); return len(s) if j < 0 else j
+              if s.startswith('/*', i):
+                  return s.find('*/', i) + 2
+              if s[i] in '"\'':
+                  q = s[i]; j = i + 1
+                  while j < len(s) and s[j] != q:
+                      j += 2 if s[j] == '\\' else 1
+                  return j + 1
+              return i
+
+          def match(s, i, o, c):
+              d = 0
+              while i < len(s):
+                  j = skip(s, i)
+                  if j != i: i = j; continue
+                  if s[i] == o: d += 1
+                  elif s[i] == c:
+                      d -= 1
+                      if d == 0: return i
+                  i += 1
+              raise ValueError('unbalanced')
+
+          def convert(s):
+              out = []; pos = 0; n = 0; manual = []
+              for m in re.finditer(r'switch\s*\(', s):
+                  if m.start() < pos: continue
+                  i = m.start()
+                  ls = s.rfind('\n', 0, i) + 1
+                  if s[ls:i].strip().startswith('//'): continue
+                  p1 = s.index('(', i); p2 = match(s, p1, '(', ')')
+                  expr = s[p1 + 1:p2].strip()
+                  b1 = s.index('{', p2); b2 = match(s, b1, '{', '}')
+                  body = s[b1 + 1:b2]
+                  if not re.search(r'case\s+(?:\w+\.)*R\.id\.', body): continue
+                  pieces = []; labels = []; text_start = None; d = 0; k = 0
+                  while k < len(body):
+                      j = skip(body, k)
+                      if j != k: k = j; continue
+                      ch = body[k]
+                      if ch in '{(': d += 1
+                      elif ch in '})': d -= 1
+                      elif d == 0 and (k == 0 or not (body[k - 1].isalnum() or body[k - 1] == '_')):
+                          lm = re.match(r'(case\s+([\w.]+)\s*:|default\s*:)', body[k:])
+                          if lm:
+                              if text_start is not None:
+                                  pieces.append((labels, body[text_start:k])); labels = []; text_start = None
+                              labels.append(lm.group(2) or 'default')
+                              k += lm.end(); text_start = k; continue
+                      k += 1
+                  if text_start is not None: pieces.append((labels, body[text_start:]))
+                  merged = []; pend = []
+                  for lab, t in pieces:
+                      pend += lab
+                      if t.strip(): merged.append((pend, t)); pend = []
+                  if pend: manual.append('trailing labels'); continue
+                  ind = re.match(r'[ \t]*', s[ls:]).group(0)
+                  n += 1
+                  var = 'switchId%d' % n if not re.fullmatch(r'\w+', expr) else expr
+                  res = []
+                  if var != expr: res.append('int %s = %s;\n%s' % (var, expr, ind))
+                  ok = True; first = True
+                  for lab, t in merged:
+                      t = t.rstrip()
+                      has_break = re.search(r'break;\s*$', t) is not None
+                      t2 = re.sub(r'\n?[ \t]*break;\s*$', '', t) if has_break else t
+                      if not has_break and not re.search(r'(return|throw|continue)\b[^;]*;\s*$', t) and lab != ['default'] and merged[-1][0] != lab:
+                          manual.append('no trailing break/return near ' + lab[0]); ok = False
+                      dd = 0; kk = 0
+                      while kk < len(t2):
+                          jj = skip(t2, kk)
+                          if jj != kk: kk = jj; continue
+                          if t2[kk] in '{(': dd += 1
+                          elif t2[kk] in '})': dd -= 1
+                          elif t2.startswith('break;', kk) and dd == 0: manual.append('inner break ' + lab[0]); ok = False
+                          kk += 1
+                      if 'default' in lab and lab != ['default']: manual.append('default merged'); ok = False
+                      if lab == ['default']: head = 'else {'
+                      else:
+                          cond = ' || '.join('%s == %s' % (var, l) for l in lab)
+                          head = ('if (%s) {' % cond) if first else ('else if (%s) {' % cond)
+                      first = False
+                      lines = t2.strip('\n').split('\n')
+                      lines = [l[4:] if l.startswith('    ') else l for l in lines]
+                      res.append(head + '\n' + '\n'.join(lines) + '\n' + ind + '}\n' + ind)
+                  if not ok: continue
+                  out.append(s[pos:i]); out.append(''.join(res).rstrip()); pos = b2 + 1
+              out.append(s[pos:])
+              return ''.join(out), n, manual
+
+          conv_files = 0; conv_switch = 0; manual_all = []
+          for root, _, files in os.walk(java):
+              for f in files:
+                  if not f.endswith('.java'): continue
+                  p = os.path.join(root, f)
+                  s = open(p, encoding='utf-8', errors='surrogateescape').read()
+                  if 'R.id.' not in s or 'switch' not in s: continue
+                  try:
+                      r, n, man = convert(s)
+                  except Exception as e:
+                      manual_all.append((p, 'parse error %s' % e)); continue
+                  if n:
+                      open(p, 'w', encoding='utf-8', errors='surrogateescape').write(r)
+                      conv_files += 1; conv_switch += n
+                  for x in man: manual_all.append((p, x))
+          say('\nswitch(R.id) converted: %d switches in %d files' % (conv_switch, conv_files))
+          if manual_all:
+              say('NEEDS MANUAL FIX (%d):' % len(manual_all))
+              for p, x in manual_all[:60]: say('  !', os.path.relpath(p, java), '-', x)
+          leftover = []
+          for root, _, files in os.walk(java):
+              for f in files:
+                  if f.endswith('.java'):
+                      if re.search(r'case\s+(?:\w+\.)*R\.id\.', open(os.path.join(root, f), encoding='utf-8', errors='surrogateescape').read()):
+                          leftover.append(os.path.relpath(os.path.join(root, f), java))
+          say('files still containing "case R.id.":', len(leftover))
+          for x in leftover[:40]: say('  !', x)
+
+          # numeric resource ids that jadx could not map to R.xxx would break at run time (ids change in the final app)
+          num = 0; sample = []
+          for root, _, files in os.walk(java):
+              for f in files:
+                  if f.endswith('.java'):
+                      t = open(os.path.join(root, f), encoding='utf-8', errors='surrogateescape').read()
+                      if re.search(r'\b(2130[0-9]{6}|2131[0-9]{6})\b|0x7f[0-9a-f]{6}', t):
+                          num += 1
+                          if len(sample) < 15: sample.append(os.path.relpath(os.path.join(root, f), java))
+          say('\nfiles with hard-coded resource id numbers (2131xxxxxx / 0x7fxxxxxx) - these break at run time:', num)
+          for x in sample: say('  !', x)
+
+          # ---------------------------------------------------------------- 4. manifest
+          mf0 = mf
+          app_tag = re.search(r'<application\b[^>]*>', mf, re.S)
+          say('\n=== MANIFEST ===')
+          if app_tag:
+              nm = re.search(r'android:name="([^"]+)"', app_tag.group(0))
+              say('Application class (call its onCreate() from your App if it does real work):', nm.group(1) if nm else '(none)')
+              for a in ('requestLegacyExternalStorage', 'usesCleartextTraffic', 'networkSecurityConfig', 'largeHeap', 'extractNativeLibs', 'hardwareAccelerated'):
+                  mm = re.search(r'android:%s="([^"]*)"' % a, app_tag.group(0))
+                  if mm: say('  application attribute %s=%s  (set it in your app manifest if needed)' % (a, mm.group(1)))
+              mf = mf.replace(app_tag.group(0), '<application>', 1)
+          mf = re.sub(r'\s+package="[^"]*"', '', mf, count=1)
+          mf = re.sub(r'<uses-sdk\b[^>]*/>', '', mf)
+          mf = re.sub(r'<uses-permission[^>]*DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION[^>]*/>', '', mf)
+          mf = re.sub(r'<permission[^>]*DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION[^>]*/>', '', mf)
+          # components that belong to libraries now declared as dependencies (their own manifests add them)
+          LIBCOMP = re.compile(r'<(provider|service|receiver|activity|activity-alias)\s[^>]*?android:name="(?:androidx\.|com\.google\.android\.material\.)[^"]*"[^>]*?(?:/>|>.*?</\1>)', re.S)
+          removed = LIBCOMP.findall(mf)
+          mf = LIBCOMP.sub('', mf)
+          say('removed library components from the manifest:', len(removed))
+          # launcher entries: list them, then drop the LAUNCHER category so the library adds no second icon
+          launchers = re.findall(r'<activity[^>]*android:name="([^"]+)"[^>]*>(?:(?!</activity>).)*?android\.intent\.category\.LAUNCHER', mf, re.S)
+          say('LAUNCHER activities in the old app (start one with startActivity from your code):')
+          for a in launchers: say('  *', a)
+          mf = re.sub(r'\s*<category\s+android:name="android\.intent\.category\.LAUNCHER"\s*/>', '', mf)
+          open(manifest_path, 'w', encoding='utf-8', errors='surrogateescape').write(mf)
+          say('manifest: package attr, <application> attributes, <uses-sdk> and LAUNCHER category removed')
+
+          # ---------------------------------------------------------------- 5. build.gradle.kts
+          for g in ('build.gradle', 'build.gradle.kts'):
+              gp = os.path.join(mod, g)
+              if os.path.exists(gp): os.remove(gp)
+          dep_lines = '\n'.join('    api("%s")' % d for d in deps)
+          kts = '''plugins {
+              id("com.android.library")
+          }
+
+          // Generated from a jadx export. Library copy of an old app, used from the main app with
+          //   implementation(project(":%s"))
+          android {
+              namespace = "%s"
+              compileSdk = 37
+
+              defaultConfig {
+                  minSdk = 21
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_21
+                  targetCompatibility = JavaVersion.VERSION_21
+              }
+
+              // native libraries (jniLibs) must be extracted to disk
+              packaging {
+                  jniLibs {
+                      useLegacyPackaging = true
+                  }
+              }
+
+              lint {
+                  checkReleaseBuilds = false
+                  abortOnError = false
+              }
+          }
+
+          dependencies {
+          %s
+          }
+          ''' % (os.path.basename(mod.rstrip('/')), PKG, dep_lines)
+          open(os.path.join(mod, 'build.gradle.kts'), 'w').write(kts)
+          say('\nwrote build.gradle.kts (namespace %s, %d dependencies)' % (PKG, len(deps)))
+          open(report_path, 'w').write('\n'.join(R) + '\n')
+          print('\n'.join(R[:60]))
+          PYEOF
+          python3 work/prepare_lib.py "work/library/$LIB_NAME" work/prepare-report.txt
+          echo "prepare exit code: $?"
+          test -f work/prepare-report.txt || echo "::warning::prepare step produced no report"
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: decompile-report
+          path: |
+            work/report.txt
+            work/prepare-report.txt
+            work/jadx.log
+          retention-days: 14
+
+      - name: Upload decompiled project
+        uses: actions/upload-artifact@v4
+        with:
+          name: decompiled-project
+          path: |
+            work/out
+            work/library
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
