@@ -1,0 +1,243 @@
+name: Decompile APK (jadx -> Gradle project)
+
+# Downloads an APK (or uses one stored in the repo), decompiles it with jadx and uploads:
+#   1) decompile-report   : small txt report (package, SDK, native libs, obfuscation guess, error count)
+#   2) decompiled-project : the jadx Gradle project (Java source + decoded res + manifest)
+#                           + a ready-to-drop LIBRARY module copy (application -> library)
+#
+# How to give the APK (either one):
+#   * apk_url  : direct download link (GitHub Release asset, any direct https link).
+#                Google Drive / Telegram links usually do NOT work with curl - use a GitHub Release.
+#   * apk_path : path of an APK committed in this repo (default apk/app.apk). GitHub blocks single
+#                files over 100 MB, so a 92 MB APK still fits, but a Release link is cleaner.
+#
+# Nothing is committed or pushed. Results are only workflow artifacts (kept 14 days).
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: 'Direct download URL of the APK (leave empty to use apk_path from the repo)'
+        required: false
+        default: ''
+        type: string
+      apk_path:
+        description: 'APK path inside the repo (used when apk_url is empty)'
+        required: false
+        default: 'apk/app.apk'
+        type: string
+      deobf:
+        description: 'Rename obfuscated names (a, b, c ...) to readable ones (--deobf)'
+        required: false
+        default: true
+        type: boolean
+      library_name:
+        description: 'Folder name of the library module copy (e.g. oldapp)'
+        required: false
+        default: 'oldapp'
+        type: string
+
+concurrency:
+  group: decompile-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  decompile:
+    name: Download & Decompile
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Get the APK
+        env:
+          APK_URL: ${{ inputs.apk_url }}
+          APK_PATH: ${{ inputs.apk_path }}
+        run: |
+          set -e
+          mkdir -p work
+          if [ -n "$APK_URL" ]; then
+            echo "== Downloading APK =="
+            curl -fL --retry 3 --retry-delay 5 -o work/input.apk "$APK_URL"
+          else
+            echo "== Using APK from the repo: $APK_PATH =="
+            if [ ! -f "$APK_PATH" ]; then
+              echo "::error::'$APK_PATH' not found in the repo. Give apk_url or commit the APK."
+              exit 1
+            fi
+            cp "$APK_PATH" work/input.apk
+          fi
+          ls -lh work/input.apk
+          # an APK is a zip file: refuse HTML pages (e.g. a Drive confirmation page)
+          if ! unzip -tq work/input.apk > /dev/null 2>&1; then
+            echo "::error::The downloaded file is not a valid APK/zip (a web page instead of the file?). Use a direct link or a GitHub Release asset."
+            head -c 300 work/input.apk | strings | head -n 5 || true
+            exit 1
+          fi
+          unzip -l work/input.apk | grep -q "AndroidManifest.xml" || { echo "::error::No AndroidManifest.xml inside - not an APK (an .aab/.xapk? extract the base APK first)"; exit 1; }
+
+      - name: Download jadx (latest release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release download --repo skylot/jadx --pattern 'jadx-[0-9]*.zip' --dir work
+          unzip -q work/jadx-*.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+          work/jadx/bin/jadx --version
+
+      - name: APK report (package, SDK, native libs)
+        run: |
+          set +e
+          APK=work/input.apk
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -n 1)
+          {
+            echo "=== APK REPORT ==="
+            ls -l "$APK"
+            echo
+            if [ -n "$AAPT2" ]; then
+              "$AAPT2" dump badging "$APK" 2>/dev/null | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|launchable-activity|native-code)" 
+              echo
+              echo "== Permissions =="
+              "$AAPT2" dump permissions "$APK" 2>/dev/null | head -n 60
+            else
+              echo "(aapt2 not found)"
+            fi
+            echo
+            echo "== Top-level folders in the APK =="
+            unzip -Z1 "$APK" | cut -d/ -f1 | sort | uniq -c | sort -rn | head -n 15
+            echo
+            echo "== Native libraries =="
+            unzip -Z1 "$APK" | grep -E '^lib/.*\.so$' | head -n 60
+            echo
+            echo "== dex files =="
+            unzip -Z1 "$APK" | grep -E '^classes[0-9]*\.dex$'
+            echo
+            echo "== Kotlin / frameworks hint =="
+            unzip -Z1 "$APK" | grep -E 'kotlin|\.kotlin_module|META-INF/.*\.version' | head -n 15
+          } > work/report.txt 2>&1
+          cat work/report.txt
+
+      - name: Decompile with jadx
+        env:
+          DEOBF: ${{ inputs.deobf }}
+          JADX_OPTS: '-Xmx6g'
+        run: |
+          set +e
+          OPTS="--export-gradle --show-bad-code -j 2"
+          if [ "$DEOBF" == "true" ]; then OPTS="$OPTS --deobf --deobf-min 3"; fi
+          echo "jadx options: $OPTS"
+          # jadx exits non-zero when some methods fail to decompile - that is normal, keep the output
+          work/jadx/bin/jadx $OPTS -d work/out work/input.apk 2>&1 | tee work/jadx.log | tail -n 40
+          echo "jadx exit code: ${PIPESTATUS[0]}"
+          test -d work/out || { echo "::error::jadx produced no output"; exit 1; }
+          echo "== Output layout =="
+          find work/out -maxdepth 3 -type d | head -n 30
+
+      - name: Add native libs and assets from the APK
+        run: |
+          set +e
+          # find the module folder jadx created (the one that has src/main)
+          MOD=$(find work/out -type d -path '*/src/main' | head -n 1)
+          if [ -z "$MOD" ]; then echo "::warning::src/main not found, skipping"; exit 0; fi
+          echo "module src/main: $MOD"
+          if unzip -Z1 work/input.apk | grep -q '^lib/'; then
+            mkdir -p "$MOD/jniLibs"
+            unzip -q -o work/input.apk 'lib/*' -d work/apk_extract
+            cp -r work/apk_extract/lib/* "$MOD/jniLibs/"
+            echo "native libs copied to jniLibs"
+          fi
+          if unzip -Z1 work/input.apk | grep -q '^assets/' && [ ! -d "$MOD/assets" ]; then
+            unzip -q -o work/input.apk 'assets/*' -d work/apk_extract
+            cp -r work/apk_extract/assets "$MOD/assets"
+            echo "assets copied"
+          fi
+
+      - name: Build report extras (errors, obfuscation guess)
+        run: |
+          set +e
+          {
+            echo
+            echo "=== DECOMPILE RESULT ==="
+            echo "jadx ERROR lines   : $(grep -c ' ERROR - ' work/jadx.log)"
+            echo "jadx WARN lines    : $(grep -c ' WARN  - ' work/jadx.log)"
+            JAVA_DIR=$(find work/out -type d -path '*/src/main/java' | head -n 1)
+            echo "Java files         : $(find "$JAVA_DIR" -name '*.java' 2>/dev/null | wc -l)"
+            echo "Files with JADX WARN/bad code: $(grep -rl 'JADX WARN\|JADX WARNING' "$JAVA_DIR" 2>/dev/null | wc -l)"
+            SHORT=$(find "$JAVA_DIR" -name '*.java' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/\.java$//' | awk 'length($0)<=2' | wc -l)
+            echo "Classes with 1-2 letter names (obfuscation hint): $SHORT"
+            echo "Files using 'case R.id.' (need if/else in a library module): $(grep -rl 'case R\.id\.' "$JAVA_DIR" 2>/dev/null | wc -l)"
+            echo
+            echo "== Manifest package / launcher =="
+            M=$(find work/out -name AndroidManifest.xml | head -n 1)
+            grep -E 'package=|<application|android:name=' "$M" | head -n 12
+          } >> work/report.txt
+          cat work/report.txt | tail -n 20
+
+      - name: Make a ready-to-drop LIBRARY module copy
+        env:
+          LIB_NAME: ${{ inputs.library_name }}
+        run: |
+          set +e
+          # module = the folder that holds the build.gradle next to src/main
+          MOD_SRC=$(find work/out -type d -path '*/src/main' | head -n 1)
+          MODULE=$(dirname "$(dirname "$MOD_SRC")")
+          echo "jadx module folder: $MODULE"
+          mkdir -p "work/library/$LIB_NAME"
+          cp -r "$MODULE"/. "work/library/$LIB_NAME/"
+          G="work/library/$LIB_NAME/build.gradle"
+          MANIFEST="work/library/$LIB_NAME/src/main/AndroidManifest.xml"
+          PKG=$(grep -o 'package="[^"]*"' "$MANIFEST" | head -n 1 | cut -d'"' -f2)
+          echo "package from manifest: $PKG"
+          if [ -f "$G" ]; then
+            sed -i "s/com\.android\.application/com.android.library/" "$G"
+            sed -i "/applicationId/d" "$G"
+            if ! grep -q "namespace" "$G"; then
+              sed -i "0,/android *{/s//android {\n    namespace '$PKG'/" "$G"
+            fi
+            echo "--- patched $G ---"; head -n 40 "$G"
+          fi
+          # a library has no launcher icon of its own and no <uses-sdk>
+          sed -i '/<uses-sdk/d' "$MANIFEST"
+          cat > "work/library/$LIB_NAME/HOW_TO_USE.txt" <<TXT
+          1. Copy this folder into your project root (next to app/).
+          2. settings.gradle.kts : include(":$LIB_NAME")
+          3. app/build.gradle.kts: implementation(project(":$LIB_NAME"))
+          4. gradle.properties   : android.nonTransitiveRClass=false
+          5. Add the libraries the old app used (appcompat, material, kotlin ...) to $LIB_NAME/build.gradle.
+          6. In AndroidManifest.xml remove the LAUNCHER intent-filter if you do not want a second icon.
+          7. Build, then send the build-error-log txt to fix the remaining compile errors.
+          Start it with: startActivity(Intent(this, ${PKG}.<MainActivityName>::class.java))
+          TXT
+          sed -i 's/^          //' "work/library/$LIB_NAME/HOW_TO_USE.txt"
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: decompile-report
+          path: |
+            work/report.txt
+            work/jadx.log
+          retention-days: 14
+
+      - name: Upload decompiled project
+        uses: actions/upload-artifact@v4
+        with:
+          name: decompiled-project
+          path: |
+            work/out
+            work/library
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
