@@ -5,13 +5,17 @@ Layout
   src/main/res       decoded resources        src/main/assets   original assets (incl. assets/android.dex)
   src/main/jniLibs   native libs (arm64-v8a, armeabi-v7a, x86, x86_64)
   src/main/resources non-class files (org/objectweb/asm/*.html, jadx/core/clsp/core.jcst)
-  prebuilt/          working, rebuilt APK (com.srizwan.apktool, debug-signed) - use this if the module does not compile
 
 Done automatically
   - application -> library, namespace com.srizwan.apktool, no applicationId
   - AndroidManifest: package / uses-sdk / launcher entries removed, <application> attributes removed
     (the host :app owns them). Permissions and the 20+ activities / services are kept and merged into :app.
   - platform stubs removed (java.*, javax.*, android.*), they cannot be compiled in a module
+
+Build status
+  CI run #2 with the dependency enabled: 207 javac parse errors in 27 places (jadx '?? rN' untyped variables,
+  'for (0; i < n; i + 1)', 'integer number too large', 'extends X extends Y', static{} in an interface).
+  More errors are expected after these. The dependency in :app is therefore commented out.
 
 Still to do (not done, not compiled)
   1. app/build.gradle.kts: implementation(project(":apktool"))   (line is in the file as a comment)
