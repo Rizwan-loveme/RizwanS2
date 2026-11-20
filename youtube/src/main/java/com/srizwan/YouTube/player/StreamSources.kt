@@ -22,13 +22,14 @@ import com.srizwan.YouTube.data.VideoQuality
  *  3. muxed (audio + video)  -> progressive (usually up to 720p)
  *  4. HLS manifest, 5. DASH manifest
  *
- * [maxHeight] caps the picture height. [AUTO] means "best up to [AUTO_CAP]" so a phone
- * does not start on 4K by itself. Part 3 (quality menu) passes the height the user picked.
+ * [maxHeight] caps the picture height. [AUTO] means "best up to [AUTO_CAP]" (360p, light on data).
+ * On a weak network [YtPlayer] drops an Auto video to the lowest height by itself (manifest videos
+ * adapt by themselves inside the cap). Part 3 (quality menu) passes the height the user picked.
  */
 object StreamSources {
 
     const val AUTO = 0
-    const val AUTO_CAP = 1080
+    const val AUTO_CAP = 360
 
     sealed class Plan {
         data class Hls(val url: String) : Plan()

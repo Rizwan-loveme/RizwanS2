@@ -239,7 +239,8 @@ class PlayerActivity : AppCompatActivity() {
     /** Home gesture / home button while a video plays: Android 12+ enters PiP by itself (auto-enter), older ones here. */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT < 31 && canEnterPip()) enterPip()
+        // all versions: harmless when Android 12+ already entered PiP by itself (auto-enter)
+        if (canEnterPip() && !isInPictureInPictureMode) enterPip(fromUser = false)
     }
 
     override fun onStop() {
@@ -344,26 +345,43 @@ class PlayerActivity : AppCompatActivity() {
             b.errorBox.visibility != View.VISIBLE
 
     /** The PiP chip: shrink the video into a floating window. */
-    private fun enterPip() {
-        if (!pipSupported || YtPlayer.peek() == null) return
-        val entered = runCatching { enterPictureInPictureMode(buildPipParams()) }.getOrDefault(false)
-        if (!entered && !isInPictureInPictureMode) {
-            // PiP is switched off for the app in system settings
-            Toast.makeText(this, R.string.yt_player_pip_unavailable, Toast.LENGTH_LONG).show()
+    private fun enterPip(fromUser: Boolean = true) {
+        if (!pipSupported || YtPlayer.peek() == null || isInPictureInPictureMode) return
+        var error: Throwable? = null
+        val entered = try {
+            enterPictureInPictureMode(buildPipParams())
+        } catch (e: Throwable) {
+            error = e
+            android.util.Log.w("PlayerActivity", "enterPictureInPictureMode failed, retrying without buttons", e)
+            // a bad button / icon must not block PiP: try again with the picture only
+            try { enterPictureInPictureMode(buildPipParams(withActions = false)) }
+            catch (e2: Throwable) { error = e2; false }
+        }
+        if (!entered && !isInPictureInPictureMode && fromUser) {
+            val why = error?.let { "${it.javaClass.simpleName}: ${it.message}" }
+            val text = if (why != null) "PiP failed: $why" else getString(R.string.yt_player_pip_unavailable)
+            Toast.makeText(this, text, Toast.LENGTH_LONG).show()
         }
     }
 
     /** Keeps the system's PiP params current (aspect ratio, buttons, auto-enter). Cheap; safe to call often. */
     private fun updatePipParams() {
         if (!pipSupported || isFinishing || isDestroyed) return
-        runCatching { setPictureInPictureParams(buildPipParams()) }
+        try {
+            setPictureInPictureParams(buildPipParams())
+        } catch (e: Throwable) {
+            // before, this was swallowed silently and auto-enter was never switched on
+            android.util.Log.w("PlayerActivity", "setPictureInPictureParams failed, retrying without buttons", e)
+            try { setPictureInPictureParams(buildPipParams(withActions = false)) }
+            catch (e2: Throwable) { android.util.Log.w("PlayerActivity", "PiP params rejected", e2) }
+        }
     }
 
-    private fun buildPipParams(): PictureInPictureParams {
+    private fun buildPipParams(withActions: Boolean = true): PictureInPictureParams {
         val player = YtPlayer.peek()
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(pipAspect(player?.videoSize))
-            .setActions(pipActions(player))
+        if (withActions) builder.setActions(pipActions(player))
         if (Build.VERSION.SDK_INT >= 31) {
             // leaving the app while a video plays opens PiP without any extra code; no zoom animation glitch
             builder.setAutoEnterEnabled(canEnterPip())
@@ -515,7 +533,8 @@ class PlayerActivity : AppCompatActivity() {
         val isMerged = YtPlayer.plan is StreamSources.Plan.Progressive
         val labels = ArrayList<String>(heights.size + 1)
         // merged streams: Auto is a known height; manifests change height by themselves, so just "Auto"
-        val autoHeight = StreamSources.nearest(heights, StreamSources.AUTO_CAP)
+        val autoHeight = if (YtPlayer.autoLowered) heights.lastOrNull()
+            else StreamSources.nearest(heights, StreamSources.AUTO_CAP)
         labels.add(
             if (isMerged && autoHeight != null) getString(R.string.yt_player_quality_auto_height, autoHeight)
             else getString(R.string.yt_player_quality_auto)

@@ -15,6 +15,23 @@
 | 9 | Remember settings and resume position (`PlayerPrefs`) | done |
 | 10 | Hook it into `:app`, final checks and docs | done |
 
+## Update — 360p default, weak-network drop, PiP robustness
+
+- **Auto = 360p** (`StreamSources.AUTO_CAP`). HLS / DASH videos adapt by themselves below that cap.
+- **Weak network** (merged streams, Auto only): 2 stalls (buffering after playing, not a seek) within 40 s switch the
+  video to its lowest height at the same position, once per video, with a short message. Picking a height by hand
+  turns this off; picking Auto again re-enables it. Not for live streams.
+- **PiP**: errors from `setPictureInPictureParams` / `enterPictureInPictureMode` were swallowed (auto-enter could stay
+  off with no sign). Now they are logged (tag `PlayerActivity`), retried without the +-10s/play buttons, and the PiP chip
+  shows the error text. Leaving the screen also calls `enterPip()` on Android 12+ as a second path.
+
+## Fix — ForegroundServiceDidNotStartInTimeException
+
+`PlaybackService.onStartCommand()` now calls `startForeground()` first (a plain notification with the same id
+Media3 uses, so Media3's own one replaces it) and only then decides whether to continue or stop. Before, the
+"no player" path stopped the service without ever calling `startForeground()`, and the normal path waited for
+Media3's asynchronous notification.
+
 ## Part 10 — built into :app
 
 - **Start menu entry** (`StartApps.kt`): built-in app "YouTube" (`section = "youtube"`), drawn by

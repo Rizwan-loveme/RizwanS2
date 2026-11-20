@@ -4,6 +4,8 @@ package com.srizwan.YouTube.player
 
 import android.content.Context
 import android.os.Handler
+import android.os.SystemClock
+import android.widget.Toast
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -11,6 +13,7 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import com.srizwan.YouTube.R
 import com.srizwan.YouTube.data.StreamDetails
 import com.srizwan.YouTube.data.YtDownloader
 
@@ -48,6 +51,55 @@ object YtPlayer {
     /** the cap used for [plan]: [StreamSources.AUTO] or a height such as 720 */
     var maxHeight: Int = StreamSources.AUTO
         private set
+
+    // ---- weak network: Auto drops to the lowest height ----
+    /** True after an Auto video was switched to its lowest height because the network is weak. */
+    var autoLowered: Boolean = false
+        private set
+    private var readyOnce = false
+    private var seeking = false
+    private val stallTimes = ArrayList<Long>()
+    private const val STALL_WINDOW_MS = 40_000L
+    private const val STALLS_TO_LOWER = 2
+
+    private val stallListener = object : Player.Listener {
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int
+        ) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK) seeking = true
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            val p = exo ?: return
+            when (playbackState) {
+                Player.STATE_READY -> { readyOnce = true; seeking = false }
+                // a stall = buffering again after playing, not caused by a seek, while the viewer wants to play
+                Player.STATE_BUFFERING -> if (readyOnce && !seeking && p.playWhenReady) onStall()
+            }
+        }
+    }
+
+    private fun onStall() {
+        val ctx = appContext ?: return
+        val d = details ?: return
+        val player = exo ?: return
+        val p = plan as? StreamSources.Plan.Progressive ?: return // manifests adapt by themselves
+        if (maxHeight != StreamSources.AUTO || autoLowered || d.isLive) return
+        val now = SystemClock.elapsedRealtime()
+        stallTimes.removeAll { now - it > STALL_WINDOW_MS }
+        stallTimes.add(now)
+        if (stallTimes.size < STALLS_TO_LOWER) return
+        val lowest = StreamSources.heights(d).lastOrNull() ?: return
+        if (lowest >= p.height) return // already the lowest
+        try {
+            load(ctx, d, lowest, startPositionMs = player.currentPosition, playWhenReady = player.playWhenReady)
+            maxHeight = StreamSources.AUTO // still "Auto" for the menu; only the picture got smaller
+            autoLowered = true
+            Toast.makeText(ctx, R.string.yt_player_weak_network, Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            // keep playing what plays now
+        }
+    }
 
     // ---- part 9: resume position ----
     /** [load] uses this as "start where the video was left last time" */
@@ -108,6 +160,7 @@ object YtPlayer {
             .build()
         player.setPlaybackSpeed(PlayerPrefs.speed(context))
         player.addListener(endListener)
+        player.addListener(stallListener)
         exo = player
         handler.removeCallbacks(saveTick)
         handler.postDelayed(saveTick, SAVE_INTERVAL_MS)
@@ -144,6 +197,10 @@ object YtPlayer {
         playWhenReady: Boolean = true
     ) {
         val player = get(context)
+        autoLowered = false
+        readyOnce = false
+        seeking = false
+        stallTimes.clear()
         // the video that was playing keeps its position before the new one replaces it
         if (currentUrl != null && currentUrl != d.url) saveResume()
         val start = when {
@@ -211,7 +268,7 @@ object YtPlayer {
         val d = details ?: return
         val player = exo ?: return
         if (plan is StreamSources.Plan.Progressive) {
-            if (height == maxHeight) return
+            if (height == maxHeight && !autoLowered) return
             load(context, d, height, startPositionMs = player.currentPosition, playWhenReady = player.playWhenReady)
         } else {
             applyHeightLimit(player, plan ?: return, height)
@@ -237,6 +294,7 @@ object YtPlayer {
         saveResume()
         handler.removeCallbacks(saveTick)
         exo?.removeListener(endListener)
+        exo?.removeListener(stallListener)
         exo?.release()
         exo = null
         ctx?.let { PlaybackService.stop(it) }
@@ -244,6 +302,7 @@ object YtPlayer {
         details = null
         plan = null
         maxHeight = StreamSources.AUTO
+        autoLowered = false
         resumedFromMs = 0L
     }
 }

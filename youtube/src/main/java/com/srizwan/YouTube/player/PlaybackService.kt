@@ -2,12 +2,19 @@
 
 package com.srizwan.YouTube.player
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
@@ -41,7 +48,7 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         val player = YtPlayer.peek()
         if (player == null) {
-            stopSelf()
+            // no stopSelf() here: onStartCommand() still has to call startForeground() first, then it stops
             return
         }
         val builder = MediaSession.Builder(this, player).setId(SESSION_ID)
@@ -55,10 +62,15 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // startForegroundService() obliges us to call startForeground() within a few seconds, whatever happens
+        // next (also when we are about to stop). Media3's own notification is built asynchronously and can
+        // come too late or not at all, so a plain one is posted right now; Media3 replaces it (same id).
+        enterForegroundNow()
         val result = super.onStartCommand(intent, flags, startId)
         val s = session
         if (s == null || YtPlayer.peek() == null) {
-            // nothing to play: leave at once (a started foreground service must not stay silent)
+            // nothing to play: leave the foreground state and stop
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -83,12 +95,37 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
+    private fun enterForegroundNow() {
+        try {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(BOOT_CHANNEL) == null) {
+                nm.createNotificationChannel(
+                    NotificationChannel(BOOT_CHANNEL, "Playback", NotificationManager.IMPORTANCE_LOW)
+                )
+            }
+            val n: Notification = NotificationCompat.Builder(this, BOOT_CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle("YouTube")
+                .setOngoing(true)
+                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                .setContentIntent(openPlayerIntent(this))
+                .build()
+            ServiceCompat.startForeground(
+                this, DefaultMediaNotificationProvider.DEFAULT_NOTIFICATION_ID, n,
+                if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
+            )
+        } catch (e: Throwable) {
+            android.util.Log.w("PlaybackService", "startForeground failed", e)
+        }
+    }
+
     private fun stopIfNoScreen() {
         if (!YtPlayer.screenVisible) stopSelf()
     }
 
     companion object {
         private const val SESSION_ID = "yt_player"
+        private const val BOOT_CHANNEL = "yt_playback_boot"
 
         /** Playing now, or about to play (buffering with play requested). */
         fun isPlaying(p: Player?): Boolean =
