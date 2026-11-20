@@ -40,7 +40,15 @@ android {
         }
     }
     
-    // Compose প্রয়োজন নেই তাই এগুলো ফলস করে দেওয়া হলো
+    // targetSdk = 28 is intentional (see above), so lint's "ExpiredTargetSdkVersion" (Google Play wants 33+)
+    // must not stop the release build. lintVitalRelease is skipped, same as in :winlator.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += "ExpiredTargetSdkVersion"
+    }
+
+    // Compose প্রয়োজন নেই তাই এগুলো ফলস করে দেওয়া হলো
     buildFeatures { 
         compose = false 
         viewBinding = true
