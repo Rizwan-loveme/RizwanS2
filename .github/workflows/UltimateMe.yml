@@ -43,7 +43,7 @@ jobs:
   build:
     name: Build & Sign Release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     permissions:
       contents: write
@@ -115,6 +115,7 @@ jobs:
             --include="*.kt" --include="*.java" --include="*.xml" \
             --include="*.gradle" --include="*.gradle.kts" \
             --include="*.properties" --include="*.json" --include="*.pro" \
+            --include="*.h" --include="*.hpp" --include="*.c" --include="*.cpp" \
             --exclude-dir=.git --exclude-dir=.gradle --exclude-dir=build \
             . || true)
 
@@ -135,6 +136,7 @@ jobs:
             --include="*.kt" --include="*.java" --include="*.xml" \
             --include="*.gradle" --include="*.gradle.kts" \
             --include="*.properties" --include="*.json" --include="*.pro" \
+            --include="*.h" --include="*.hpp" --include="*.c" --include="*.cpp" \
             --exclude-dir=.git --exclude-dir=.gradle --exclude-dir=build \
             . || true)
 
