@@ -1,10 +1,10 @@
 package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.View;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -50,17 +50,17 @@ public class AsyncTaskC2903ae extends AsyncTask<File, String, Boolean> {
     /* renamed from: i */
     private C3302d f15057i;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17114a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled(Boolean bool) {
         m17116b(bool);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17115a(bool);
     }
@@ -76,7 +76,7 @@ public class AsyncTaskC2903ae extends AsyncTask<File, String, Boolean> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         if (this.f15057i != null) {
             this.f15057i.f20967d.setVisibility(8);
@@ -113,7 +113,7 @@ public class AsyncTaskC2903ae extends AsyncTask<File, String, Boolean> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled() {
         if (this.f15057i != null) {
             this.f15057i.f20967d.setVisibility(0);

@@ -119,9 +119,10 @@ public class C1561f {
     /* renamed from: h */
     private Deque<C1561f> m12068h() {
         ArrayDeque arrayDeque = new ArrayDeque();
-        for (C1561f m12077f = m12077f(); this != m12077f; m12077f = m12077f.m12077f()) {
-            arrayDeque.push(this);
-            this = m12077f;
+        C1561f c1561f = this;
+        for (C1561f m12077f = m12077f(); c1561f != m12077f; m12077f = m12077f.m12077f()) {
+            arrayDeque.push(c1561f);
+            c1561f = m12077f;
         }
         return arrayDeque;
     }

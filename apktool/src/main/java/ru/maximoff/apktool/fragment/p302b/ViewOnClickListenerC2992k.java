@@ -12,12 +12,12 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.MediaCodec;
 import android.net.Uri;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Environment;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -42,8 +42,8 @@ import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.appcompat.widget.C0173ao;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FileFilter;
+import java.io.File;
+import java.io.FileFilter;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1713,7 +1713,7 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
                 this.f16658a = this;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file) {
                 return file.isDirectory() && file.getName().startsWith("smali");
             }
@@ -2914,7 +2914,7 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
                 this.f16760b = split;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file2) {
                 return file2.isDirectory() && file2.getName().startsWith(this.f16760b[0]);
             }
@@ -2937,7 +2937,7 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
                         this.f16762b = split;
                     }
 
-                    @Override // java.p209io.FileFilter
+                    @Override // java.io.FileFilter
                     public boolean accept(File file5) {
                         return file5.isFile() && (file5.getName().equals(new StringBuffer().append(this.f16762b[1]).append(".png").toString()) || file5.getName().equals(new StringBuffer().append(this.f16762b[1]).append(".webp").toString()) || file5.getName().equals(new StringBuffer().append(this.f16762b[1]).append(".xml").toString()));
                     }
@@ -3290,12 +3290,12 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
         /* renamed from: j */
         private final ViewOnClickListenerC2992k f16802j;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Void doInBackground(File[] fileArr) {
             return m18048a(fileArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Void r1) {
             m18049a(r1);
         }
@@ -3311,7 +3311,7 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
             this.f16801i = i;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f16793a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -3373,12 +3373,12 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
             return bVar.f16811i;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Boolean doInBackground(File[] fileArr) {
             return m18055a(fileArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Boolean bool) {
             m18056a(bool);
         }
@@ -3395,7 +3395,7 @@ public class ViewOnClickListenerC2992k implements View.OnClickListener, View.OnL
             this.f16810h = iArr;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f16803a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

@@ -3,8 +3,8 @@ package com.p065b.p066a.p084c;
 import com.p065b.p066a.p068b.p081g.C0650i;
 import com.p065b.p066a.p068b.p081g.C0651j;
 import com.p065b.p066a.p068b.p081g.C0653l;
-import java.p209io.OutputStream;
-import java.p209io.RandomAccessFile;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.security.MessageDigest;
 
 /* compiled from: DataSinks.java */

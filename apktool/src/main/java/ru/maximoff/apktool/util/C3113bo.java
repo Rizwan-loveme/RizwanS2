@@ -1,10 +1,10 @@
 package ru.maximoff.apktool.util;
 
 import android.app.Activity;
-import android.p008os.Build;
+import android.os.Build;
 import com.srizwan.apktool.R;
 import java.lang.Thread;
-import java.p209io.File;
+import java.io.File;
 import java.util.concurrent.TimeoutException;
 import ru.maximoff.apktool.service.C3056b;
 import ru.maximoff.apktool.util.p303a.C3061a;

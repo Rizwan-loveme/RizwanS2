@@ -1,6 +1,6 @@
 package org.xml.sax.helpers;
 
-import java.p209io.IOException;
+import java.io.IOException;
 import org.xml.sax.Attributes;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.DTDHandler;

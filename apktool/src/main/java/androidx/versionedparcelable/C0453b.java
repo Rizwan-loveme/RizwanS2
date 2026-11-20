@@ -1,7 +1,7 @@
 package androidx.versionedparcelable;
 
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.SparseIntArray;
 import androidx.p011a.C0036a;

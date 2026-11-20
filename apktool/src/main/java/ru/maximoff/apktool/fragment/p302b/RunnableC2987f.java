@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.fragment.p302b;
 
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;

@@ -1,7 +1,7 @@
 package com.p129f.p130a.p133c;
 
 import java.lang.Comparable;
-import java.p209io.Serializable;
+import java.io.Serializable;
 
 /* compiled from: RangeGwtSerializationDependencies.java */
 /* renamed from: com.f.a.c.at */

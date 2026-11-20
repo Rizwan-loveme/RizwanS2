@@ -1,7 +1,7 @@
 package org.p226d.p269d;
 
-import java.p209io.InputStream;
-import java.p209io.RandomAccessFile;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 
 /* compiled from: RandomAccessFileInputStream.java */
 /* renamed from: org.d.d.n */
@@ -19,14 +19,14 @@ public class C2460n extends InputStream {
         this.f12940b = randomAccessFile;
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public int read() {
         this.f12940b.seek(this.f12939a);
         this.f12939a++;
         return this.f12940b.read();
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public int read(byte[] bArr) {
         this.f12940b.seek(this.f12939a);
         int read = this.f12940b.read(bArr);
@@ -34,7 +34,7 @@ public class C2460n extends InputStream {
         return read;
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public int read(byte[] bArr, int i, int i2) {
         this.f12940b.seek(this.f12939a);
         int read = this.f12940b.read(bArr, i, i2);
@@ -42,19 +42,19 @@ public class C2460n extends InputStream {
         return read;
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public long skip(long j) {
         int min = Math.min((int) j, available());
         this.f12939a += min;
         return min;
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public int available() {
         return ((int) this.f12940b.length()) - this.f12939a;
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public boolean markSupported() {
         return false;
     }

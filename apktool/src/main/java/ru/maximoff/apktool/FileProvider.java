@@ -5,10 +5,10 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
-import android.p008os.ParcelFileDescriptor;
+import android.os.ParcelFileDescriptor;
 import android.util.Base64;
 import android.webkit.MimeTypeMap;
-import java.p209io.File;
+import java.io.File;
 import java.util.Arrays;
 
 /* loaded from: classes.dex */

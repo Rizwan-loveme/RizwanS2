@@ -1,7 +1,7 @@
 package org.p226d.p233b.p264i.p265a;
 
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /* compiled from: DexDataStore.java */
 /* renamed from: org.d.b.i.a.c */

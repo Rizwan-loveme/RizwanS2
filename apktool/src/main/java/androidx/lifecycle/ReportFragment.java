@@ -4,8 +4,8 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import androidx.lifecycle.Lifecycle;
 
 /* loaded from: classes.dex */

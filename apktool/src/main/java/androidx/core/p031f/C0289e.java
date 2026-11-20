@@ -1,6 +1,6 @@
 package androidx.core.p031f;
 
-import android.p008os.Build;
+import android.os.Build;
 import android.view.Gravity;
 
 /* compiled from: GravityCompat.java */

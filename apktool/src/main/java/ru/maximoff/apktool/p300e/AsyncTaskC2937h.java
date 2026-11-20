@@ -2,7 +2,7 @@ package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.security.keystore.KeyProperties;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
@@ -12,7 +12,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.HashSet;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
 import ru.maximoff.apktool.util.C3105bg;
@@ -39,12 +39,12 @@ public class AsyncTaskC2937h extends AsyncTask<File, String, Boolean> {
     /* renamed from: e */
     private boolean f15651e = false;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17490a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17491a(bool);
     }
@@ -54,7 +54,7 @@ public class AsyncTaskC2937h extends AsyncTask<File, String, Boolean> {
         this.f15648b = interfaceC2995n;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15647a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

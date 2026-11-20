@@ -9,12 +9,12 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.Handler;
-import android.p008os.Looper;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.Editable;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
@@ -3341,7 +3341,7 @@ public class C1371c extends View implements C1385g.a {
         /* renamed from: f */
         final int f8950f;
 
-        @Override // android.p008os.Parcelable
+        @Override // android.os.Parcelable
         public int describeContents() {
             return 0;
         }
@@ -3364,7 +3364,7 @@ public class C1371c extends View implements C1385g.a {
             this.f8950f = parcel.readInt();
         }
 
-        @Override // android.p008os.Parcelable
+        @Override // android.os.Parcelable
         public void writeToParcel(Parcel parcel, int i) {
             parcel.writeInt(this.f8945a);
             parcel.writeInt(this.f8946b);

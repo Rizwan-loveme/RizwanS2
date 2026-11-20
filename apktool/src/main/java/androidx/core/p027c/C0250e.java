@@ -4,7 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.p006pm.PackageManager;
 import android.graphics.Typeface;
-import android.p008os.CancellationSignal;
+import android.os.CancellationSignal;
 import androidx.core.graphics.C0314d;
 import androidx.core.p027c.C0251f;
 import androidx.core.p030e.InterfaceC0266a;

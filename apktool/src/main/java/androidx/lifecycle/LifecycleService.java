@@ -2,7 +2,7 @@ package androidx.lifecycle;
 
 import android.app.Service;
 import android.content.Intent;
-import android.p008os.IBinder;
+import android.os.IBinder;
 
 /* loaded from: classes.dex */
 public class LifecycleService extends Service implements LifecycleOwner {

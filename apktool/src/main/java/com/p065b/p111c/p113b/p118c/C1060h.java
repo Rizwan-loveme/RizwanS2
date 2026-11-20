@@ -3,7 +3,7 @@ package com.p065b.p111c.p113b.p118c;
 import com.p065b.p111c.p120c.InterfaceC1067a;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.p209io.RandomAccessFile;
+import java.io.RandomAccessFile;
 
 /* compiled from: RandomAccessFileDataSink.java */
 /* renamed from: com.b.c.b.c.h */

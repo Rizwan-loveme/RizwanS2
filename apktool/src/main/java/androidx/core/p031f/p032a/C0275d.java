@@ -1,6 +1,6 @@
 package androidx.core.p031f.p032a;
 
-import android.p008os.Build;
+import android.os.Build;
 import android.view.accessibility.AccessibilityRecord;
 
 /* compiled from: AccessibilityRecordCompat.java */

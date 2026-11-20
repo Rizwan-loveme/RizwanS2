@@ -2,9 +2,9 @@ package ru.maximoff.apktool.p300e;
 
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,12 +36,12 @@ public class AsyncTaskC2910al extends AsyncTask<File, Integer, Boolean> {
     /* renamed from: f */
     private ProgressDialog f15266f;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17234a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17235a(bool);
     }

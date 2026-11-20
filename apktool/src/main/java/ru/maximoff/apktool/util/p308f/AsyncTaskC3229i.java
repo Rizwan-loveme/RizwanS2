@@ -1,14 +1,14 @@
 package ru.maximoff.apktool.util.p308f;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.Map;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
 import ru.maximoff.apktool.util.C3102bd;
@@ -31,12 +31,12 @@ public class AsyncTaskC3229i extends AsyncTask<File, String, String> {
     /* renamed from: d */
     private String f19366d;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected String doInBackground(File[] fileArr) {
         return m19348a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(String str) {
         m19349a(str);
     }
@@ -47,7 +47,7 @@ public class AsyncTaskC3229i extends AsyncTask<File, String, String> {
         this.f19366d = str;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f19363a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

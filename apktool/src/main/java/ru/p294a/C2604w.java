@@ -1,12 +1,12 @@
 package ru.p294a;
 
 import android.widget.ExpandableListView;
-import java.p209io.Closeable;
-import java.p209io.EOFException;
-import java.p209io.File;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.RandomAccessFile;
+import java.io.Closeable;
+import java.io.EOFException;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -149,7 +149,7 @@ public class C2604w implements Closeable {
         }
     }
 
-    @Override // java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         this.f13497h = true;
         this.f13495f.close();
@@ -203,7 +203,7 @@ public class C2604w implements Closeable {
                         this.f13505b = inflater;
                     }
 
-                    @Override // java.util.zip.InflaterInputStream, java.p209io.FilterInputStream, java.p209io.InputStream, java.p209io.Closeable, java.lang.AutoCloseable
+                    @Override // java.util.zip.InflaterInputStream, java.io.FilterInputStream, java.io.InputStream, java.io.Closeable, java.lang.AutoCloseable
                     public void close() {
                         super.close();
                         this.f13505b.end();
@@ -492,7 +492,7 @@ public class C2604w implements Closeable {
             this.f13508b = j;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int read() {
             int read;
             long j = this.f13507a;
@@ -514,7 +514,7 @@ public class C2604w implements Closeable {
             return read;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int read(byte[] bArr, int i, int i2) {
             int read;
             if (this.f13507a <= 0) {

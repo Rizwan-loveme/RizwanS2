@@ -5,7 +5,7 @@ import com.p065b.p086b.p093b.p094a.C0757a;
 import com.p140g.p141a.p144c.C1244c;
 import com.p140g.p141a.p148e.C1285e;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
 import ru.maximoff.apktool.util.C3102bd;
 import ru.maximoff.apktool.util.C3262u;
@@ -57,7 +57,7 @@ public class AsyncTaskC2942m extends AbstractAsyncTaskC2898a {
         return this.f15686h ? R.string.jar2dex : R.string.dex2jar;
     }
 
-    @Override // ru.maximoff.apktool.p300e.AbstractAsyncTaskC2898a, android.p008os.AsyncTask
+    @Override // ru.maximoff.apktool.p300e.AbstractAsyncTaskC2898a, android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
         mo3984d(R.string.mplease_wait, (Object) null);

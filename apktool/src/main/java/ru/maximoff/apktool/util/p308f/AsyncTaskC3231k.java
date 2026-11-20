@@ -1,6 +1,6 @@
 package ru.maximoff.apktool.util.p308f;
 
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,12 +42,12 @@ public class AsyncTaskC3231k extends AsyncTask<Void, Void, Void> {
     /* renamed from: h */
     private DialogInterfaceC0070b f19379h;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Void doInBackground(Void[] voidArr) {
         return m19352a(voidArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Void r1) {
         m19353a(r1);
     }
@@ -61,7 +61,7 @@ public class AsyncTaskC3231k extends AsyncTask<Void, Void, Void> {
         this.f19377f = z2;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f19372a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

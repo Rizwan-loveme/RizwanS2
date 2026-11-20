@@ -1,6 +1,6 @@
 package jadx.core.p203d.p206c;
 
-import java.p209io.File;
+import java.io.File;
 import java.util.zip.ZipEntry;
 import org.p285i.C2568c;
 import org.p285i.InterfaceC2558b;

@@ -1,7 +1,7 @@
 package jadx.p180a;
 
 import jadx.core.p203d.p206c.C1734d;
-import java.p209io.File;
+import java.io.File;
 
 /* compiled from: ResourceFile.java */
 /* renamed from: jadx.a.i */

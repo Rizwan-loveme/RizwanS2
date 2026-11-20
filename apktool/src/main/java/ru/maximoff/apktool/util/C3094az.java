@@ -1,8 +1,8 @@
 package ru.maximoff.apktool.util;
 
-import java.p209io.FilterInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: ReplacingInputStream.java */
 /* renamed from: ru.maximoff.apktool.util.az */
@@ -64,7 +64,7 @@ public class C3094az extends FilterInputStream {
         this.f18188a = new int[bArr.length];
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int read(byte[] bArr, int i, int i2) {
         if (bArr == null) {
             throw new NullPointerException();
@@ -95,12 +95,12 @@ public class C3094az extends FilterInputStream {
         return i3;
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int read(byte[] bArr) {
         return read(bArr, 0, bArr.length);
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int read() {
         a aVar = this.f18194g;
         if (aVar == a.NOT_MATCHED) {

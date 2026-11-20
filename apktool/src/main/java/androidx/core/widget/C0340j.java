@@ -2,7 +2,7 @@ package androidx.core.widget;
 
 import android.content.ClipData;
 import android.content.Context;
-import android.p008os.Build;
+import android.os.Build;
 import android.text.Editable;
 import android.text.Selection;
 import android.text.Spanned;

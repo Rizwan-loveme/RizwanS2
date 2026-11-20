@@ -8,7 +8,7 @@ import ru.maximoff.apktool.fragment.C2981b;
 /* compiled from: Item.java */
 /* renamed from: ru.maximoff.apktool.fragment.b.m */
 /* loaded from: classes.dex */
-public interface InterfaceC2994m extends Comparable<InterfaceC2994m> extends Comparable {
+public interface InterfaceC2994m extends Comparable<InterfaceC2994m> {
     /* renamed from: a */
     void mo17863a();
 

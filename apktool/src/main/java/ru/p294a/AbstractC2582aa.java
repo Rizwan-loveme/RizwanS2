@@ -1,6 +1,6 @@
 package ru.p294a;
 
-import java.p209io.IOException;
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.zip.CRC32;
 import ru.p294a.C2595n;

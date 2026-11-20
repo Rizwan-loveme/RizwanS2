@@ -2,10 +2,10 @@ package ru.maximoff.apktool.util;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.p008os.Parcelable;
+import android.os.Parcelable;
 import android.provider.Contacts;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import ru.maximoff.apktool.util.p303a.C3061a;
 

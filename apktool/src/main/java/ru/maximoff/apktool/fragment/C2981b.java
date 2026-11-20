@@ -1,8 +1,8 @@
 package ru.maximoff.apktool.fragment;
 
 import android.content.res.Configuration;
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import android.support.design.widget.TabLayout;
 import android.view.LayoutInflater;
 import android.view.PointerIcon;
@@ -13,7 +13,7 @@ import androidx.core.content.C0255a;
 import androidx.fragment.app.ComponentCallbacksC0374e;
 import androidx.p044h.p045a.C0406b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import ru.maximoff.apktool.MainActivity;
 import ru.maximoff.apktool.fragment.p302b.C2986e;

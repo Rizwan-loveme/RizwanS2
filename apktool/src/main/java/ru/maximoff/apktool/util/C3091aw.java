@@ -2,7 +2,7 @@ package ru.maximoff.apktool.util;
 
 import android.graphics.Bitmap;
 import java.lang.reflect.Array;
-import java.p209io.UnsupportedEncodingException;
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
 /* compiled from: QrCode.java */
@@ -438,33 +438,10 @@ public final class C3091aw {
                 }
             }
             for (int i9 = 0; i9 < this.f18131e - 1; i9++) {
-                for (0; i < this.f18131e - 1; i + 1) {
-                    boolean z5 = this.f18132f[i9][i];
-                    if (this.f18132f[i9][i + 1]) {
-                        i = z5 ? 0 : i + 1;
-                        if (this.f18132f[i9 + 1][i]) {
-                        }
-                    } else {
-                        if (z5) {
-                        }
-                        if (this.f18132f[i9 + 1][i]) {
-                            if (z5) {
-                            }
-                            if (this.f18132f[i9 + 1][i + 1]) {
-                                if (z5) {
-                                }
-                                i2 += 3;
-                            } else {
-                                if (!z5) {
-                                }
-                                i2 += 3;
-                            }
-                        } else {
-                            if (!z5) {
-                            }
-                            if (this.f18132f[i9 + 1][i + 1]) {
-                            }
-                        }
+                for (int i17 = 0; i17 < this.f18131e - 1; i17++) {
+                    boolean z5 = this.f18132f[i9][i17];
+                    if (z5 == this.f18132f[i9][i17 + 1] && z5 == this.f18132f[i9 + 1][i17] && z5 == this.f18132f[i9 + 1][i17 + 1]) {
+                        i2 += 3;
                     }
                 }
             }

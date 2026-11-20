@@ -1,6 +1,6 @@
 package ru.maximoff.apktool.fragment;
 
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.preference.Preference;
 import com.srizwan.apktool.R;
 import ru.maximoff.apktool.preference.CheckBoxPreference;

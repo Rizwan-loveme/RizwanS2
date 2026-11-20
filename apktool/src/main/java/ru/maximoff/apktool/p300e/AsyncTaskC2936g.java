@@ -1,14 +1,14 @@
 package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -62,12 +62,12 @@ public class AsyncTaskC2936g extends AsyncTask<File, String, Boolean> {
     /* renamed from: k */
     private final Set<String> f15646k = new TreeSet();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17488a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17489a(bool);
     }
@@ -77,7 +77,7 @@ public class AsyncTaskC2936g extends AsyncTask<File, String, Boolean> {
         this.f15637b = interfaceC2995n;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15636a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

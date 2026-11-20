@@ -1,7 +1,7 @@
 package androidx.core.p031f;
 
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import android.text.style.ClickableSpan;
 import android.util.SparseArray;
 import android.view.View;

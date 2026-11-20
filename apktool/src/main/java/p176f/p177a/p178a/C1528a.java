@@ -1,10 +1,10 @@
 package p176f.p177a.p178a;
 
 import android.annotation.SuppressLint;
-import java.p209io.ByteArrayInputStream;
-import java.p209io.Closeable;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UnknownFormatConversionException;
@@ -503,7 +503,7 @@ public class C1528a implements Closeable {
         return this.f9751d[0] == f9748a[0];
     }
 
-    @Override // java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         this.f9755h.m11733a();
     }

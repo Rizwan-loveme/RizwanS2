@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;

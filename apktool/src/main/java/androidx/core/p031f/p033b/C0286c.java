@@ -2,7 +2,7 @@ package androidx.core.p031f.p033b;
 
 import android.content.ClipDescription;
 import android.net.Uri;
-import android.p008os.Build;
+import android.os.Build;
 import android.view.inputmethod.InputContentInfo;
 
 /* compiled from: InputContentInfoCompat.java */

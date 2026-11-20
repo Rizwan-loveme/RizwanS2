@@ -2,13 +2,13 @@ package ru.maximoff.apktool.fragment;
 
 import android.app.Activity;
 import android.graphics.Color;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import com.srizwan.apktool.R;
-import java.p209io.InputStream;
+import java.io.InputStream;
 import ru.maximoff.apktool.util.C3080al;
 import ru.maximoff.apktool.util.C3102bd;
 import ru.maximoff.apktool.view.C3305g;

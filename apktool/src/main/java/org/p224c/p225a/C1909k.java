@@ -1,6 +1,6 @@
 package org.p224c.p225a;
 
-import java.p209io.InputStream;
+import java.io.InputStream;
 
 /* compiled from: State.java */
 /* renamed from: org.c.a.k */

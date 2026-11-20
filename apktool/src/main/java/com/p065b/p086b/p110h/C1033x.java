@@ -1,6 +1,6 @@
 package com.p065b.p086b.p110h;
 
-import java.p209io.UTFDataFormatException;
+import java.io.UTFDataFormatException;
 
 /* compiled from: Mutf8.java */
 /* renamed from: com.b.b.h.x */
@@ -8,7 +8,7 @@ import java.p209io.UTFDataFormatException;
 public final class C1033x {
     /* JADX WARN: Code restructure failed: missing block: B:21:0x0061, code lost:
     
-        throw new java.p209io.UTFDataFormatException("bad second or third byte");
+        throw new java.io.UTFDataFormatException("bad second or third byte");
      */
     /* renamed from: a */
     /*

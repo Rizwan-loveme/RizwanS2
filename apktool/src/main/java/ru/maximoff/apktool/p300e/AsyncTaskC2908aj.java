@@ -7,7 +7,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.usb.UsbManager;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.util.C0035a;
@@ -19,14 +19,14 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.p065b.p066a.p067a.AbstractC0581c;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.ByteArrayInputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileOutputStream;
-import java.p209io.FilenameFilter;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -190,12 +190,12 @@ public class AsyncTaskC2908aj extends AsyncTask<String, String, Boolean> {
     /* renamed from: M */
     private List<String> f15125M = new ArrayList();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(String[] strArr) {
         return m17184a(strArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17188a(bool);
     }
@@ -206,7 +206,7 @@ public class AsyncTaskC2908aj extends AsyncTask<String, String, Boolean> {
         this.f15151y = C3102bd.m18905a(context, "aicon_size", 108);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15142p).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -511,7 +511,7 @@ public class AsyncTaskC2908aj extends AsyncTask<String, String, Boolean> {
                 this.f15160b = str;
             }
 
-            @Override // java.p209io.FilenameFilter
+            @Override // java.io.FilenameFilter
             public boolean accept(File file3, String str3) {
                 return str3.startsWith(this.f15160b);
             }
@@ -561,7 +561,7 @@ public class AsyncTaskC2908aj extends AsyncTask<String, String, Boolean> {
                 this.f15162b = str;
             }
 
-            @Override // java.p209io.FilenameFilter
+            @Override // java.io.FilenameFilter
             public boolean accept(File file3, String str5) {
                 return str5.startsWith(this.f15162b);
             }

@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.util;
 
 import dalvik.bytecode.Opcodes;
-import java.p209io.OutputStream;
+import java.io.OutputStream;
 
 /* compiled from: GifEncoder.java */
 /* renamed from: ru.maximoff.apktool.util.ah */

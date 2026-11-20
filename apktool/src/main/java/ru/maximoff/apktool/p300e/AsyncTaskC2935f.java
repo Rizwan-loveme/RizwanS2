@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,11 +12,11 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.p065b.p066a.p067a.AbstractC0581c;
 import com.srizwan.apktool.R;
-import java.p209io.ByteArrayInputStream;
-import java.p209io.File;
-import java.p209io.FileFilter;
-import java.p209io.FileInputStream;
-import java.p209io.FileOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -76,12 +76,12 @@ public class AsyncTaskC2935f extends AsyncTask<File, String, Boolean> {
     /* renamed from: l */
     private String f15626l = "...";
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17482a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17483a(bool);
     }
@@ -96,7 +96,7 @@ public class AsyncTaskC2935f extends AsyncTask<File, String, Boolean> {
         this.f15623i = str5;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15615a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -212,7 +212,7 @@ public class AsyncTaskC2935f extends AsyncTask<File, String, Boolean> {
                         this.f15627a = this;
                     }
 
-                    @Override // java.p209io.FileFilter
+                    @Override // java.io.FileFilter
                     public boolean accept(File file3) {
                         return file3.isDirectory() && file3.getName().startsWith("values");
                     }
@@ -264,7 +264,7 @@ public class AsyncTaskC2935f extends AsyncTask<File, String, Boolean> {
                 this.f15628a = this;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file3) {
                 return file3.isDirectory() && file3.getName().startsWith("values");
             }
@@ -405,7 +405,7 @@ public class AsyncTaskC2935f extends AsyncTask<File, String, Boolean> {
                 this.f15630b = str;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file4) {
                 return file4.isDirectory() && file4.getName().startsWith(this.f15630b);
             }
@@ -426,7 +426,7 @@ public class AsyncTaskC2935f extends AsyncTask<File, String, Boolean> {
                     this.f15632b = str2;
                 }
 
-                @Override // java.p209io.FileFilter
+                @Override // java.io.FileFilter
                 public boolean accept(File file5) {
                     return file5.isFile() && (file5.getName().equals(new StringBuffer().append(this.f15632b).append(".png").toString()) || file5.getName().equals(new StringBuffer().append(this.f15632b).append(".webp").toString()) || file5.getName().equals(new StringBuffer().append(this.f15632b).append(".xml").toString()));
                 }

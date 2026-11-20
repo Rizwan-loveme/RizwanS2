@@ -5,10 +5,10 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -20,8 +20,8 @@ import android.widget.TextView;
 import androidx.p044h.p045a.AbstractC0405a;
 import androidx.p044h.p045a.C0406b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FilenameFilter;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -375,7 +375,7 @@ public class PreviewActivity extends AbstractActivityC2894b {
                 this.f14213a = this;
             }
 
-            @Override // java.p209io.FilenameFilter
+            @Override // java.io.FilenameFilter
             public boolean accept(File file2, String str) {
                 for (String str2 : this.f14213a.f14185h) {
                     if (str.toLowerCase().endsWith(new StringBuffer().append(".").append(str2).toString())) {

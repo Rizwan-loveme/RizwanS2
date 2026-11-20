@@ -1,11 +1,11 @@
 package p046b.p058c;
 
-import java.p209io.BufferedInputStream;
-import java.p209io.ByteArrayInputStream;
-import java.p209io.File;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;

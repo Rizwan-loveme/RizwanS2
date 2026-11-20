@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.view;
 
 import android.graphics.Bitmap;
-import java.p209io.InputStream;
+import java.io.InputStream;
 import java.util.Vector;
 
 /* compiled from: GifDecoder.java */

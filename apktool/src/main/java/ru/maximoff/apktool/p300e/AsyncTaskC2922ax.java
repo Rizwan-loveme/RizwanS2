@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,12 +9,12 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.p065b.p066a.p067a.AbstractC0581c;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.BufferedOutputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -75,12 +75,12 @@ public class AsyncTaskC2922ax extends AsyncTask<File, String, Boolean> {
     /* renamed from: j */
     private int f15444j = 0;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17369a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17370a(bool);
     }
@@ -92,7 +92,7 @@ public class AsyncTaskC2922ax extends AsyncTask<File, String, Boolean> {
         this.f15442h = z;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15437c).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

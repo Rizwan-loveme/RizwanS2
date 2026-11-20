@@ -1,6 +1,6 @@
 package com.p065b.p086b.p100d.p101a;
 
-import java.p209io.EOFException;
+import java.io.EOFException;
 
 /* compiled from: ShortArrayCodeInput.java */
 /* renamed from: com.b.b.d.a.n */

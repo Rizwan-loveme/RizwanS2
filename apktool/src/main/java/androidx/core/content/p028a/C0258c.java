@@ -2,7 +2,7 @@ package androidx.core.content.p028a;
 
 import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.Base64;
 import android.util.TypedValue;
 import android.util.Xml;

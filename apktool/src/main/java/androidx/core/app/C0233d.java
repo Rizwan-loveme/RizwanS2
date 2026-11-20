@@ -2,7 +2,7 @@ package androidx.core.app;
 
 import android.app.AppOpsManager;
 import android.content.Context;
-import android.p008os.Build;
+import android.os.Build;
 
 /* compiled from: AppOpsManagerCompat.java */
 /* renamed from: androidx.core.app.d */

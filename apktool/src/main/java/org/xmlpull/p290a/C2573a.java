@@ -1,8 +1,8 @@
 package org.xmlpull.p290a;
 
-import java.p209io.OutputStream;
-import java.p209io.OutputStreamWriter;
-import java.p209io.Writer;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.HashSet;
 import java.util.Set;
 import javax.xml.XMLConstants;

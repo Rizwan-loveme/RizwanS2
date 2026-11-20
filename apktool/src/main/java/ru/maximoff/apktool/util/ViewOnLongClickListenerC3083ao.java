@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.util;
 
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
 import com.srizwan.apktool.R;

@@ -1,8 +1,8 @@
 package com.p122c.p123a;
 
-import java.p209io.FileNotFoundException;
-import java.p209io.IOException;
-import java.p209io.RandomAccessFile;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 
 /* compiled from: ELFFileParser.java */

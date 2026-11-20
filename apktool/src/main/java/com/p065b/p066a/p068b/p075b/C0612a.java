@@ -1,6 +1,6 @@
 package com.p065b.p066a.p068b.p075b;
 
-import android.p008os.Build;
+import android.os.Build;
 import com.p065b.p066a.p068b.p075b.p076a.AbstractC0616d;
 import com.p065b.p066a.p068b.p075b.p076a.C0613a;
 import com.p065b.p066a.p068b.p075b.p076a.C0614b;
@@ -536,9 +536,9 @@ public final class C0612a {
                 if (!m6114c.hasRemaining()) {
                     return (T) EMPTY_BYTE_ARRAY;
                 }
-                ?? r0 = (T) new byte[m6114c.remaining()];
-                m6114c.get((byte[]) r0);
-                return r0;
+                byte[] r0 = new byte[m6114c.remaining()];
+                m6114c.get(r0);
+                return (T) r0;
             }
             if (C0623g.class.equals(cls)) {
                 return (T) new C0623g(c0613a.m6113b());

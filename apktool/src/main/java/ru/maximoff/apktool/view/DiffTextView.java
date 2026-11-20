@@ -6,9 +6,9 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.icu.text.DateFormat;
-import android.p008os.Build;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -781,7 +781,7 @@ public class DiffTextView extends TextView {
             this.f20786b = parcel.readInt();
         }
 
-        @Override // android.view.View.BaseSavedState, android.view.AbsSavedState, android.p008os.Parcelable
+        @Override // android.view.View.BaseSavedState, android.view.AbsSavedState, android.os.Parcelable
         public void writeToParcel(Parcel parcel, int i) {
             super.writeToParcel(parcel, i);
             parcel.writeInt(this.f20785a);

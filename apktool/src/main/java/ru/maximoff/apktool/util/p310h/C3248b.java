@@ -1,6 +1,6 @@
 package ru.maximoff.apktool.util.p310h;
 
-import java.p209io.OutputStream;
+import java.io.OutputStream;
 import ru.p294a.C2602u;
 import ru.p294a.C2606y;
 
@@ -56,30 +56,30 @@ public class C3248b extends C2606y {
             this.f19533a = outputStream;
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(byte[] bArr) {
             this.f19533a.write(bArr);
             this.f19534b += bArr.length;
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(int i) {
             this.f19533a.write(i);
             this.f19534b++;
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(byte[] bArr, int i, int i2) {
             this.f19533a.write(bArr, i, i2);
             this.f19534b += i2;
         }
 
-        @Override // java.p209io.OutputStream, java.p209io.Flushable
+        @Override // java.io.OutputStream, java.io.Flushable
         public void flush() {
             this.f19533a.flush();
         }
 
-        @Override // java.p209io.OutputStream, java.p209io.Closeable, java.lang.AutoCloseable
+        @Override // java.io.OutputStream, java.io.Closeable, java.lang.AutoCloseable
         public void close() {
             try {
                 flush();

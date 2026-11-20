@@ -6,8 +6,8 @@ import android.provider.Settings;
 import android.util.AttributeSet;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FilenameFilter;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import ru.maximoff.apktool.util.C3080al;
 import ru.maximoff.apktool.util.C3102bd;
@@ -260,7 +260,7 @@ public class RadioGroupPreference extends CustomPreference {
                 this.f17033a = this;
             }
 
-            @Override // java.p209io.FilenameFilter
+            @Override // java.io.FilenameFilter
             public boolean accept(File file, String str) {
                 return str.endsWith(".json");
             }

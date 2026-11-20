@@ -5,15 +5,16 @@ import com.p140g.p141a.p149f.p150a.C1290b;
 import com.p140g.p141a.p149f.p150a.C1291c;
 import com.p140g.p141a.p151g.C1299g;
 import java.nio.charset.StandardCharsets;
-import java.p209io.ByteArrayOutputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileNotFoundException;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -90,47 +91,27 @@ public class C1285e implements InterfaceC1281a {
             return new C1282b(m10450b);
         }
         if ("PK".equals(new String(m10450b, 0, 2, StandardCharsets.ISO_8859_1))) {
-            ?? treeMap = new TreeMap();
-            Throwable th = 0;
-            th = 0;
+            TreeMap treeMap = new TreeMap();
+            C1291c c1291c = new C1291c(m10450b);
             try {
-                C1291c c1291c = new C1291c(m10450b);
-                try {
-                    th = c1291c.m10468a().iterator();
-                    while (th.hasNext()) {
-                        C1290b c1290b = (C1290b) th.next();
-                        String m10462a = c1290b.m10462a();
-                        if (m10462a.startsWith("classes") && m10462a.endsWith(".dex") && !treeMap.containsKey(m10462a)) {
-                            treeMap.put(m10462a, new C1282b(m10449a(c1291c.m10469b(c1290b))));
-                        }
+                Iterator it = c1291c.m10468a().iterator();
+                while (it.hasNext()) {
+                    C1290b c1290b = (C1290b) it.next();
+                    String m10462a = c1290b.m10462a();
+                    if (m10462a.startsWith("classes") && m10462a.endsWith(".dex") && !treeMap.containsKey(m10462a)) {
+                        treeMap.put(m10462a, new C1282b(m10449a(c1291c.m10469b(c1290b))));
                     }
-                    if (c1291c != null) {
-                        c1291c.close();
-                    }
-                    if (treeMap.size() == 0) {
-                        throw new IOException("Can not find classes.dex in zip file");
-                    }
-                    if (treeMap.size() == 1) {
-                        return (C1282b) treeMap.firstEntry().getValue();
-                    }
-                    return new C1285e(treeMap.values());
-                } catch (Throwable th2) {
-                    th = th2;
-                    if (c1291c == null) {
-                        throw th;
-                    }
-                    c1291c.close();
-                    throw th;
                 }
-            } catch (Throwable th3) {
-                if (th == 0) {
-                    throw th3;
-                }
-                if (th != th3) {
-                    th.addSuppressed(th3);
-                }
-                throw th;
+            } finally {
+                c1291c.close();
             }
+            if (treeMap.size() == 0) {
+                throw new IOException("Can not find classes.dex in zip file");
+            }
+            if (treeMap.size() == 1) {
+                return (C1282b) treeMap.firstEntry().getValue();
+            }
+            return new C1285e(treeMap.values());
         }
         throw new IOException("the src file not a .dex or zip file");
     }

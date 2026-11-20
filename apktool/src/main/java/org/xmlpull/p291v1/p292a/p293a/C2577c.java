@@ -1,7 +1,7 @@
 package org.xmlpull.p291v1.p292a.p293a;
 
-import java.p209io.InputStream;
-import java.p209io.Reader;
+import java.io.InputStream;
+import java.io.Reader;
 import org.xmlpull.p291v1.XmlPullParser;
 
 /* compiled from: XmlPullParserDelegate.java */

@@ -1,7 +1,7 @@
 package com.p065b.p086b.p110h;
 
-import java.p209io.FilterWriter;
-import java.p209io.Writer;
+import java.io.FilterWriter;
+import java.io.Writer;
 
 /* compiled from: IndentingWriter.java */
 /* renamed from: com.b.b.h.n */
@@ -47,7 +47,7 @@ public final class C1023n extends FilterWriter {
         this(writer, i, "");
     }
 
-    @Override // java.p209io.FilterWriter, java.p209io.Writer
+    @Override // java.io.FilterWriter, java.io.Writer
     public void write(int i) {
         synchronized (this.lock) {
             if (this.f6500e) {
@@ -85,7 +85,7 @@ public final class C1023n extends FilterWriter {
         }
     }
 
-    @Override // java.p209io.FilterWriter, java.p209io.Writer
+    @Override // java.io.FilterWriter, java.io.Writer
     public void write(char[] cArr, int i, int i2) {
         synchronized (this.lock) {
             while (i2 > 0) {
@@ -96,7 +96,7 @@ public final class C1023n extends FilterWriter {
         }
     }
 
-    @Override // java.p209io.FilterWriter, java.p209io.Writer
+    @Override // java.io.FilterWriter, java.io.Writer
     public void write(String str, int i, int i2) {
         synchronized (this.lock) {
             while (i2 > 0) {

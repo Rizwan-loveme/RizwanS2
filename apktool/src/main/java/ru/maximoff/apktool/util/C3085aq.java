@@ -2,7 +2,7 @@ package ru.maximoff.apktool.util;
 
 import android.content.Context;
 import android.content.Intent;
-import android.p008os.Build;
+import android.os.Build;
 import android.provider.Settings;
 import com.srizwan.apktool.R;
 

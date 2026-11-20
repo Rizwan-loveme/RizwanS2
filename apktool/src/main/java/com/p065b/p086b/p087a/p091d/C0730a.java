@@ -26,7 +26,7 @@ import com.p065b.p086b.p103f.p106c.InterfaceC0948b;
 import com.p065b.p086b.p103f.p107d.C0975c;
 import com.p065b.p086b.p110h.C1013d;
 import com.p065b.p086b.p110h.C1022m;
-import java.p209io.IOException;
+import java.io.IOException;
 
 /* compiled from: AnnotationParser.java */
 /* renamed from: com.b.b.a.d.a */

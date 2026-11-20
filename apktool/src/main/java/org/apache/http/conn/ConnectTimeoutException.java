@@ -1,6 +1,6 @@
 package org.apache.http.conn;
 
-import java.p209io.InterruptedIOException;
+import java.io.InterruptedIOException;
 
 @Deprecated
 /* loaded from: assets/android.dex */

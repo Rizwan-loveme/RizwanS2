@@ -2,8 +2,8 @@ package com.p065b.p111c.p120c;
 
 import com.p065b.p111c.p113b.p118c.C1058f;
 import com.p065b.p111c.p113b.p118c.C1060h;
-import java.p209io.OutputStream;
-import java.p209io.RandomAccessFile;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 
 /* compiled from: DataSinks.java */
 /* renamed from: com.b.c.c.b */

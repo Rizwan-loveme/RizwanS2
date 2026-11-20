@@ -2,8 +2,8 @@ package ru.maximoff.apktool;
 
 import android.content.DialogInterface;
 import android.graphics.Typeface;
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -13,8 +13,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FilenameFilter;
+import java.io.File;
+import java.io.FilenameFilter;
 import ru.maximoff.apktool.util.C3085aq;
 import ru.maximoff.apktool.util.C3112bn;
 import ru.maximoff.apktool.util.C3114bp;
@@ -69,7 +69,7 @@ public class CrashActivity extends AbstractActivityC2894b {
                         this.f13975a = this;
                     }
 
-                    @Override // java.p209io.FilenameFilter
+                    @Override // java.io.FilenameFilter
                     public boolean accept(File file, String str) {
                         return str.endsWith(".txt");
                     }

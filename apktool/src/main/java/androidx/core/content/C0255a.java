@@ -4,13 +4,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Process;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 import android.util.TypedValue;
 import androidx.core.content.p028a.C0261f;
-import java.p209io.File;
+import java.io.File;
 
 /* compiled from: ContextCompat.java */
 /* renamed from: androidx.core.content.a */

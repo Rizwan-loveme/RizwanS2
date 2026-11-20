@@ -1,7 +1,7 @@
 package p176f.p177a.p178a.p179a;
 
-import java.p209io.DataOutputStream;
-import java.p209io.OutputStream;
+import java.io.DataOutputStream;
+import java.io.OutputStream;
 
 /* compiled from: LEDataOutputStream.java */
 /* renamed from: f.a.a.a.b */

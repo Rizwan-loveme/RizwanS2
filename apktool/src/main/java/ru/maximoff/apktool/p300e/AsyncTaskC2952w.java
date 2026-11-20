@@ -1,13 +1,13 @@
 package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.widget.TextView;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import ru.maximoff.apktool.util.C3060a;
 import ru.maximoff.apktool.util.C3080al;
@@ -34,17 +34,17 @@ public class AsyncTaskC2952w extends AsyncTask<File, Integer, String> {
     /* renamed from: d */
     private Object f15812d;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected String doInBackground(File[] fileArr) {
         return m17587a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled(String str) {
         m17589b(str);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(String str) {
         m17588a(str);
     }
@@ -121,7 +121,7 @@ public class AsyncTaskC2952w extends AsyncTask<File, Integer, String> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled() {
         C2918at.m17333d();
     }

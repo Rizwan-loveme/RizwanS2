@@ -1,6 +1,6 @@
 package org.p285i.p287b;
 
-import java.p209io.Serializable;
+import java.io.Serializable;
 import org.p285i.InterfaceC2558b;
 
 /* JADX INFO: Access modifiers changed from: package-private */

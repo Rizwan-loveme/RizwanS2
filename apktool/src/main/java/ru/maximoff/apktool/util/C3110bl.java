@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.util;
 
-import android.p008os.Build;
-import android.p008os.StatFs;
+import android.os.Build;
+import android.os.StatFs;
 
 /* compiled from: StatUtils.java */
 /* renamed from: ru.maximoff.apktool.util.bl */

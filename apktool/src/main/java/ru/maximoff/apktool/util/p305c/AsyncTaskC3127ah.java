@@ -2,15 +2,15 @@ package ru.maximoff.apktool.util.p305c;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.p008os.AsyncTask;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.p065b.p066a.p067a.AbstractC0581c;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -46,17 +46,17 @@ public class AsyncTaskC3127ah extends AsyncTask<File, String, String> {
     /* renamed from: f */
     private List<AbstractC3187d> f18459f;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected String doInBackground(File[] fileArr) {
         return m19093a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled(String str) {
         m19095b(str);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(String str) {
         m19094a(str);
     }
@@ -518,7 +518,7 @@ public class AsyncTaskC3127ah extends AsyncTask<File, String, String> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled() {
         if (this.f18458e != null) {
             this.f18458e.removeCallbacksAndMessages((Object) null);

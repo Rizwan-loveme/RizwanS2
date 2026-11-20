@@ -1,6 +1,6 @@
 package ru.maximoff.apktool.util.p307e;
 
-import android.p008os.Build;
+import android.os.Build;
 import android.provider.Settings;
 import com.srizwan.apktool.R;
 import java.util.ArrayList;

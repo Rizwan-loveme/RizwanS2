@@ -3,7 +3,7 @@ package androidx.appcompat.widget;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
+import android.os.Build;
 import java.lang.ref.WeakReference;
 
 /* compiled from: VectorEnabledTintResources.java */

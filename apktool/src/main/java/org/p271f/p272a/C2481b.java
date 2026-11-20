@@ -190,9 +190,10 @@ final class C2481b extends AbstractC2473a {
     /* renamed from: b */
     int m15708b() {
         int i = 0;
-        while (this != null) {
-            i += this.f12985h.f13089b;
-            this = this.f12980c;
+        C2481b c2481b = this;
+        while (c2481b != null) {
+            i += c2481b.f12985h.f13089b;
+            c2481b = c2481b.f12980c;
         }
         return i;
     }

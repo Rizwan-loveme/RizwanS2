@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,7 +9,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.nicdahlquist.pngquant.LibPngQuant;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
@@ -51,12 +51,12 @@ public class AsyncTaskC2904af extends AsyncTask<File, String, Boolean> {
     /* renamed from: i */
     private List<String> f15067i = new ArrayList();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17121a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17122a(bool);
     }
@@ -67,7 +67,7 @@ public class AsyncTaskC2904af extends AsyncTask<File, String, Boolean> {
         this.f15064f = C3102bd.m18925a(this.f15059a, "imgs_backup", false);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15059a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -90,7 +90,7 @@ public class AsyncTaskC2904af extends AsyncTask<File, String, Boolean> {
         if (z) {
             this.f15064f = false;
         }
-        ?? r0 = 0;
+        int r0 = 0;
         int i = 0;
         while (r0 < fileArr.length) {
             File file = fileArr[r0];
@@ -98,8 +98,7 @@ public class AsyncTaskC2904af extends AsyncTask<File, String, Boolean> {
                 if (C3262u.m19663f(file)) {
                     File m17119a = m17119a(file, C3262u.m19641b(file.getName())[0], this.f15064f, z);
                     if (m17119a == null) {
-                        r0 = new Boolean(false);
-                        return r0;
+                        return new Boolean(false);
                     }
                     File createTempFile = File.createTempFile("APKTOOL_M", ".tmpquant", C3102bd.m18908a());
                     if (new LibPngQuant().m11224a(file, createTempFile)) {

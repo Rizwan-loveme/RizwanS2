@@ -2,8 +2,8 @@ package ru.maximoff.apktool.util.p306d;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;

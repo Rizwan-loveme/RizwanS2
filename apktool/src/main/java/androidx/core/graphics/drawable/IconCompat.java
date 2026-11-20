@@ -14,18 +14,18 @@ import android.graphics.PorterDuff;
 import android.graphics.Shader;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
-import android.p008os.Build;
-import android.p008os.Parcelable;
+import android.os.Build;
+import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
 import androidx.versionedparcelable.CustomVersionedParcelable;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
-import java.p209io.ByteArrayOutputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileNotFoundException;
-import java.p209io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
 /* loaded from: classes.dex */
 public class IconCompat extends CustomVersionedParcelable {

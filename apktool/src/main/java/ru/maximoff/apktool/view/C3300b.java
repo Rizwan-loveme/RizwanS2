@@ -2,17 +2,17 @@ package ru.maximoff.apktool.view;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.p008os.AsyncTask;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.AttributeSet;
 import android.widget.ProgressBar;
 import com.p126e.p127a.p128a.C1103k;
-import java.p209io.BufferedInputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: CustomImageView.java */
 /* renamed from: ru.maximoff.apktool.view.b */
@@ -100,12 +100,12 @@ public class C3300b extends C1103k {
         /* renamed from: a */
         private final C3300b f20943a;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Void doInBackground(File[] fileArr) {
             return m19832a(fileArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onProgressUpdate(Void[] voidArr) {
             m19833a(voidArr);
         }

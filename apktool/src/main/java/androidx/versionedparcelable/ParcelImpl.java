@@ -1,8 +1,8 @@
 package androidx.versionedparcelable;
 
 import android.annotation.SuppressLint;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 @SuppressLint({"BanParcelableUsage"})
 /* loaded from: classes.dex */
@@ -28,12 +28,12 @@ public class ParcelImpl implements Parcelable {
         this.f3252a = new C0453b(parcel).m3463j();
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public int describeContents() {
         return 0;
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public void writeToParcel(Parcel parcel, int i) {
         new C0453b(parcel).m3433a(this.f3252a);
     }

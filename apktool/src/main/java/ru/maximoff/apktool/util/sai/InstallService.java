@@ -3,7 +3,7 @@ package ru.maximoff.apktool.util.sai;
 import android.app.Service;
 import android.content.Intent;
 import android.content.p006pm.PackageInstaller;
-import android.p008os.IBinder;
+import android.os.IBinder;
 
 /* loaded from: classes.dex */
 public class InstallService extends Service {

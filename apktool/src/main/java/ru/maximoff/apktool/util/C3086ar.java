@@ -2,12 +2,12 @@ package ru.maximoff.apktool.util;
 
 import android.content.Context;
 import android.hardware.Camera;
-import android.p008os.Environment;
+import android.os.Environment;
 import java.nio.charset.StandardCharsets;
-import java.p209io.BufferedReader;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 

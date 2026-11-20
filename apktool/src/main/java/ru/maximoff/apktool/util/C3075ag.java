@@ -1,8 +1,8 @@
 package ru.maximoff.apktool.util;
 
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import java.lang.reflect.Array;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -63,12 +63,12 @@ public class C3075ag {
         /* renamed from: f */
         private final C3075ag f17624f;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected List<b> doInBackground(Void[] voidArr) {
             return m18477a(voidArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(List<b> list) {
             m18478a(list);
         }

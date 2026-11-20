@@ -3,7 +3,7 @@ package androidx.lifecycle;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /* loaded from: classes.dex */

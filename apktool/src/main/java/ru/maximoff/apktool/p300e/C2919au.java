@@ -1,9 +1,9 @@
 package ru.maximoff.apktool.p300e;
 
-import android.p008os.AsyncTask;
-import android.p008os.Handler;
-import android.p008os.HandlerThread;
-import java.p209io.File;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.HandlerThread;
+import java.io.File;
 import java.util.LinkedList;
 
 /* compiled from: SimpleIconTaskQueue.java */

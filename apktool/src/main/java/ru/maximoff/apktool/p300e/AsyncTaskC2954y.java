@@ -7,14 +7,14 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.media.ThumbnailUtils;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.widget.ImageView;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.File;
-import java.p209io.FileOutputStream;
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Enumeration;
 import org.p217b.p218a.p219a.C1887e;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
@@ -83,17 +83,17 @@ public class AsyncTaskC2954y extends AsyncTask<File, Integer, Bitmap> {
     /* renamed from: o */
     private int f15833o;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Bitmap doInBackground(File[] fileArr) {
         return m17592a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled(Bitmap bitmap) {
         m17597b(bitmap);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Bitmap bitmap) {
         m17593a(bitmap);
     }
@@ -569,7 +569,7 @@ public class AsyncTaskC2954y extends AsyncTask<File, Integer, Bitmap> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled() {
         C2919au.m17345d();
     }

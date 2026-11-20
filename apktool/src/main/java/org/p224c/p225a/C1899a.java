@@ -1,8 +1,8 @@
 package org.p224c.p225a;
 
 import android.bluetooth.BluetoothClass;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: BitReader.java */
 /* renamed from: org.c.a.a */

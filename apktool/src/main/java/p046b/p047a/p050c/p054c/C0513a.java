@@ -1,7 +1,7 @@
 package p046b.p047a.p050c.p054c;
 
-import java.p209io.OutputStream;
-import java.p209io.Writer;
+import java.io.OutputStream;
+import java.io.Writer;
 import org.xmlpull.p290a.C2573a;
 
 /* compiled from: ExtMXSerializer.java */

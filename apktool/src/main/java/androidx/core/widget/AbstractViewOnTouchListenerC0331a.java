@@ -1,7 +1,7 @@
 package androidx.core.widget;
 
 import android.content.res.Resources;
-import android.p008os.SystemClock;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;

@@ -3,7 +3,7 @@ package androidx.core.p031f;
 import android.app.slice.Slice;
 import android.content.ClipData;
 import android.net.Uri;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import androidx.core.p030e.C0270e;
 
 /* compiled from: ContentInfoCompat.java */

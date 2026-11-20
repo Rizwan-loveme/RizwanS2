@@ -1,8 +1,8 @@
 package org.p226d.p233b.p264i;
 
 import android.widget.ExpandableListView;
-import java.p209io.BufferedOutputStream;
-import java.p209io.OutputStream;
+import java.io.BufferedOutputStream;
+import java.io.OutputStream;
 import org.p226d.p269d.C2453g;
 
 /* compiled from: DexDataWriter.java */
@@ -30,18 +30,18 @@ public class C2429f extends BufferedOutputStream {
         this.f12823a = i;
     }
 
-    @Override // java.p209io.BufferedOutputStream, java.p209io.FilterOutputStream, java.p209io.OutputStream
+    @Override // java.io.BufferedOutputStream, java.io.FilterOutputStream, java.io.OutputStream
     public void write(int i) {
         this.f12823a++;
         super.write(i);
     }
 
-    @Override // java.p209io.FilterOutputStream, java.p209io.OutputStream
+    @Override // java.io.FilterOutputStream, java.io.OutputStream
     public void write(byte[] bArr) {
         write(bArr, 0, bArr.length);
     }
 
-    @Override // java.p209io.BufferedOutputStream, java.p209io.FilterOutputStream, java.p209io.OutputStream
+    @Override // java.io.BufferedOutputStream, java.io.FilterOutputStream, java.io.OutputStream
     public void write(byte[] bArr, int i, int i2) {
         this.f12823a += i2;
         super.write(bArr, i, i2);

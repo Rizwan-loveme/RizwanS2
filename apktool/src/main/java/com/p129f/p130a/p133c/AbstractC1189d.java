@@ -2,7 +2,7 @@ package com.p129f.p130a.p133c;
 
 import com.p129f.p130a.p131a.C1120o;
 import com.p129f.p130a.p133c.C1157aj;
-import java.p209io.Serializable;
+import java.io.Serializable;
 import java.util.AbstractCollection;
 import java.util.Collection;
 import java.util.ConcurrentModificationException;
@@ -441,11 +441,11 @@ abstract class AbstractC1189d<K, V> extends AbstractC1191f<K, V> implements Seri
         @Override // java.util.List
         public List<V> subList(int i, int i2) {
             m10040a();
-            ?? r0 = AbstractC1189d.this;
+            AbstractC1189d<K, V> r0 = AbstractC1189d.this;
             Object c2 = m10042c();
             List<V> subList = m10048g().subList(i, i2);
             AbstractC1189d<K, V>.d f2 = m10045f();
-            ?? r4 = this;
+            AbstractC1189d<K, V>.d r4 = this;
             if (f2 != null) {
                 r4 = m10045f();
             }

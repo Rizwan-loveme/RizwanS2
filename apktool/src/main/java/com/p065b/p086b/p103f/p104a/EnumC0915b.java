@@ -1,6 +1,6 @@
 package com.p065b.p086b.p103f.p104a;
 
-import android.p008os.Build;
+import android.os.Build;
 import com.p065b.p086b.p110h.InterfaceC1035z;
 
 /* compiled from: AnnotationVisibility.java */

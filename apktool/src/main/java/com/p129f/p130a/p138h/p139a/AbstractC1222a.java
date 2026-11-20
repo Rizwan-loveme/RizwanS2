@@ -449,12 +449,13 @@ public abstract class AbstractC1222a<V> extends InternalFutureFailureAccess impl
         }
         boolean z2 = false;
         Object obj2 = obj;
+        AbstractC1222a<?> abstractC1222a2 = this;
         while (true) {
-            if (f7987c.mo10213a((AbstractC1222a<?>) this, obj2, (Object) bVar)) {
+            if (f7987c.mo10213a(abstractC1222a2, obj2, (Object) bVar)) {
                 if (z) {
-                    this.m10199a();
+                    abstractC1222a2.m10199a();
                 }
-                m10195e(this);
+                m10195e(abstractC1222a2);
                 if (!(obj2 instanceof f)) {
                     return true;
                 }
@@ -465,14 +466,14 @@ public abstract class AbstractC1222a<V> extends InternalFutureFailureAccess impl
                     if (!(obj2 == null) && !(obj2 instanceof f)) {
                         return true;
                     }
-                    this = abstractC1222a;
+                    abstractC1222a2 = abstractC1222a;
                     z2 = true;
                 } else {
                     interfaceFutureC1231j.cancel(z);
                     return true;
                 }
             } else {
-                obj2 = this.f7989e;
+                obj2 = abstractC1222a2.f7989e;
                 if (!(obj2 instanceof f)) {
                     return z2;
                 }

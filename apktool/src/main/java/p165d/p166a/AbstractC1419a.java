@@ -1,10 +1,10 @@
 package p165d.p166a;
 
-import java.p209io.ByteArrayInputStream;
-import java.p209io.ByteArrayOutputStream;
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
-import java.p209io.PrintStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 
 /* compiled from: CharacterEncoder.java */
 /* renamed from: d.a.a */

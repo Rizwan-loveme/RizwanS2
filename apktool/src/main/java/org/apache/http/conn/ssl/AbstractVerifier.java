@@ -1,6 +1,6 @@
 package org.apache.http.conn.ssl;
 
-import java.p209io.IOException;
+import java.io.IOException;
 import java.security.cert.X509Certificate;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;

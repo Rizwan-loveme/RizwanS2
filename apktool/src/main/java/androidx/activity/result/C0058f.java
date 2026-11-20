@@ -3,8 +3,8 @@ package androidx.activity.result;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.IntentSender;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 /* compiled from: IntentSenderRequest.java */
 @SuppressLint({"BanParcelableUsage"})
@@ -71,12 +71,12 @@ public final class C0058f implements Parcelable {
         this.f413d = parcel.readInt();
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public int describeContents() {
         return 0;
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeParcelable(this.f410a, i);
         parcel.writeParcelable(this.f411b, i);

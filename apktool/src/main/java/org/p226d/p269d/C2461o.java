@@ -1,7 +1,7 @@
 package org.p226d.p269d;
 
-import java.p209io.OutputStream;
-import java.p209io.RandomAccessFile;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 
 /* compiled from: RandomAccessFileOutputStream.java */
 /* renamed from: org.d.d.o */
@@ -19,21 +19,21 @@ public class C2461o extends OutputStream {
         this.f12942b = randomAccessFile;
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(int i) {
         this.f12942b.seek(this.f12941a);
         this.f12941a++;
         this.f12942b.write(i);
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(byte[] bArr) {
         this.f12942b.seek(this.f12941a);
         this.f12941a += bArr.length;
         this.f12942b.write(bArr);
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(byte[] bArr, int i, int i2) {
         this.f12942b.seek(this.f12941a);
         this.f12941a += i2;

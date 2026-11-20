@@ -10,10 +10,10 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
-import android.p008os.SystemClock;
+import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
+import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -1491,7 +1491,7 @@ public class DrawerLayout extends ViewGroup {
             this.f2426a = 0;
         }
 
-        @Override // androidx.p021c.p022a.AbstractC0223a, android.p008os.Parcelable
+        @Override // androidx.p021c.p022a.AbstractC0223a, android.os.Parcelable
         public void writeToParcel(Parcel parcel, int i) {
             super.writeToParcel(parcel, i);
             parcel.writeInt(this.f2426a);

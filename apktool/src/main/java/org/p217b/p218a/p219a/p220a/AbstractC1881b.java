@@ -1,8 +1,8 @@
 package org.p217b.p218a.p219a.p220a;
 
-import java.p209io.FilterInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: ProxyInputStream.java */
 /* renamed from: org.b.a.a.a.b */
@@ -12,7 +12,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         super(inputStream);
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int read() {
         try {
             m13941b(1);
@@ -25,7 +25,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         }
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int read(byte[] bArr) {
         int length;
         if (bArr == null) {
@@ -44,7 +44,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         return read;
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int read(byte[] bArr, int i, int i2) {
         try {
             m13941b(i2);
@@ -57,7 +57,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         }
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public long skip(long j) {
         try {
             return this.f10665in.skip(j);
@@ -67,7 +67,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         }
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public int available() {
         try {
             return super.available();
@@ -77,7 +77,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         }
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream, java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.FilterInputStream, java.io.InputStream, java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         try {
             this.f10665in.close();
@@ -86,12 +86,12 @@ public abstract class AbstractC1881b extends FilterInputStream {
         }
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public synchronized void mark(int i) {
         this.f10665in.mark(i);
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public synchronized void reset() {
         try {
             this.f10665in.reset();
@@ -100,7 +100,7 @@ public abstract class AbstractC1881b extends FilterInputStream {
         }
     }
 
-    @Override // java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // java.io.FilterInputStream, java.io.InputStream
     public boolean markSupported() {
         return this.f10665in.markSupported();
     }

@@ -2,15 +2,15 @@ package ru.maximoff.apktool.fragment.p301a;
 
 import android.content.ContentResolver;
 import android.net.Uri;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FileFilter;
+import java.io.File;
+import java.io.FileFilter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import ru.maximoff.apktool.MainActivity;
@@ -51,12 +51,12 @@ public class AsyncTaskC2977a extends AsyncTask<CharSequence, Void, File> {
     /* renamed from: i */
     private String f16125i = (String) null;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected File doInBackground(CharSequence[] charSequenceArr) {
         return m17671a(charSequenceArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(File file) {
         m17672a(file);
     }
@@ -69,7 +69,7 @@ public class AsyncTaskC2977a extends AsyncTask<CharSequence, Void, File> {
         this.f16124h = z;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f16117a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -114,7 +114,7 @@ public class AsyncTaskC2977a extends AsyncTask<CharSequence, Void, File> {
                 this.f16134a = this;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file) {
                 return file.isDirectory() && file.getName().startsWith("smali");
             }

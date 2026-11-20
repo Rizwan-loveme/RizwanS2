@@ -1,6 +1,6 @@
 package androidx.p037e.p038a;
 
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.util.Log;
 import androidx.core.p030e.C0267b;
 import androidx.lifecycle.LifecycleOwner;
@@ -12,8 +12,8 @@ import androidx.lifecycle.ViewModelStore;
 import androidx.p011a.C0043h;
 import androidx.p037e.p038a.AbstractC0357a;
 import androidx.p037e.p039b.C0359a;
-import java.p209io.FileDescriptor;
-import java.p209io.PrintWriter;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 /* compiled from: LoaderManagerImpl.java */
 /* renamed from: androidx.e.a.b */

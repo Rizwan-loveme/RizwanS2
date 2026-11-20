@@ -1,7 +1,7 @@
 package androidx.core.p031f;
 
 import android.content.Context;
-import android.p008os.Build;
+import android.os.Build;
 import android.view.PointerIcon;
 
 /* compiled from: PointerIconCompat.java */

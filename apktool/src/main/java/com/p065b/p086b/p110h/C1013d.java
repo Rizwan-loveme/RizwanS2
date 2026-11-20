@@ -1,8 +1,8 @@
 package com.p065b.p086b.p110h;
 
 import android.widget.ExpandableListView;
-import java.p209io.DataInputStream;
-import java.p209io.InputStream;
+import java.io.DataInputStream;
+import java.io.InputStream;
 
 /* compiled from: ByteArray.java */
 /* renamed from: com.b.b.h.d */
@@ -136,7 +136,7 @@ public final class C1013d {
         public b() {
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int read() {
             if (this.f6480b < C1013d.this.f6477c) {
                 int m8501h = C1013d.this.m8501h(this.f6480b);
@@ -146,7 +146,7 @@ public final class C1013d {
             return -1;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int read(byte[] bArr, int i, int i2) {
             if (i + i2 > bArr.length) {
                 i2 = bArr.length - i;
@@ -160,22 +160,22 @@ public final class C1013d {
             return i2;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int available() {
             return C1013d.this.f6477c - this.f6480b;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public void mark(int i) {
             this.f6481c = this.f6480b;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public void reset() {
             this.f6480b = this.f6481c;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public boolean markSupported() {
             return true;
         }

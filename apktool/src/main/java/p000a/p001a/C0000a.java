@@ -192,7 +192,7 @@ public final class C0000a implements InterfaceC0004e {
         m3g();
     }
 
-    @Override // java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         m14d();
         this.f1b = true;

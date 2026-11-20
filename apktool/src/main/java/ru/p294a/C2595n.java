@@ -1,6 +1,6 @@
 package ru.p294a;
 
-import java.p209io.Serializable;
+import java.io.Serializable;
 import java.util.zip.ZipException;
 
 /* compiled from: UnsupportedZipFeatureException.java */

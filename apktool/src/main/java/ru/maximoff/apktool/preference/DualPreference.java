@@ -5,7 +5,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
-import android.p008os.Build;
+import android.os.Build;
 import android.preference.SwitchPreference;
 import android.provider.Settings;
 import android.util.AttributeSet;

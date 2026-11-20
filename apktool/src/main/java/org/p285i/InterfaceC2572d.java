@@ -1,6 +1,6 @@
 package org.p285i;
 
-import java.p209io.Serializable;
+import java.io.Serializable;
 
 /* compiled from: Marker.java */
 /* renamed from: org.i.d */

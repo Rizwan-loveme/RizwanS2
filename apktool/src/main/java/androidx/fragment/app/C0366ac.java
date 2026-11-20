@@ -2,8 +2,8 @@ package androidx.fragment.app;
 
 import android.C0012R;
 import android.content.Context;
-import android.p008os.Bundle;
-import android.p008os.Handler;
+import android.os.Bundle;
+import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;

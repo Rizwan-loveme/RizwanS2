@@ -8,11 +8,11 @@ import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
 import android.graphics.Movie;
 import android.graphics.drawable.Drawable;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
-import java.p209io.InputStream;
+import java.io.InputStream;
 
 /* compiled from: ResourcesWrapper.java */
 /* renamed from: androidx.appcompat.widget.aq */

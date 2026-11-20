@@ -3,9 +3,9 @@ package com.p129f.p130a.p135e;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.p129f.p130a.p131a.C1120o;
 import com.p129f.p130a.p136f.C1216a;
-import java.p209io.EOFException;
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.EOFException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -16,16 +16,16 @@ public final class C1213a {
 
     /* renamed from: a */
     private static final OutputStream f7977a = new OutputStream() { // from class: com.f.a.e.a.1
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(int i) {
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(byte[] bArr) {
             C1120o.m9547a(bArr);
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(byte[] bArr, int i, int i2) {
             C1120o.m9547a(bArr);
         }

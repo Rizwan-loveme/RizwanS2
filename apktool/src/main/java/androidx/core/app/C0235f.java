@@ -6,7 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.p006pm.ActivityInfo;
 import android.content.p006pm.PackageManager;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
 

@@ -1,14 +1,14 @@
 package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.HashMap;
 import ru.maximoff.apktool.util.C3080al;
 import ru.maximoff.apktool.util.C3112bn;
@@ -31,12 +31,12 @@ public class AsyncTaskC2907ai extends AsyncTask<File, String, Boolean> {
     /* renamed from: b */
     private HashMap<String, String> f15110b = new HashMap<>();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17142a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17143a(bool);
     }
@@ -45,7 +45,7 @@ public class AsyncTaskC2907ai extends AsyncTask<File, String, Boolean> {
         this.f15109a = context;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
         View inflate = LayoutInflater.from(this.f15109a).inflate(R.layout.search_progress, (ViewGroup) null);

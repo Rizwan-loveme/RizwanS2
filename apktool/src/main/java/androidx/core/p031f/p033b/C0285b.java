@@ -2,9 +2,9 @@ package androidx.core.p031f.p033b;
 
 import android.content.ClipDescription;
 import android.net.Uri;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.ResultReceiver;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.ResultReceiver;
 import android.text.TextUtils;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;

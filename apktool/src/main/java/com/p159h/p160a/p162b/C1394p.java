@@ -1,7 +1,7 @@
 package com.p159h.p160a.p162b;
 
-import java.p209io.IOException;
-import java.p209io.Reader;
+import java.io.IOException;
+import java.io.Reader;
 import ru.maximoff.apktool.util.C3249i;
 
 /* compiled from: LuaLexer.java */
@@ -673,13 +673,13 @@ public class C1394p {
             this.f9070b = charSequence;
         }
 
-        @Override // java.p209io.Reader, java.p209io.Closeable, java.lang.AutoCloseable
+        @Override // java.io.Reader, java.io.Closeable, java.lang.AutoCloseable
         public void close() {
             this.f9070b = (CharSequence) null;
             this.f9069a = 0;
         }
 
-        @Override // java.p209io.Reader
+        @Override // java.io.Reader
         public int read(char[] cArr, int i, int i2) {
             int min = Math.min(this.f9070b.length() - this.f9069a, i2);
             int i3 = 0;

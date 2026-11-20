@@ -1,7 +1,7 @@
 package androidx.core.p031f.p033b;
 
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 import android.view.inputmethod.EditorInfo;

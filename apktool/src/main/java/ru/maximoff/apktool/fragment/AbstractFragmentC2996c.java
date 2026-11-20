@@ -3,7 +3,7 @@ package ru.maximoff.apktool.fragment;
 import android.C0012R;
 import android.app.Activity;
 import android.graphics.drawable.Drawable;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceScreen;

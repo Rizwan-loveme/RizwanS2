@@ -3,8 +3,8 @@ package androidx.p037e.p038a;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelStoreOwner;
 import androidx.p037e.p039b.C0359a;
-import java.p209io.FileDescriptor;
-import java.p209io.PrintWriter;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 /* compiled from: LoaderManager.java */
 /* renamed from: androidx.e.a.a */

@@ -13,9 +13,9 @@ import android.content.p006pm.ShortcutManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Icon;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
 import android.security.keystore.KeyProperties;
 import android.view.PointerIcon;
 import android.view.View;
@@ -68,7 +68,7 @@ public class CreateShortcut extends Activity {
         /* renamed from: b */
         private final CreateShortcut f13999b;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Void doInBackground(Void[] voidArr) {
             return m16548a(voidArr);
         }

@@ -1,7 +1,7 @@
 package org.apache.http.conn.scheme;
 
 import java.net.InetAddress;
-import java.p209io.IOException;
+import java.io.IOException;
 
 @Deprecated
 /* loaded from: assets/android.dex */

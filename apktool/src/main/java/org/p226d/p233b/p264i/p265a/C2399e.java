@@ -1,7 +1,7 @@
 package org.p226d.p233b.p264i.p265a;
 
 import com.p129f.p130a.p133c.C1156ai;
-import java.p209io.OutputStream;
+import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.List;
 
@@ -42,7 +42,7 @@ public class C2399e extends AbstractC2395a {
         this.f12763c = 0;
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(int i) {
         if (m15166b() == 0) {
             this.f12761a.add(this.f12762b);
@@ -55,12 +55,12 @@ public class C2399e extends AbstractC2395a {
         bArr[i2] = (byte) i;
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(byte[] bArr) {
         write(bArr, 0, bArr.length);
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(byte[] bArr, int i, int i2) {
         int m15166b = m15166b();
         int i3 = 0;

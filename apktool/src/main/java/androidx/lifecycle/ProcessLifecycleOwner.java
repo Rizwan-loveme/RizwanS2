@@ -3,9 +3,9 @@ package androidx.lifecycle;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Handler;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ReportFragment;
 

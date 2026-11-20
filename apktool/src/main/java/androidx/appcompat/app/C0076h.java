@@ -1,7 +1,7 @@
 package androidx.appcompat.app;
 
 import android.app.Dialog;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import androidx.fragment.app.DialogInterfaceOnCancelListenerC0373d;
 
 /* compiled from: AppCompatDialogFragment.java */

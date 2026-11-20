@@ -2,8 +2,8 @@ package ru.maximoff.apktool.util;
 
 import android.graphics.Bitmap;
 import java.nio.ByteBuffer;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /* compiled from: BmpUtil.java */
 /* renamed from: ru.maximoff.apktool.util.d */

@@ -2,7 +2,7 @@ package androidx.core.p031f;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.Log;
 import android.view.ViewConfiguration;
 import java.lang.reflect.Method;

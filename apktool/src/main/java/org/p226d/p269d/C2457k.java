@@ -1,7 +1,7 @@
 package org.p226d.p269d;
 
 import android.widget.ExpandableListView;
-import java.p209io.Writer;
+import java.io.Writer;
 
 /* compiled from: IndentingWriter.java */
 /* renamed from: org.d.d.k */
@@ -34,7 +34,7 @@ public class C2457k extends Writer {
         }
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(int i) {
         if (i == 10) {
             this.f12926a.write(f12925e);
@@ -66,12 +66,12 @@ public class C2457k extends Writer {
         this.f12926a.write(str, i, i2);
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(char[] cArr) {
         write(cArr, 0, cArr.length);
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(char[] cArr, int i, int i2) {
         int i3 = i + i2;
         int i4 = i;
@@ -91,12 +91,12 @@ public class C2457k extends Writer {
         m15531a(cArr, i5, i4 - i5);
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(String str) {
         write(str, 0, str.length());
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(String str, int i, int i2) {
         int i3 = i + i2;
         int i4 = i;
@@ -115,30 +115,30 @@ public class C2457k extends Writer {
         }
     }
 
-    @Override // java.p209io.Writer, java.lang.Appendable
+    @Override // java.io.Writer, java.lang.Appendable
     public Writer append(CharSequence charSequence) {
         write(charSequence.toString());
         return this;
     }
 
-    @Override // java.p209io.Writer, java.lang.Appendable
+    @Override // java.io.Writer, java.lang.Appendable
     public Writer append(CharSequence charSequence, int i, int i2) {
         write(charSequence.subSequence(i, i2).toString());
         return this;
     }
 
-    @Override // java.p209io.Writer, java.lang.Appendable
+    @Override // java.io.Writer, java.lang.Appendable
     public Writer append(char c2) {
         write(c2);
         return this;
     }
 
-    @Override // java.p209io.Writer, java.p209io.Flushable
+    @Override // java.io.Writer, java.io.Flushable
     public void flush() {
         this.f12926a.flush();
     }
 
-    @Override // java.p209io.Writer, java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Writer, java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         this.f12926a.close();
     }

@@ -3,15 +3,15 @@ package ru.maximoff.apktool.p300e;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import com.srizwan.apktool.R;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.p209io.File;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -66,17 +66,17 @@ public class AsyncTaskC2946q extends AsyncTask<String, Integer, Boolean> {
     /* renamed from: l */
     private boolean f15724l = false;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(String[] strArr) {
         return m17546a(strArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17547a(bool);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onProgressUpdate(Integer[] numArr) {
         m17549a(numArr);
     }
@@ -157,7 +157,7 @@ public class AsyncTaskC2946q extends AsyncTask<String, Integer, Boolean> {
         return new Boolean(z);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
         this.f15714b.show();
@@ -226,7 +226,7 @@ public class AsyncTaskC2946q extends AsyncTask<String, Integer, Boolean> {
         super.onPostExecute(bool);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled() {
         C3112bn.m18999a(this.f15715c, R.string.cancel);
         super.onCancelled();
@@ -381,7 +381,7 @@ public class AsyncTaskC2946q extends AsyncTask<String, Integer, Boolean> {
     /* JADX WARN: Code restructure failed: missing block: B:93:0x028f, code lost:
     
         r5.renameTo(r8);
-        r2 = new java.p209io.File(r14.f15717e, r14.f15718f);
+        r2 = new java.io.File(r14.f15717e, r14.f15718f);
      */
     /* JADX WARN: Code restructure failed: missing block: B:96:0x029c, code lost:
     

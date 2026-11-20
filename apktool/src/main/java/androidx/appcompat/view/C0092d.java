@@ -5,7 +5,7 @@ import android.content.ContextWrapper;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.p008os.Build;
+import android.os.Build;
 import android.view.LayoutInflater;
 import androidx.appcompat.C0059a;
 

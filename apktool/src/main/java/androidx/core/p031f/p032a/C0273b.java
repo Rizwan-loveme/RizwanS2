@@ -2,8 +2,8 @@ package androidx.core.p031f.p032a;
 
 import android.C0012R;
 import android.graphics.Rect;
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;

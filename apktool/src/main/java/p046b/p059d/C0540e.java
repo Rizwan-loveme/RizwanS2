@@ -1,10 +1,10 @@
 package p046b.p059d;
 
 import com.srizwan.apktool.R;
-import java.p209io.DataInput;
-import java.p209io.DataInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.DataInput;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: ExtDataInput.java */
 /* renamed from: b.d.e */
@@ -73,7 +73,7 @@ public class C0540e extends AbstractC0537b {
         }
     }
 
-    @Override // p046b.p059d.AbstractC0537b, java.p209io.DataInput
+    @Override // p046b.p059d.AbstractC0537b, java.io.DataInput
     public final int skipBytes(int i) {
         int i2 = 0;
         while (i2 < i) {

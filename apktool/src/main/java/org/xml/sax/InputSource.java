@@ -1,7 +1,7 @@
 package org.xml.sax;
 
-import java.p209io.InputStream;
-import java.p209io.Reader;
+import java.io.InputStream;
+import java.io.Reader;
 
 /* loaded from: assets/android.dex */
 public class InputSource {

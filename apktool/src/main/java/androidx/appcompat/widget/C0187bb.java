@@ -1,6 +1,6 @@
 package androidx.appcompat.widget;
 
-import android.p008os.Build;
+import android.os.Build;
 import android.view.View;
 
 /* compiled from: TooltipCompat.java */

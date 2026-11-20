@@ -9,10 +9,10 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import org.p210a.p211a.p212a.C1860h;
 
 /* compiled from: CharStreams.java */

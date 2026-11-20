@@ -3,14 +3,14 @@ package ru.maximoff.apktool.p300e;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
@@ -53,12 +53,12 @@ public class AsyncTaskC2900ab extends AsyncTask<File, String, Boolean> {
     /* renamed from: h */
     private int f15014h = 0;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17091a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17092a(bool);
     }
@@ -69,7 +69,7 @@ public class AsyncTaskC2900ab extends AsyncTask<File, String, Boolean> {
         this.f15012f = C3102bd.m18925a(this.f15007a, "imgs_backup", false);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15007a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

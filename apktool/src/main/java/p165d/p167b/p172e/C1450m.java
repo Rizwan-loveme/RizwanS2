@@ -2,10 +2,10 @@ package p165d.p167b.p172e;
 
 import android.bluetooth.BluetoothHidDevice;
 import java.math.BigInteger;
-import java.p209io.ByteArrayInputStream;
-import java.p209io.DataInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import org.p217b.p218a.p219a.C1887e;
 
 /* compiled from: DerValue.java */

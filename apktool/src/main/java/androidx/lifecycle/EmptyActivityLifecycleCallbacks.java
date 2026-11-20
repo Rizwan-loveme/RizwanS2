@@ -2,7 +2,7 @@ package androidx.lifecycle;
 
 import android.app.Activity;
 import android.app.Application;
-import android.p008os.Bundle;
+import android.os.Bundle;
 
 /* loaded from: classes.dex */
 class EmptyActivityLifecycleCallbacks implements Application.ActivityLifecycleCallbacks {

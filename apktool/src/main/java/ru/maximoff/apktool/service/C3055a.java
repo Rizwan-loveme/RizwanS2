@@ -4,7 +4,7 @@ import android.content.Context;
 import android.view.View;
 import android.widget.ImageView;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.BitSet;
 import java.util.Iterator;
 import org.p210a.p211a.p212a.AbstractC1873u;

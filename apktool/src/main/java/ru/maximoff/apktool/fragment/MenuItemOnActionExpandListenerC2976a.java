@@ -7,10 +7,10 @@ import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
-import android.p008os.AsyncTask;
-import android.p008os.Bundle;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.SpannableString;
 import android.text.TextUtils;
@@ -42,8 +42,8 @@ import androidx.fragment.app.ComponentCallbacksC0374e;
 import androidx.p044h.p045a.C0406b;
 import com.p159h.p160a.p162b.C1397s;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.InputStream;
+import java.io.File;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -2925,12 +2925,12 @@ public class MenuItemOnActionExpandListenerC2976a extends ComponentCallbacksC037
         /* renamed from: i */
         private final MenuItemOnActionExpandListenerC2976a f16150i;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected C1397s doInBackground(Void[] voidArr) {
             return m17737a(voidArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(C1397s c1397s) {
             m17738a(c1397s);
         }
@@ -2946,7 +2946,7 @@ public class MenuItemOnActionExpandListenerC2976a extends ComponentCallbacksC037
             this.f16149h = z3;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f16142a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -3010,12 +3010,12 @@ public class MenuItemOnActionExpandListenerC2976a extends ComponentCallbacksC037
         /* renamed from: h */
         private final MenuItemOnActionExpandListenerC2976a f16133h;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Integer doInBackground(Void[] voidArr) {
             return m17673a(voidArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Integer num) {
             m17674a(num);
         }
@@ -3030,7 +3030,7 @@ public class MenuItemOnActionExpandListenerC2976a extends ComponentCallbacksC037
             this.f16132g = z3;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f16126a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

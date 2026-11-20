@@ -2,14 +2,14 @@ package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
 import android.net.wifi.WifiConfiguration;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.HashMap;
 import java.util.Iterator;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
@@ -43,12 +43,12 @@ public class AsyncTaskC2953x extends AsyncTask<File, String, Boolean> {
     /* renamed from: c */
     private HashMap<String, String> f15815c = new HashMap<>();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17590a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17591a(bool);
     }
@@ -58,7 +58,7 @@ public class AsyncTaskC2953x extends AsyncTask<File, String, Boolean> {
         this.f15814b = interfaceC2995n;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
         View inflate = LayoutInflater.from(this.f15813a).inflate(R.layout.search_progress, (ViewGroup) null);

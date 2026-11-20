@@ -7,12 +7,12 @@ import android.graphics.Typeface;
 import android.graphics.fonts.Font;
 import android.graphics.fonts.FontFamily;
 import android.graphics.fonts.FontStyle;
-import android.p008os.CancellationSignal;
-import android.p008os.ParcelFileDescriptor;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
 import androidx.core.content.p028a.C0258c;
 import androidx.core.p027c.C0251f;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: TypefaceCompatApi29Impl.java */
 /* renamed from: androidx.core.graphics.i */

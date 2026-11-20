@@ -2,7 +2,7 @@ package androidx.fragment.app;
 
 import android.content.Context;
 import android.graphics.Rect;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;

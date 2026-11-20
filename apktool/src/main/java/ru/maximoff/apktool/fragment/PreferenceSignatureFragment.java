@@ -1,7 +1,7 @@
 package ru.maximoff.apktool.fragment;
 
-import android.p008os.Build;
-import android.p008os.Bundle;
+import android.os.Build;
+import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.PreferenceManager;
 import com.srizwan.apktool.R;

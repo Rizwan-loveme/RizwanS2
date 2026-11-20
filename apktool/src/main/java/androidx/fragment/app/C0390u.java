@@ -1,9 +1,9 @@
 package androidx.fragment.app;
 
 import android.annotation.SuppressLint;
-import android.p008os.Bundle;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 /* compiled from: FragmentState.java */
 @SuppressLint({"BanParcelableUsage"})
@@ -127,12 +127,12 @@ final class C0390u implements Parcelable {
         return sb.toString();
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public int describeContents() {
         return 0;
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeString(this.f2818a);
         parcel.writeString(this.f2819b);

@@ -2,13 +2,13 @@ package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Enumeration;
 import java.util.regex.Pattern;
 import org.p217b.p218a.p219a.C1887e;
@@ -70,34 +70,10 @@ public class AsyncTaskC2938i extends AbstractAsyncTaskC2898a {
         Code decompiled incorrectly, please refer to instructions dump.
     */
     protected boolean mo17058a(File file) {
-        File file2;
-        ?? r3 = 2131362526;
+        File file2 = null;
         mo3984d(R.string.mplease_wait, new Object[0]);
-        File file3 = (File) null;
         try {
-            try {
-                file2 = C3262u.m19564a();
-            } catch (Throwable th) {
-                th = th;
-                if (r3 != 0) {
-                    C0542g.m3987a((File) r3);
-                }
-                throw th;
-            }
-        } catch (Error e2) {
-            e = e2;
-            file2 = file3;
-        } catch (Exception e3) {
-            e = e3;
-            file2 = file3;
-        } catch (Throwable th2) {
-            th = th2;
-            r3 = file3;
-            if (r3 != 0) {
-            }
-            throw th;
-        }
-        try {
+            file2 = C3262u.m19564a();
             File m17494a = m17494a(file, (String) null);
             if (m17494a == null) {
                 throw new IOException("failed to create an output file");
@@ -117,23 +93,17 @@ public class AsyncTaskC2938i extends AbstractAsyncTaskC2898a {
             }
             mo3984d(R.string.successf, m17494a.getAbsolutePath());
             m17060b(m17494a.getParentFile());
-            if (file2 != null) {
-                C0542g.m3987a(file2);
-            }
             return true;
-        } catch (Error e4) {
-            e = e4;
+        } catch (Error e) {
             mo3979a(R.string.errorf, e.getMessage());
+            return false;
+        } catch (Exception e2) {
+            mo3979a(R.string.errorf, e2.getMessage());
+            return false;
+        } finally {
             if (file2 != null) {
                 C0542g.m3987a(file2);
             }
-            return false;
-        } catch (Exception e5) {
-            e = e5;
-            mo3979a(R.string.errorf, e.getMessage());
-            if (file2 != null) {
-            }
-            return false;
         }
     }
 

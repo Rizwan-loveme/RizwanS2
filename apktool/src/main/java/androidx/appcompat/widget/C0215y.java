@@ -11,9 +11,9 @@ import android.database.DataSetObserver;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -557,7 +557,7 @@ public class C0215y extends Spinner implements InterfaceC0307w {
             this.f1780a = parcel.readByte() != 0;
         }
 
-        @Override // android.view.View.BaseSavedState, android.view.AbsSavedState, android.p008os.Parcelable
+        @Override // android.view.View.BaseSavedState, android.view.AbsSavedState, android.os.Parcelable
         public void writeToParcel(Parcel parcel, int i) {
             super.writeToParcel(parcel, i);
             parcel.writeByte((byte) (this.f1780a ? 1 : 0));

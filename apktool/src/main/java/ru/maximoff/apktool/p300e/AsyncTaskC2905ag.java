@@ -4,9 +4,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.p006pm.PackageInfo;
 import android.content.p006pm.PackageManager;
-import android.p008os.AsyncTask;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.SpannableString;
 import android.text.SpannedString;
 import android.text.style.ForegroundColorSpan;
@@ -18,7 +18,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;
@@ -61,12 +61,12 @@ public class AsyncTaskC2905ag extends AsyncTask<File, String, Boolean> {
     /* renamed from: h */
     private C3060a f15078h;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return m17130a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17131a(bool);
     }
@@ -77,7 +77,7 @@ public class AsyncTaskC2905ag extends AsyncTask<File, String, Boolean> {
         this.f15075e = z2;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
         View inflate = LayoutInflater.from(this.f15071a).inflate(R.layout.search_progress, (ViewGroup) null);

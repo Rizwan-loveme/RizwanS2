@@ -5,11 +5,11 @@ import android.app.slice.Slice;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.DropBoxManager;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.DropBoxManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MenuItem;
 import android.view.PointerIcon;
 import android.view.View;
@@ -21,7 +21,7 @@ import android.widget.ImageView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.appcompat.widget.C0173ao;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -137,22 +137,22 @@ public abstract class AbstractAsyncTaskC2898a extends AsyncTask<File, CharSequen
     /* renamed from: c */
     protected abstract int mo17065c();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(File[] fileArr) {
         return mo17049a(fileArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled(Boolean bool) {
         m17051a(bool);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         mo17061b(bool);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onProgressUpdate(CharSequence[] charSequenceArr) {
         m17057a(charSequenceArr);
     }
@@ -183,7 +183,7 @@ public abstract class AbstractAsyncTaskC2898a extends AsyncTask<File, CharSequen
         return Boolean.valueOf(z);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         int i;
         if (this.f14946a == 0) {
@@ -484,7 +484,7 @@ public abstract class AbstractAsyncTaskC2898a extends AsyncTask<File, CharSequen
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onCancelled() {
         if (this.f14969z != null) {
             this.f14969z.removeCallbacksAndMessages((Object) null);

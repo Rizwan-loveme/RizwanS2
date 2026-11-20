@@ -2,7 +2,7 @@ package androidx.fragment.app;
 
 import android.app.Activity;
 import android.content.Context;
-import android.p008os.Handler;
+import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
 import androidx.core.p030e.C0270e;

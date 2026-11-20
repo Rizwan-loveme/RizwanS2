@@ -14,10 +14,10 @@ import android.database.Cursor;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.speech.RecognizerIntent;
 import android.text.Editable;
 import android.text.SpannableStringBuilder;
@@ -982,7 +982,7 @@ public class SearchView extends C0169ak implements InterfaceC0091c {
             this.f1295a = ((Boolean) parcel.readValue(null)).booleanValue();
         }
 
-        @Override // androidx.p021c.p022a.AbstractC0223a, android.p008os.Parcelable
+        @Override // androidx.p021c.p022a.AbstractC0223a, android.os.Parcelable
         public void writeToParcel(Parcel parcel, int i) {
             super.writeToParcel(parcel, i);
             parcel.writeValue(Boolean.valueOf(this.f1295a));

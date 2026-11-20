@@ -5,8 +5,8 @@ import com.p065b.p111c.p120c.InterfaceC1069c;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.p209io.IOException;
-import java.p209io.RandomAccessFile;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 
 /* compiled from: RandomAccessFileDataSource.java */
 /* renamed from: com.b.c.b.c.i */

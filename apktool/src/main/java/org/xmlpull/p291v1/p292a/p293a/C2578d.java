@@ -1,7 +1,7 @@
 package org.xmlpull.p291v1.p292a.p293a;
 
-import java.p209io.OutputStream;
-import java.p209io.Writer;
+import java.io.OutputStream;
+import java.io.Writer;
 import org.xmlpull.p291v1.XmlSerializer;
 
 /* compiled from: XmlSerializerDelegate.java */

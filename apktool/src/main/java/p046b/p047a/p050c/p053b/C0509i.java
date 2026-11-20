@@ -1,7 +1,7 @@
 package p046b.p047a.p050c.p053b;
 
-import java.p209io.InputStream;
-import java.p209io.OutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import p046b.p047a.C0461b;

@@ -8,8 +8,8 @@ import com.p065b.p066a.p084c.InterfaceC0671c;
 import com.p065b.p066a.p085d.C0676a;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.p209io.Closeable;
-import java.p209io.IOException;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -369,7 +369,7 @@ public class C0666c {
             return this.f4290f;
         }
 
-        @Override // java.p209io.Closeable, java.lang.AutoCloseable
+        @Override // java.io.Closeable, java.lang.AutoCloseable
         public void close() {
             this.f4285a = true;
             this.f4288d = null;

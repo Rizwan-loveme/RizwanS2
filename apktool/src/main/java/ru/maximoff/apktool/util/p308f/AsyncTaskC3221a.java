@@ -1,14 +1,14 @@
 package ru.maximoff.apktool.util.p308f;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import com.srizwan.apktool.R;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.p209io.BufferedReader;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -54,12 +54,12 @@ public class AsyncTaskC3221a extends AsyncTask<String, String, String> {
     /* renamed from: j */
     private Map<String, String> f19307j = new HashMap();
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected String doInBackground(String[] strArr) {
         return m19304a(strArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(String str) {
         m19306a(str);
     }
@@ -229,7 +229,7 @@ public class AsyncTaskC3221a extends AsyncTask<String, String, String> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
     }

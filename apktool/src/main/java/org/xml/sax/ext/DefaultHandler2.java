@@ -1,6 +1,6 @@
 package org.xml.sax.ext;
 
-import java.p209io.IOException;
+import java.io.IOException;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;

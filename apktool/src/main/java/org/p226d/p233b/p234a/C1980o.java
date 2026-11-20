@@ -1,6 +1,6 @@
 package org.p226d.p233b.p234a;
 
-import java.p209io.Writer;
+import java.io.Writer;
 import org.p226d.p269d.C2453g;
 
 /* compiled from: RegisterType.java */

@@ -3,8 +3,8 @@ package ru.maximoff.apktool.util;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /* compiled from: GifEncoder.java */
 /* renamed from: ru.maximoff.apktool.util.x */

@@ -2,8 +2,8 @@ package androidx.fragment.app;
 
 import android.app.Activity;
 import android.content.res.Resources;
-import android.p008os.Bundle;
-import android.p008os.Parcelable;
+import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;

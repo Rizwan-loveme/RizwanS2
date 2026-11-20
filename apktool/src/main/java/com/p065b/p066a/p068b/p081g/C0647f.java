@@ -5,7 +5,7 @@ import com.p065b.p066a.p084c.InterfaceC0671c;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.p209io.IOException;
+import java.io.IOException;
 
 /* compiled from: FileChannelDataSource.java */
 /* renamed from: com.b.a.b.g.f */
@@ -64,7 +64,7 @@ public class C0647f implements InterfaceC0671c {
 
     /* JADX WARN: Code restructure failed: missing block: B:18:0x0052, code lost:
     
-        throw new java.p209io.IOException("Unexpected EOF encountered");
+        throw new java.io.IOException("Unexpected EOF encountered");
      */
     @Override // com.p065b.p066a.p084c.InterfaceC0671c
     /* renamed from: a */

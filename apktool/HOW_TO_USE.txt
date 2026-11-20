@@ -13,9 +13,11 @@ Done automatically
   - platform stubs removed (java.*, javax.*, android.*), they cannot be compiled in a module
 
 Build status
-  CI run #2 with the dependency enabled: 207 javac parse errors in 27 places (jadx '?? rN' untyped variables,
+  CI run #2 and #3 with the dependency enabled: 207 javac parse errors in 27 places (jadx '?? rN' untyped variables,
   'for (0; i < n; i + 1)', 'integer number too large', 'extends X extends Y', static{} in an interface).
-  More errors are expected after these. The dependency in :app is therefore commented out.
+  CI run #4 gave the same list. All 207 parse errors are now fixed by hand (javac parse pass: 0 syntax errors, see KNOWN_ISSUES.txt).
+  The next stage (symbol/type errors) is still open and expected to be large. The dependency in :app stays commented out.
+  See KNOWN_ISSUES.txt (list of every broken place; the deobf renames java.io / android.os are already fixed).
 
 Still to do (not done, not compiled)
   1. app/build.gradle.kts: implementation(project(":apktool"))   (line is in the file as a comment)

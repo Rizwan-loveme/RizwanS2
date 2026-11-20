@@ -1,12 +1,12 @@
 package ru.maximoff.apktool.util;
 
-import java.p209io.ByteArrayInputStream;
-import java.p209io.Closeable;
-import java.p209io.DataInputStream;
-import java.p209io.File;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.RandomAccessFile;
+import java.io.ByteArrayInputStream;
+import java.io.Closeable;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -80,7 +80,7 @@ public final class C3101bc implements Closeable {
         return this.f18256a;
     }
 
-    @Override // java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         this.f18257b.close();
     }
@@ -105,7 +105,7 @@ public final class C3101bc implements Closeable {
             this.f18264c = j3 ^ j;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int read() {
             int read;
             if (this.f18262a.getFilePointer() >= this.f18263b || (read = this.f18262a.read()) < 0) {
@@ -115,7 +115,7 @@ public final class C3101bc implements Closeable {
             return (((int) this.f18264c) ^ read) & 255;
         }
 
-        @Override // java.p209io.InputStream
+        @Override // java.io.InputStream
         public int read(byte[] bArr, int i, int i2) {
             long filePointer = this.f18263b - this.f18262a.getFilePointer();
             if (filePointer <= 0) {
@@ -130,7 +130,7 @@ public final class C3101bc implements Closeable {
             return read;
         }
 
-        @Override // java.p209io.InputStream, java.p209io.Closeable, java.lang.AutoCloseable
+        @Override // java.io.InputStream, java.io.Closeable, java.lang.AutoCloseable
         public void close() {
             this.f18262a.close();
         }

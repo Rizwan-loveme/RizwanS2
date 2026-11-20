@@ -1,7 +1,7 @@
 package com.p129f.p130a.p132b;
 
 import com.p129f.p130a.p132b.AbstractC1145o;
-import java.p209io.Serializable;
+import java.io.Serializable;
 
 /* compiled from: LongAdder.java */
 /* renamed from: com.f.a.b.j */

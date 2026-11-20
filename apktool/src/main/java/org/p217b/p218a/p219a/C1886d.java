@@ -1,6 +1,6 @@
 package org.p217b.p218a.p219a;
 
-import java.p209io.Serializable;
+import java.io.Serializable;
 
 /* compiled from: IOCase.java */
 /* renamed from: org.b.a.a.d */

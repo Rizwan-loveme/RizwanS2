@@ -1,6 +1,6 @@
 package androidx.core.p026b;
 
-import android.p008os.Build;
+import android.os.Build;
 
 /* compiled from: BuildCompat.java */
 /* renamed from: androidx.core.b.a */

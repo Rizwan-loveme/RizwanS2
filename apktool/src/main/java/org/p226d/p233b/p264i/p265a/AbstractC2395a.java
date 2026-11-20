@@ -1,6 +1,6 @@
 package org.p226d.p233b.p264i.p265a;
 
-import java.p209io.OutputStream;
+import java.io.OutputStream;
 
 /* compiled from: DeferredOutputStream.java */
 /* renamed from: org.d.b.i.a.a */

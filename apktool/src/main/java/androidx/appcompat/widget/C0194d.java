@@ -6,16 +6,16 @@ import android.content.Intent;
 import android.content.p006pm.ResolveInfo;
 import android.database.DataSetObservable;
 import android.media.p007tv.TvContract;
-import android.p008os.AsyncTask;
-import android.p008os.DropBoxManager;
+import android.os.AsyncTask;
+import android.os.DropBoxManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Xml;
 import java.math.BigDecimal;
-import java.p209io.FileInputStream;
-import java.p209io.FileNotFoundException;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -428,7 +428,7 @@ class C0194d extends DataSetObservable {
         e() {
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         /* renamed from: a, reason: merged with bridge method [inline-methods] */
         public Void doInBackground(Object... objArr) {
             List list = (List) objArr[0];

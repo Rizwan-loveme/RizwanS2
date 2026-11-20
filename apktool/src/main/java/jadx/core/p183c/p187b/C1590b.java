@@ -4,7 +4,7 @@ import jadx.core.p183c.p188c.p189a.AbstractC1596a;
 import jadx.core.p183c.p191d.C1637c;
 import jadx.core.p183c.p191d.C1650p;
 import jadx.core.p203d.p205b.C1729f;
-import java.p209io.File;
+import java.io.File;
 import org.p226d.p233b.p250e.p254c.InterfaceC2243h;
 
 /* compiled from: ClassInfo.java */

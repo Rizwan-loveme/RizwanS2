@@ -4,7 +4,7 @@ import android.C0012R;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Typeface;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.text.Editable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
@@ -19,8 +19,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FileFilter;
+import java.io.File;
+import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -110,7 +110,7 @@ public class FontViewer extends AbstractActivityC2894b {
                 this.f14089a = this;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file2) {
                 String lowerCase = file2.getName().toLowerCase();
                 return file2.isFile() && (lowerCase.endsWith(".ttf") || lowerCase.endsWith(".otf"));

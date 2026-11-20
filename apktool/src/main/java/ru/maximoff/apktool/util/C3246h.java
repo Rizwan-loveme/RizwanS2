@@ -3,7 +3,7 @@ package ru.maximoff.apktool.util;
 import android.content.Context;
 import android.graphics.Color;
 import android.hardware.Camera;
-import android.p008os.Build;
+import android.os.Build;
 import java.util.HashMap;
 import java.util.Map;
 

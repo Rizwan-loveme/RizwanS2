@@ -5,10 +5,10 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
-import android.p008os.AsyncTask;
-import android.p008os.Bundle;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -41,11 +41,11 @@ import com.p159h.p160a.p162b.AbstractRunnableC1391m;
 import com.p159h.p160a.p162b.C1386h;
 import com.p159h.p160a.p162b.C1396r;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -2396,12 +2396,12 @@ public class AxmlEdit extends AbstractActivityC2894b {
         /* renamed from: e */
         private final AxmlEdit f13751e;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Boolean doInBackground(File[] fileArr) {
             return m16438a(fileArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Boolean bool) {
             m16439a(bool);
         }
@@ -2413,7 +2413,7 @@ public class AxmlEdit extends AbstractActivityC2894b {
             this.f13748b = z;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f13747a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -2541,12 +2541,12 @@ public class AxmlEdit extends AbstractActivityC2894b {
         /* renamed from: d */
         private final AxmlEdit f13739d;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected String doInBackground(File[] fileArr) {
             return m16434a(fileArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(String str) {
             m16435a(str);
         }
@@ -2556,7 +2556,7 @@ public class AxmlEdit extends AbstractActivityC2894b {
             this.f13736a = context;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f13736a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -2620,12 +2620,12 @@ public class AxmlEdit extends AbstractActivityC2894b {
         /* renamed from: g */
         private final AxmlEdit f13746g;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Void doInBackground(Void[] voidArr) {
             return m16436a(voidArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Void r1) {
             m16437a(r1);
         }
@@ -2638,7 +2638,7 @@ public class AxmlEdit extends AbstractActivityC2894b {
             this.f13743d = z2;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f13746g).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

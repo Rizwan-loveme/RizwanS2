@@ -3,7 +3,7 @@ package org.apache.http.conn.scheme;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.p209io.IOException;
+import java.io.IOException;
 import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.params.HttpParams;
 

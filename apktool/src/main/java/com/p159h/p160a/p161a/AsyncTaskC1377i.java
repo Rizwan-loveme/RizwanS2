@@ -1,7 +1,7 @@
 package com.p159h.p160a.p161a;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,12 +33,12 @@ public class AsyncTaskC1377i extends AsyncTask<String, String, Boolean> {
     /* renamed from: e */
     private int f8974e;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(String[] strArr) {
         return m10987a(strArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m10988a(bool);
     }
@@ -54,7 +54,7 @@ public class AsyncTaskC1377i extends AsyncTask<String, String, Boolean> {
         }
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f8972c).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

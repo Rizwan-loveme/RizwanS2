@@ -1,9 +1,9 @@
 package p046b.p047a.p056d;
 
-import java.p209io.BufferedInputStream;
-import java.p209io.File;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import org.p217b.p218a.p219a.C1887e;
 import org.p226d.p227a.C1913a;
 import org.p226d.p227a.C1950b;
@@ -82,59 +82,44 @@ public class C0520b {
         Code decompiled incorrectly, please refer to instructions dump.
     */
     private void m3897a() {
-        ?? r3 = 1;
-        File file = (File) null;
+        File m3901c = (File) null;
         try {
+            C1950b c1950b = new C1950b();
+            c1950b.f11363i = false;
+            c1950b.f11364j = false;
+            c1950b.f11356b = true;
+            c1950b.f11357c = C3102bd.f18313au ? false : true;
+            c1950b.f11358d = true;
+            c1950b.f11359e = this.f3614e;
+            c1950b.f11360f = false;
+            c1950b.f11361g = false;
+            c1950b.f11366l = 0;
+            c1950b.f11368n = (AbstractC1975j) null;
+            m3901c = m3901c();
             try {
-                C1950b c1950b = new C1950b();
-                c1950b.f11363i = false;
-                c1950b.f11364j = false;
-                c1950b.f11356b = true;
-                c1950b.f11357c = C3102bd.f18313au ? false : true;
-                c1950b.f11358d = true;
-                c1950b.f11359e = this.f3614e;
-                c1950b.f11360f = false;
-                c1950b.f11361g = false;
-                c1950b.f11366l = 0;
-                c1950b.f11368n = (AbstractC1975j) null;
-                File m3901c = m3901c();
-                try {
-                    int m19672k = C3262u.m19672k(m3901c);
-                    C2153g m14453a = C2016c.m14453a(m3901c, C2359g.m15023a(this.f3615f));
-                    if (m14453a.mo14768b()) {
-                        throw new C0461b("Warning: You are disassembling an odex file without deodexing it.");
-                    }
-                    if (m14453a instanceof C2158l) {
-                        c1950b.f11368n = AbstractC1975j.m14332a(((C2158l) m14453a).m14804f());
-                    }
-                    C1913a.m14083a(m14453a, this.f3612c, C3102bd.f18299ag, c1950b);
-                    if (m19672k > 0) {
-                        try {
-                            new File(this.f3612c, new StringBuffer().append(".").append(C3080al.f17664a[m19672k].replaceAll("\\s", "")).toString()).createNewFile();
-                        } catch (Exception e2) {
-                        }
-                    }
-                    if (m3901c != null) {
-                        m3901c.delete();
-                    }
-                } catch (Exception e3) {
-                    e = e3;
-                    throw new C0461b(e);
+                int m19672k = C3262u.m19672k(m3901c);
+                C2153g m14453a = C2016c.m14453a(m3901c, C2359g.m15023a(this.f3615f));
+                if (m14453a.mo14768b()) {
+                    throw new C0461b("Warning: You are disassembling an odex file without deodexing it.");
                 }
-            } catch (Throwable th) {
-                th = th;
-                if (r3 != 0) {
-                    throw th;
+                if (m14453a instanceof C2158l) {
+                    c1950b.f11368n = AbstractC1975j.m14332a(((C2158l) m14453a).m14804f());
                 }
-                r3.delete();
-                throw th;
+                C1913a.m14083a(m14453a, this.f3612c, C3102bd.f18299ag, c1950b);
+                if (m19672k > 0) {
+                    try {
+                        new File(this.f3612c, new StringBuffer().append(".").append(C3080al.f17664a[m19672k].replaceAll("\\s", "")).toString()).createNewFile();
+                    } catch (Exception e2) {
+                    }
+                }
+            } catch (Exception e3) {
+                throw new C0461b(e3);
             }
-        } catch (Exception e4) {
-            e = e4;
-        } catch (Throwable th2) {
-            th = th2;
-            r3 = file;
-            if (r3 != 0) {
+        } catch (IOException e4) {
+            throw new C0461b(e4);
+        } finally {
+            if (m3901c != null) {
+                m3901c.delete();
             }
         }
     }

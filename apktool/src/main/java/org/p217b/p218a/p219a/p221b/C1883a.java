@@ -1,6 +1,6 @@
 package org.p217b.p218a.p219a.p221b;
 
-import java.p209io.OutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -61,7 +61,7 @@ public class C1883a extends OutputStream {
         this.f11036b.add(this.f11039e);
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public void write(byte[] bArr, int i, int i2) {
         if (i < 0 || i > bArr.length || i2 < 0 || i + i2 > bArr.length || i + i2 < 0) {
             throw new IndexOutOfBoundsException();
@@ -85,7 +85,7 @@ public class C1883a extends OutputStream {
         }
     }
 
-    @Override // java.p209io.OutputStream
+    @Override // java.io.OutputStream
     public synchronized void write(int i) {
         int i2 = this.f11040f - this.f11038d;
         if (i2 == this.f11039e.length) {
@@ -96,7 +96,7 @@ public class C1883a extends OutputStream {
         this.f11040f++;
     }
 
-    @Override // java.p209io.OutputStream, java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.OutputStream, java.io.Closeable, java.lang.AutoCloseable
     public void close() {
     }
 

@@ -2,13 +2,13 @@ package ru.maximoff.apktool.p300e;
 
 import android.content.Context;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.BufferedOutputStream;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.FileOutputStream;
-import java.p209io.FilenameFilter;
-import java.p209io.IOException;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FilenameFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -170,97 +170,43 @@ public class AsyncTaskC2945p extends AbstractAsyncTaskC2898a {
         Code decompiled incorrectly, please refer to instructions dump.
     */
     protected Boolean mo17049a(File[] fileArr) {
-        int i;
-        ?? r0;
-        File file;
-        File[] listFiles;
-        Exception e2;
-        File file2;
-        File[] listFiles2;
-        Error e3;
-        File file3;
-        File[] listFiles3;
-        Throwable th;
-        File file4;
-        File[] listFiles4;
-        File[] listFiles5;
-        File[] listFiles6;
-        File file5;
-        Throwable th2;
-        File file6;
-        File file7;
-        File file8;
-        File file9;
-        File file10;
-        int[] iArr;
-        InterfaceC0008c m18964a;
-        File m19564a;
-        File m17524a;
-        File[] listFiles7;
-        File file11;
         Object[] objArr = {(Object) null};
         mo3984d(R.string.mplease_wait, objArr);
         if (this.f15705j) {
-            File file12 = (File) null;
-            File file13 = (File) null;
+            File file11 = null;
+            File m19564a = null;
             try {
+                File file10 = fileArr[0];
+                int[] iArr = new int[1];
                 try {
-                    try {
-                        file10 = fileArr[0];
-                        iArr = new int[1];
-                        try {
-                            iArr[0] = new C3081am(file10).m18632h();
-                        } catch (Exception e4) {
-                            iArr[0] = 14;
-                        }
-                        m18964a = (this.f15706k == 0 && C3102bd.m18925a(this.f15697b, "save_sign_data", true)) ? C3105bg.m18964a(file10) : (InterfaceC0008c) null;
-                        m19564a = C3262u.m19564a();
-                        try {
-                            File[] m17531a = m17531a(file10, m19564a);
-                            if (this.f15701f > 0) {
-                                m17532b(m17531a, m19564a, this.f15701f, true, "classes", 0, true);
-                            } else {
-                                m17528a(m17531a, m19564a, this.f15700e, true, "classes", 0, true);
-                            }
-                            m17524a = m17524a(file10, (String) null);
-                            listFiles7 = m19564a.listFiles(new FilenameFilter(this) { // from class: ru.maximoff.apktool.e.p.1
-
-                                /* renamed from: a */
-                                private final AsyncTaskC2945p f15707a;
-
-                                {
-                                    this.f15707a = this;
-                                }
-
-                                @Override // java.p209io.FilenameFilter
-                                public boolean accept(File file14, String str) {
-                                    return str.startsWith("classes") && str.endsWith(".dex");
-                                }
-                            });
-                            file11 = new File(m17524a.getParentFile(), new StringBuffer().append(new StringBuffer().append(new StringBuffer().append(".").append(m17524a.getName()).toString()).append("_").toString()).append(System.currentTimeMillis()).toString());
-                        } catch (Error e5) {
-                            e = e5;
-                            file7 = m19564a;
-                        } catch (Exception e6) {
-                            e = e6;
-                            file8 = m19564a;
-                        }
-                    } catch (Exception e7) {
-                        e = e7;
-                        file8 = file12;
-                    }
-                } catch (Error e8) {
-                    e = e8;
-                    file7 = file12;
-                } catch (Throwable th3) {
-                    th2 = th3;
-                    file6 = file12;
+                    iArr[0] = new C3081am(file10).m18632h();
+                } catch (Exception e4) {
+                    iArr[0] = 14;
                 }
-            } catch (Throwable th4) {
-                th2 = th4;
-                file6 = objArr;
-            }
-            try {
+                InterfaceC0008c m18964a = (this.f15706k == 0 && C3102bd.m18925a(this.f15697b, "save_sign_data", true)) ? C3105bg.m18964a(file10) : (InterfaceC0008c) null;
+                m19564a = C3262u.m19564a();
+                File[] m17531a = m17531a(file10, m19564a);
+                if (this.f15701f > 0) {
+                    m17532b(m17531a, m19564a, this.f15701f, true, "classes", 0, true);
+                } else {
+                    m17528a(m17531a, m19564a, this.f15700e, true, "classes", 0, true);
+                }
+                File m17524a = m17524a(file10, (String) null);
+                File[] listFiles7 = m19564a.listFiles(new FilenameFilter(this) { // from class: ru.maximoff.apktool.e.p.1
+
+                    /* renamed from: a */
+                    private final AsyncTaskC2945p f15707a;
+
+                    {
+                        this.f15707a = this;
+                    }
+
+                    @Override // java.io.FilenameFilter
+                    public boolean accept(File file14, String str) {
+                        return str.startsWith("classes") && str.endsWith(".dex");
+                    }
+                });
+                file11 = new File(m17524a.getParentFile(), new StringBuffer().append(new StringBuffer().append(new StringBuffer().append(".").append(m17524a.getName()).toString()).append("_").toString()).append(System.currentTimeMillis()).toString());
                 File file14 = new File(new StringBuffer().append(new StringBuffer().append(file11.getAbsolutePath()).append("_").toString()).append(C3080al.m18520a(1000, 9999)).toString());
                 m17527a(file10.getAbsolutePath(), file11.getAbsolutePath(), m19564a, listFiles7);
                 C3317a.m20052a(file11.getAbsolutePath(), file14.getAbsolutePath());
@@ -310,148 +256,72 @@ public class AsyncTaskC2945p extends AbstractAsyncTaskC2898a {
                     }
                 });
                 m17060b(m17524a);
-                Boolean bool = new Boolean(true);
+                return new Boolean(true);
+            } catch (Error e) {
+                mo3979a(R.string.errorf, e.getMessage());
+                return new Boolean(false);
+            } catch (Exception e2) {
+                mo3979a(R.string.errorf, e2.getMessage());
+                return new Boolean(false);
+            } finally {
                 if (m19564a != null) {
                     C0542g.m3987a(m19564a);
                 }
-                if (file11 == null || !file11.isFile()) {
-                    return bool;
+                if (file11 != null && file11.isFile()) {
+                    file11.delete();
                 }
-                file11.delete();
-                return bool;
-            } catch (Error e9) {
-                e = e9;
-                file13 = file11;
-                file7 = m19564a;
-                mo3979a(R.string.errorf, e.getMessage());
-                file9 = file7;
-                if (file9 != null) {
-                    C0542g.m3987a(file9);
-                }
-                if (file13 != null && file13.isFile()) {
-                    file13.delete();
-                }
-                return new Boolean(false);
-            } catch (Exception e10) {
-                e = e10;
-                file13 = file11;
-                file8 = m19564a;
-                mo3979a(R.string.errorf, e.getMessage());
-                file9 = file8;
-                if (file9 != null) {
-                }
-                if (file13 != null) {
-                    file13.delete();
-                }
-                return new Boolean(false);
-            } catch (Throwable th5) {
-                th2 = th5;
-                file13 = file11;
-                file6 = m19564a;
-                if (file6 != null) {
-                    C0542g.m3987a(file6);
-                }
-                if (file13 == null) {
-                    throw th2;
-                }
-                if (!file13.isFile()) {
-                    throw th2;
-                }
-                file13.delete();
-                throw th2;
             }
         }
         if (this.f15703h) {
             File file15 = fileArr[0];
             File parentFile = file15.getParentFile();
-            File file16 = (File) null;
+            File file4 = null;
             try {
-                try {
-                    boolean m19664g = C3262u.m19664g(this.f15697b, parentFile);
-                    file4 = (m19664g && this.f15704i) ? C3262u.m19564a() : (File) null;
-                    int i2 = 0;
-                    int i3 = 0;
-                    while (i2 < fileArr.length) {
-                        try {
-                            int m19672k = C3262u.m19672k(fileArr[i2]);
-                            if (m19672k <= i3) {
-                                m19672k = i3;
-                            }
-                            i2++;
-                            i3 = m19672k;
-                        } catch (Error e11) {
-                            e = e11;
-                            file15 = file4;
-                            mo3979a(R.string.errorf, e.getMessage());
-                            if (!this.f15704i) {
-                            }
-                            if (file15 != null && (listFiles5 = file15.listFiles()) != null) {
-                                for (File file17 : listFiles5) {
-                                    File file18 = new File(parentFile, file17.getName());
-                                    if (!file18.isFile()) {
-                                        C3262u.m19613a(file17, file18, true);
-                                    }
-                                }
-                            }
-                            if (file15 != null) {
-                                C0542g.m3987a(file15);
-                            }
-                            return new Boolean(false);
-                        } catch (Exception e12) {
-                            e = e12;
-                            file15 = file4;
-                            mo3979a(R.string.errorf, e.getMessage());
-                            if (!this.f15704i) {
-                            }
-                            if (file15 != null) {
-                                while (r2 < listFiles5.length) {
-                                }
-                            }
-                            if (file15 != null) {
-                            }
-                            return new Boolean(false);
-                        } catch (Throwable th6) {
-                            th = th6;
-                            if (!this.f15704i && file4 != null && (listFiles4 = file4.listFiles()) != null) {
-                                for (File file19 : listFiles4) {
-                                    File file20 = new File(parentFile, file19.getName());
-                                    if (!file20.isFile()) {
-                                        C3262u.m19613a(file19, file20, true);
-                                    }
-                                }
-                            }
-                            if (file4 != null) {
-                                C0542g.m3987a(file4);
-                            }
-                            throw th;
+                boolean m19664g = C3262u.m19664g(this.f15697b, parentFile);
+                file4 = (m19664g && this.f15704i) ? C3262u.m19564a() : (File) null;
+                int i3 = 0;
+                for (int i2 = 0; i2 < fileArr.length; i2++) {
+                    int m19672k = C3262u.m19672k(fileArr[i2]);
+                    if (m19672k > i3) {
+                        i3 = m19672k;
+                    }
+                }
+                C2409i c2409i = new C2409i(C2359g.m15023a(C3080al.f17665b[i3]));
+                for (File file21 : fileArr) {
+                    File file5;
+                    if (file4 != null) {
+                        file5 = new File(file4, file21.getName());
+                        C3262u.m19613a(file21, file5, true);
+                    } else {
+                        file5 = file21;
+                    }
+                    Iterator<? extends InterfaceC2244d> it = C2016c.m14453a(file5, C2359g.m15023a(C3080al.f17665b[C3262u.m19672k(file5)])).mo14769c().iterator();
+                    while (it.hasNext()) {
+                        c2409i.m15249a(it.next());
+                        if (c2409i.m15408b()) {
+                            throw new Exception(this.f15697b.getString(R.string.merge_dex_error));
                         }
                     }
-                    C2409i c2409i = new C2409i(C2359g.m15023a(C3080al.f17665b[i3]));
-                    for (File file21 : fileArr) {
-                        if (file4 != null) {
-                            file5 = new File(file4, file21.getName());
-                            C3262u.m19613a(file21, file5, true);
-                        } else {
-                            file5 = file21;
-                        }
-                        Iterator<? extends InterfaceC2244d> it = C2016c.m14453a(file5, C2359g.m15023a(C3080al.f17665b[C3262u.m19672k(file5)])).mo14769c().iterator();
-                        while (it.hasNext()) {
-                            c2409i.m15249a(it.next());
-                            if (c2409i.m15408b()) {
-                                throw new Exception(this.f15697b.getString(R.string.merge_dex_error));
-                            }
-                        }
-                    }
-                    String[] m19641b = C3262u.m19641b(this.f15699d);
-                    if (!m19641b[1].isEmpty()) {
-                        m19641b[1] = new StringBuffer().append(".").append(m19641b[1]).toString();
-                    }
-                    File m17525a = m17525a(parentFile, m19641b[0], m19641b[1], m19664g, false);
-                    c2409i.m15405a(new C2398d(m17525a));
-                    mo3984d(R.string.successf, m17525a.getAbsolutePath());
-                    m17060b(parentFile);
-                    Boolean bool2 = new Boolean(true);
-                    if (!this.f15704i && file4 != null && (listFiles6 = file4.listFiles()) != null) {
+                }
+                String[] m19641b = C3262u.m19641b(this.f15699d);
+                if (!m19641b[1].isEmpty()) {
+                    m19641b[1] = new StringBuffer().append(".").append(m19641b[1]).toString();
+                }
+                File m17525a = m17525a(parentFile, m19641b[0], m19641b[1], m19664g, false);
+                c2409i.m15405a(new C2398d(m17525a));
+                mo3984d(R.string.successf, m17525a.getAbsolutePath());
+                m17060b(parentFile);
+                return new Boolean(true);
+            } catch (Error e11) {
+                mo3979a(R.string.errorf, e11.getMessage());
+                return new Boolean(false);
+            } catch (Exception e12) {
+                mo3979a(R.string.errorf, e12.getMessage());
+                return new Boolean(false);
+            } finally {
+                if (!this.f15704i && file4 != null) {
+                    File[] listFiles6 = file4.listFiles();
+                    if (listFiles6 != null) {
                         for (File file22 : listFiles6) {
                             File file23 = new File(parentFile, file22.getName());
                             if (!file23.isFile()) {
@@ -459,192 +329,77 @@ public class AsyncTaskC2945p extends AbstractAsyncTaskC2898a {
                             }
                         }
                     }
-                    if (file4 == null) {
-                        return bool2;
-                    }
-                    C0542g.m3987a(file4);
-                    return bool2;
-                } catch (Throwable th7) {
-                    th = th7;
-                    file4 = file15;
                 }
-            } catch (Error e13) {
-                e = e13;
-                file15 = file16;
-            } catch (Exception e14) {
-                e = e14;
-                file15 = file16;
-            } catch (Throwable th8) {
-                th = th8;
-                file4 = file16;
+                if (file4 != null) {
+                    C0542g.m3987a(file4);
+                }
             }
-        } else {
-            File file24 = fileArr[0];
-            File parentFile2 = file24.getParentFile();
-            String[] m19641b2 = C3262u.m19641b(file24.getName());
-            boolean m19664g2 = C3262u.m19664g(this.f15697b, parentFile2);
-            if (this.f15700e == 1) {
-                mo3984d(R.string.successf, file24.getAbsolutePath());
-                return new Boolean(true);
+        }
+        File file24 = fileArr[0];
+        File parentFile2 = file24.getParentFile();
+        String[] m19641b2 = C3262u.m19641b(file24.getName());
+        boolean m19664g2 = C3262u.m19664g(this.f15697b, parentFile2);
+        if (this.f15700e == 1) {
+            mo3984d(R.string.successf, file24.getAbsolutePath());
+            return new Boolean(true);
+        }
+        String str = m19641b2[0];
+        int i = 0;
+        Matcher matcher = Pattern.compile("^(.*?)?(\\d+)$").matcher(str);
+        if (matcher.find()) {
+            try {
+                i = Integer.parseInt(matcher.group(2));
+                if (i > 0) {
+                    i--;
+                }
+                str = str.substring(0, str.length() - String.valueOf(i).length());
+            } catch (Exception e15) {
+                str = m19641b2[0];
+                i = 0;
             }
-            String str = m19641b2[0];
-            Matcher matcher = Pattern.compile("^(.*?)?(\\d+)$").matcher(str);
-            if (matcher.find()) {
-                try {
-                    i = Integer.parseInt(matcher.group(2));
-                    if (i > 0) {
-                        i--;
-                    }
-                    r0 = 0;
-                    str = str.substring(0, str.length() - String.valueOf(i).length());
-                } catch (Exception e15) {
-                    str = m19641b2[0];
-                    i = 0;
-                    r0 = e15;
+        }
+        File file = null;
+        try {
+            if (m19664g2 && this.f15704i) {
+                file = C3262u.m19564a();
+            }
+            File[] fileArr2 = new File[fileArr.length];
+            if (file != null) {
+                for (int i4 = 0; i4 < fileArr.length; i4++) {
+                    fileArr2[i4] = new File(file, fileArr[i4].getName());
+                    C3262u.m19613a(fileArr[i4], fileArr2[i4], true);
                 }
             } else {
-                i = 0;
-                r0 = matcher;
+                fileArr2 = fileArr;
             }
-            File file25 = (File) null;
-            try {
-            } catch (Throwable th9) {
-                th = th9;
-                file = r0;
+            if (this.f15701f > 0) {
+                m17532b(fileArr2, parentFile2, this.f15701f, m19664g2, str, i, false);
+            } else {
+                m17528a(fileArr2, parentFile2, this.f15700e, m19664g2, str, i, false);
             }
-            try {
-                if (m19664g2) {
-                    try {
-                        if (this.f15704i) {
-                            file = C3262u.m19564a();
-                            File[] fileArr2 = new File[fileArr.length];
-                            if (file == null) {
-                                for (int i4 = 0; i4 < fileArr.length; i4++) {
-                                    fileArr2[i4] = new File(file, fileArr[i4].getName());
-                                    C3262u.m19613a(fileArr[i4], fileArr2[i4], true);
-                                }
-                            } else {
-                                fileArr2 = fileArr;
-                            }
-                            if (this.f15701f <= 0) {
-                                m17532b(fileArr2, parentFile2, this.f15701f, m19664g2, str, i, false);
-                            } else {
-                                m17528a(fileArr2, parentFile2, this.f15700e, m19664g2, str, i, false);
-                            }
-                            Boolean bool3 = new Boolean(true);
-                            if (!this.f15704i && file != null && (listFiles3 = file.listFiles()) != null) {
-                                for (File file26 : listFiles3) {
-                                    File file27 = new File(parentFile2, file26.getName());
-                                    if (!file27.isFile()) {
-                                        C3262u.m19613a(file26, file27, true);
-                                    }
-                                }
-                            }
-                            if (file != null) {
-                                return bool3;
-                            }
-                            C0542g.m3987a(file);
-                            return bool3;
+            return new Boolean(true);
+        } catch (Error e16) {
+            mo3979a(R.string.errorf, e16.getMessage());
+            return new Boolean(false);
+        } catch (Exception e17) {
+            mo3979a(R.string.errorf, e17.getMessage());
+            return new Boolean(false);
+        } finally {
+            if (!this.f15704i && file != null) {
+                File[] listFiles3 = file.listFiles();
+                if (listFiles3 != null) {
+                    for (File file26 : listFiles3) {
+                        File file27 = new File(parentFile2, file26.getName());
+                        if (!file27.isFile()) {
+                            C3262u.m19613a(file26, file27, true);
                         }
-                    } catch (Error e16) {
-                        e3 = e16;
-                        file3 = file25;
-                        mo3979a(R.string.errorf, e3.getMessage());
-                        r0 = file3;
-                        if (!this.f15704i) {
-                        }
-                        if (r0 != 0 && (listFiles2 = r0.listFiles()) != null) {
-                            for (File file28 : listFiles2) {
-                                File file29 = new File(parentFile2, file28.getName());
-                                if (!file29.isFile()) {
-                                    C3262u.m19613a(file28, file29, true);
-                                }
-                            }
-                        }
-                        if (r0 != 0) {
-                            C0542g.m3987a((File) r0);
-                        }
-                        return new Boolean(false);
-                    } catch (Exception e17) {
-                        e2 = e17;
-                        file2 = file25;
-                        mo3979a(R.string.errorf, e2.getMessage());
-                        r0 = file2;
-                        if (!this.f15704i) {
-                        }
-                        if (r0 != 0) {
-                            while (r1 < listFiles2.length) {
-                            }
-                        }
-                        if (r0 != 0) {
-                        }
-                        return new Boolean(false);
-                    } catch (Throwable th10) {
-                        th = th10;
-                        file = file25;
-                        if (!this.f15704i && file != null && (listFiles = file.listFiles()) != null) {
-                            for (File file30 : listFiles) {
-                                File file31 = new File(parentFile2, file30.getName());
-                                if (!file31.isFile()) {
-                                    C3262u.m19613a(file30, file31, true);
-                                }
-                            }
-                        }
-                        if (file != null) {
-                            C0542g.m3987a(file);
-                        }
-                        throw th;
                     }
                 }
-                File[] fileArr22 = new File[fileArr.length];
-                if (file == null) {
-                }
-                if (this.f15701f <= 0) {
-                }
-                Boolean bool32 = new Boolean(true);
-                if (!this.f15704i) {
-                    while (r1 < listFiles3.length) {
-                    }
-                }
-                if (file != null) {
-                }
-            } catch (Error e18) {
-                e3 = e18;
-                file3 = file;
-                mo3979a(R.string.errorf, e3.getMessage());
-                r0 = file3;
-                if (!this.f15704i) {
-                }
-                if (r0 != 0) {
-                }
-                if (r0 != 0) {
-                }
-                return new Boolean(false);
-            } catch (Exception e19) {
-                e2 = e19;
-                file2 = file;
-                mo3979a(R.string.errorf, e2.getMessage());
-                r0 = file2;
-                if (!this.f15704i) {
-                }
-                if (r0 != 0) {
-                }
-                if (r0 != 0) {
-                }
-                return new Boolean(false);
-            } catch (Throwable th11) {
-                th = th11;
-                if (!this.f15704i) {
-                    while (r10 < listFiles.length) {
-                    }
-                }
-                if (file != null) {
-                }
-                throw th;
             }
-            file = (File) null;
+            if (file != null) {
+                C0542g.m3987a(file);
+            }
         }
-        return new Boolean(false);
     }
 
     @Override // ru.maximoff.apktool.p300e.AbstractAsyncTaskC2898a

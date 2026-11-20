@@ -17,7 +17,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.appcompat.widget.C0173ao;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import ru.maximoff.apktool.fragment.p301a.C2978b;

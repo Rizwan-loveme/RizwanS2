@@ -6,10 +6,10 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.p008os.Bundle;
-import android.p008os.Looper;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Bundle;
+import android.os.Looper;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -38,8 +38,8 @@ import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelStore;
 import androidx.lifecycle.ViewModelStoreOwner;
 import androidx.p011a.C0037b;
-import java.p209io.FileDescriptor;
-import java.p209io.PrintWriter;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2419,12 +2419,12 @@ public abstract class AbstractC0384o {
             this.f2794b = parcel.readInt();
         }
 
-        @Override // android.p008os.Parcelable
+        @Override // android.os.Parcelable
         public int describeContents() {
             return 0;
         }
 
-        @Override // android.p008os.Parcelable
+        @Override // android.os.Parcelable
         public void writeToParcel(Parcel parcel, int i) {
             parcel.writeString(this.f2793a);
             parcel.writeInt(this.f2794b);

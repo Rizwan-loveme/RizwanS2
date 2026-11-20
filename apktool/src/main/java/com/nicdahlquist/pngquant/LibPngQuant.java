@@ -1,6 +1,6 @@
 package com.nicdahlquist.pngquant;
 
-import java.p209io.File;
+import java.io.File;
 
 /* loaded from: classes.dex */
 public class LibPngQuant {

@@ -10,7 +10,7 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.Menu;
 import android.view.View;

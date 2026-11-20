@@ -1,8 +1,8 @@
 package org.p210a.p211a.p212a;
 
-import java.p209io.InputStream;
-import java.p209io.InputStreamReader;
-import java.p209io.Reader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.Arrays;
 import org.p210a.p211a.p212a.p215c.C1839i;
 

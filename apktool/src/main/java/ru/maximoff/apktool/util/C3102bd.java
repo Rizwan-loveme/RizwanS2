@@ -10,12 +10,12 @@ import android.content.p006pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.graphics.Typeface;
 import android.net.Uri;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.Environment;
-import android.p008os.Handler;
-import android.p008os.Looper;
-import android.p008os.PowerManager;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.security.keystore.KeyProperties;
@@ -35,10 +35,10 @@ import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.appcompat.widget.C0173ao;
 import androidx.core.content.C0255a;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FileFilter;
-import java.p209io.FileOutputStream;
-import java.p209io.InputStream;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -1097,7 +1097,7 @@ public class C3102bd {
     /* renamed from: c */
     private static void m18942c(File file) {
         File[] listFiles = file.getParentFile().listFiles(new FileFilter() { // from class: ru.maximoff.apktool.util.bd.1
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file2) {
                 return file2.isFile() && file2.getName().endsWith(".apk");
             }

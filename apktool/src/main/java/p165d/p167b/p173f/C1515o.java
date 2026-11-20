@@ -2,8 +2,8 @@ package p165d.p167b.p173f;
 
 import android.provider.Contacts;
 import java.lang.reflect.InvocationTargetException;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.security.cert.CertificateException;
 import java.util.Collection;
 import java.util.Collections;
@@ -178,13 +178,12 @@ public class C1515o implements InterfaceC1513m<C1463ah> {
     public boolean equals(Object obj) {
         Object[] array;
         int length;
-        int i;
         if (this == obj) {
             return true;
         }
         if ((obj instanceof C1515o) && (length = (array = ((C1515o) obj).m11670b().toArray()).length) == this.f9721c.size()) {
             String str = null;
-            for (0; i < length; i + 1) {
+            for (int i = 0; i < length; i++) {
                 if (array[i] instanceof InterfaceC1513m) {
                     str = ((InterfaceC1513m) array[i]).mo11473a();
                 }
@@ -193,8 +192,9 @@ public class C1515o implements InterfaceC1513m<C1463ah> {
                     str = c1463ah.m11489c().toString();
                 }
                 C1463ah c1463ah2 = this.f9721c.get(str);
-                i = (c1463ah2 != null && c1463ah2.equals(c1463ah)) ? i + 1 : 0;
-                return false;
+                if (c1463ah2 == null || !c1463ah2.equals(c1463ah)) {
+                    return false;
+                }
             }
             return m11671c().equals(((C1515o) obj).m11671c());
         }

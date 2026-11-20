@@ -1,7 +1,7 @@
 package androidx.core.content;
 
 import android.content.Context;
-import android.p008os.Process;
+import android.os.Process;
 import androidx.core.app.C0233d;
 
 /* compiled from: PermissionChecker.java */

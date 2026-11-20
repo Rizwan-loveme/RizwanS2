@@ -4,7 +4,7 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.p008os.Build;
+import android.os.Build;
 import java.util.Locale;
 
 /* compiled from: LocaleHelper.java */

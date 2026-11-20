@@ -6,8 +6,8 @@ import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.graphics.fonts.FontVariationAxis;
 import android.net.Uri;
-import android.p008os.CancellationSignal;
-import android.p008os.ParcelFileDescriptor;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import androidx.core.content.p028a.C0258c;
 import androidx.core.p027c.C0251f;
@@ -16,7 +16,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.p209io.IOException;
+import java.io.IOException;
 import java.util.Map;
 
 /* compiled from: TypefaceCompatApi26Impl.java */

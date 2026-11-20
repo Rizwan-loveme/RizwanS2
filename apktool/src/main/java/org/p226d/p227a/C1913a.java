@@ -2,11 +2,11 @@ package org.p226d.p227a;
 
 import com.p129f.p130a.p133c.AbstractC1163ap;
 import com.p129f.p130a.p133c.C1156ai;
-import java.p209io.BufferedWriter;
-import java.p209io.File;
-import java.p209io.FileOutputStream;
-import java.p209io.OutputStreamWriter;
-import java.p209io.PrintStream;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -114,131 +114,41 @@ public class C1913a {
         Code decompiled incorrectly, please refer to instructions dump.
     */
     public static boolean m14085b(InterfaceC2244d interfaceC2244d, C2451e c2451e, C1950b c1950b) {
-        C2457k c2457k;
-        ?? r1;
-        String str = null;
         String mo14205l = interfaceC2244d.mo14205l();
-        if (mo14205l.charAt(0) == 'L') {
-            ?? r2 = 59;
-            if (mo14205l.charAt(mo14205l.length() - 1) == ';') {
-                File m15504a = c2451e.m15504a(mo14205l);
-                C1936d c1936d = new C1936d(c1950b, interfaceC2244d);
-                ?? r4 = 0;
-                r4 = 0;
-                r4 = 0;
-                r4 = 0;
-                r4 = 0;
-                r4 = 0;
-                r4 = 0;
-                r4 = 0;
+        if (mo14205l.charAt(0) != 'L' || mo14205l.charAt(mo14205l.length() - 1) != ';') {
+            System.err.println("Unrecognized class descriptor - " + mo14205l + " - skipping class");
+            return false;
+        }
+        File m15504a = c2451e.m15504a(mo14205l);
+        C1936d c1936d = new C1936d(c1950b, interfaceC2244d);
+        C2457k c2457k = null;
+        try {
+            File parentFile = m15504a.getParentFile();
+            if (!parentFile.exists() && !parentFile.mkdirs() && !parentFile.exists()) {
+                System.err.println("Unable to create directory " + parentFile.toString() + " - skipping class");
+                return false;
+            }
+            if (!m15504a.exists() && !m15504a.createNewFile()) {
+                System.err.println("Unable to create file " + m15504a.toString() + " - skipping class");
+                return false;
+            }
+            c2457k = new C2457k(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(m15504a), "UTF8")));
+            c1936d.m14135a(c2457k);
+            return true;
+        } catch (Exception e) {
+            System.err.println("\n\nError occurred while disassembling class " + mo14205l.replace('/', '.') + " - skipping class");
+            e.printStackTrace();
+            m15504a.delete();
+            return false;
+        } finally {
+            if (c2457k != null) {
                 try {
-                    try {
-                        File parentFile = m15504a.getParentFile();
-                        if (!parentFile.exists() && !parentFile.mkdirs() && !parentFile.exists()) {
-                            System.err.println("Unable to create directory " + parentFile.toString() + " - skipping class");
-                            if (0 != 0) {
-                                try {
-                                    r4.close();
-                                } catch (Throwable th) {
-                                    PrintStream printStream = System.err;
-                                    StringBuilder append = new StringBuilder().append("\n\nError occurred while closing file ");
-                                    mo14205l = m15504a.toString();
-                                    String sb = append.append(mo14205l).toString();
-                                    printStream.println(sb);
-                                    th.printStackTrace();
-                                    r4 = sb;
-                                }
-                            }
-                            r1 = 0;
-                        } else if (m15504a.exists() || m15504a.createNewFile()) {
-                            c2457k = new C2457k(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(m15504a), "UTF8")));
-                            try {
-                                c1936d.m14135a(c2457k);
-                                if (c2457k != null) {
-                                    try {
-                                        c2457k.close();
-                                    } catch (Throwable th2) {
-                                        PrintStream printStream2 = System.err;
-                                        StringBuilder append2 = new StringBuilder().append("\n\nError occurred while closing file ");
-                                        String file = m15504a.toString();
-                                        str = append2.append(file).toString();
-                                        printStream2.println(str);
-                                        th2.printStackTrace();
-                                        r4 = file;
-                                    }
-                                }
-                                r1 = 1;
-                            } catch (Exception e2) {
-                                e = e2;
-                                PrintStream printStream3 = System.err;
-                                mo14205l = "\n\nError occurred while disassembling class " + mo14205l.replace('/', '.') + " - skipping class";
-                                printStream3.println(mo14205l);
-                                e.printStackTrace();
-                                m15504a.delete();
-                                r2 = c2457k;
-                                r4 = printStream3;
-                                if (c2457k != null) {
-                                    try {
-                                        c2457k.close();
-                                        r2 = c2457k;
-                                        r4 = printStream3;
-                                    } catch (Throwable th3) {
-                                        PrintStream printStream4 = System.err;
-                                        StringBuilder append3 = new StringBuilder().append("\n\nError occurred while closing file ");
-                                        mo14205l = m15504a.toString();
-                                        String sb2 = append3.append(mo14205l).toString();
-                                        printStream4.println(sb2);
-                                        th3.printStackTrace();
-                                        r2 = printStream4;
-                                        r4 = sb2;
-                                    }
-                                }
-                                r1 = str;
-                                return r1;
-                            }
-                        } else {
-                            System.err.println("Unable to create file " + m15504a.toString() + " - skipping class");
-                            if (0 != 0) {
-                                try {
-                                    r4.close();
-                                } catch (Throwable th4) {
-                                    PrintStream printStream5 = System.err;
-                                    StringBuilder append4 = new StringBuilder().append("\n\nError occurred while closing file ");
-                                    mo14205l = m15504a.toString();
-                                    String sb3 = append4.append(mo14205l).toString();
-                                    printStream5.println(sb3);
-                                    th4.printStackTrace();
-                                    r4 = sb3;
-                                }
-                            }
-                            r1 = 0;
-                        }
-                    } catch (Throwable th5) {
-                        th = th5;
-                        r4 = r2;
-                        if (r4 != 0) {
-                            try {
-                                r4.close();
-                            } catch (Throwable th6) {
-                                System.err.println("\n\nError occurred while closing file " + m15504a.toString());
-                                th6.printStackTrace();
-                            }
-                        }
-                        throw th;
-                    }
-                } catch (Exception e3) {
-                    e = e3;
-                    c2457k = r4;
-                } catch (Throwable th7) {
-                    th = th7;
-                    if (r4 != 0) {
-                    }
-                    throw th;
+                    c2457k.close();
+                } catch (Throwable th) {
+                    System.err.println("\n\nError occurred while closing file " + m15504a.toString());
+                    th.printStackTrace();
                 }
-                return r1;
             }
         }
-        System.err.println("Unrecognized class descriptor - " + mo14205l + " - skipping class");
-        return false;
     }
 }

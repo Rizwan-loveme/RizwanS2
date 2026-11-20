@@ -2,9 +2,9 @@ package ru.maximoff.apktool.fragment.p302b;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Environment;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -24,8 +24,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.fragment.app.ActivityC0375f;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FilenameFilter;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -142,7 +142,7 @@ public class C2991j extends BaseAdapter implements AdapterView.OnItemClickListen
                 this.f16505a = this;
             }
 
-            @Override // java.p209io.FilenameFilter
+            @Override // java.io.FilenameFilter
             public boolean accept(File file, String str) {
                 return this.f16505a.m17945c() || str.charAt(0) != '.';
             }

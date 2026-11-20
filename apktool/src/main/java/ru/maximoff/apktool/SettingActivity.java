@@ -10,11 +10,11 @@ import android.content.p006pm.PackageInfo;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Environment;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.text.Editable;
@@ -34,8 +34,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.appcompat.widget.Toolbar;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FilenameFilter;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -199,7 +199,7 @@ public class SettingActivity extends PreferenceActivity {
                 this.f14234a = this;
             }
 
-            @Override // java.p209io.FilenameFilter
+            @Override // java.io.FilenameFilter
             public boolean accept(File file, String str) {
                 if (str.equalsIgnoreCase("Apktool_M.backup") || str.toLowerCase().matches("^apktool_m\\.\\d+\\.backup$")) {
                     return new File(file, str).isFile();
@@ -464,7 +464,7 @@ public class SettingActivity extends PreferenceActivity {
                                                     this.f14261a = this;
                                                 }
 
-                                                @Override // java.p209io.FilenameFilter
+                                                @Override // java.io.FilenameFilter
                                                 public boolean accept(File file4, String str2) {
                                                     return str2.toLowerCase().endsWith(".amd") || str2.toLowerCase().endsWith(".mtd");
                                                 }
@@ -499,7 +499,7 @@ public class SettingActivity extends PreferenceActivity {
                                                     this.f14262a = this;
                                                 }
 
-                                                @Override // java.p209io.FilenameFilter
+                                                @Override // java.io.FilenameFilter
                                                 public boolean accept(File file11, String str2) {
                                                     return str2.toLowerCase().endsWith(".apk");
                                                 }

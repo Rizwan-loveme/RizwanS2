@@ -3,8 +3,8 @@ package androidx.core.graphics;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Typeface;
-import android.p008os.CancellationSignal;
-import android.p008os.ParcelFileDescriptor;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
 import android.system.C0034Os;
 import android.system.ErrnoException;
 import android.system.OsConstants;
@@ -15,9 +15,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.p209io.File;
-import java.p209io.FileInputStream;
-import java.p209io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 /* compiled from: TypefaceCompatApi21Impl.java */
 /* renamed from: androidx.core.graphics.e */

@@ -1,6 +1,6 @@
 package androidx.versionedparcelable;
 
-import android.p008os.Parcelable;
+import android.os.Parcelable;
 import androidx.p011a.C0036a;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

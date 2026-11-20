@@ -5,10 +5,10 @@ import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.Handler;
-import android.p008os.Looper;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -25,8 +25,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import androidx.appcompat.widget.C0173ao;
 import com.srizwan.apktool.R;
-import java.p209io.File;
-import java.p209io.FileInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import org.p217b.p218a.p219a.C1887e;
@@ -90,12 +90,12 @@ public class AsyncTaskC2927bb extends AsyncTask<C3099ba, String, Boolean> {
     /* renamed from: d */
     private String f15521d = "unknown";
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(C3099ba[] c3099baArr) {
         return m17432a(c3099baArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m17434a(bool);
     }
@@ -105,7 +105,7 @@ public class AsyncTaskC2927bb extends AsyncTask<C3099ba, String, Boolean> {
         this.f15522e = interfaceC2995n;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         View inflate = LayoutInflater.from(this.f15518a).inflate(R.layout.search_progress, (ViewGroup) null);
         ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

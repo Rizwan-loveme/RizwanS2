@@ -1,7 +1,7 @@
 package p000a.p001a;
 
-import java.p209io.File;
-import java.p209io.RandomAccessFile;
+import java.io.File;
+import java.io.RandomAccessFile;
 
 /* compiled from: RandomAccessDataImpl.java */
 /* renamed from: a.a.c */
@@ -53,7 +53,7 @@ class C0002c implements InterfaceC0001b {
         this.f11a.setLength(j);
     }
 
-    @Override // java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         this.f11a.close();
     }

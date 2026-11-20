@@ -1,9 +1,9 @@
 package ru.maximoff.apktool.util;
 
 import com.srizwan.apktool.R;
-import java.p209io.BufferedReader;
-import java.p209io.InputStream;
-import java.p209io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import p046b.p059d.InterfaceC0541f;
 
 /* compiled from: StreamForwarder.java */

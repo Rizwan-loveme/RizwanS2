@@ -3,9 +3,9 @@ package ru.maximoff.apktool.util;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.drawable.Drawable;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
-import android.p008os.Environment;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,11 +15,11 @@ import android.widget.ListAdapter;
 import android.widget.TextView;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.BufferedInputStream;
-import java.p209io.BufferedOutputStream;
-import java.p209io.File;
-import java.p209io.FileFilter;
-import java.p209io.FileOutputStream;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -295,7 +295,7 @@ public class C3261t extends CustomListView {
                 this.f19703a = this;
             }
 
-            @Override // java.p209io.FileFilter
+            @Override // java.io.FileFilter
             public boolean accept(File file2) {
                 if (this.f19703a.f19694j) {
                     return true;
@@ -569,12 +569,12 @@ public class C3261t extends CustomListView {
             return cVar.f19723e;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Boolean doInBackground(File[] fileArr) {
             return m19561a(fileArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Boolean bool) {
             m19562a(bool);
         }
@@ -584,7 +584,7 @@ public class C3261t extends CustomListView {
             this.f19719a = context;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f19719a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);
@@ -669,12 +669,12 @@ public class C3261t extends CustomListView {
         /* renamed from: e */
         private final C3261t f19708e;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Boolean doInBackground(String[] strArr) {
             return m19552a(strArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Boolean bool) {
             m19553a(bool);
         }
@@ -685,7 +685,7 @@ public class C3261t extends CustomListView {
             this.f19705b = file;
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPreExecute() {
             View inflate = LayoutInflater.from(this.f19704a).inflate(R.layout.search_progress, (ViewGroup) null);
             ((TextView) inflate.findViewById(R.id.searchprogressTextView1)).setText(R.string.mplease_wait);

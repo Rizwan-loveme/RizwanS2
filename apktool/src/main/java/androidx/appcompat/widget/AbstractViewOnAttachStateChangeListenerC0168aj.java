@@ -1,6 +1,6 @@
 package androidx.appcompat.widget;
 
-import android.p008os.SystemClock;
+import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;

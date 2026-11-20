@@ -1,15 +1,15 @@
 package ru.maximoff.apktool.util.p308f;
 
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import com.srizwan.apktool.R;
 import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.p209io.BufferedReader;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,12 +65,12 @@ public class AsyncTaskC3238r extends AsyncTask<String, String, Boolean> {
         void mo16857a(Map<String, String> map);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected Boolean doInBackground(String[] strArr) {
         return m19406a(strArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(Boolean bool) {
         m19408a(bool);
     }
@@ -102,9 +102,6 @@ public class AsyncTaskC3238r extends AsyncTask<String, String, Boolean> {
     */
     protected Boolean m19406a(String... strArr) {
         String stringBuffer;
-        BufferedReader bufferedReader;
-        BufferedReader bufferedReader2;
-        ?? r5 = 1;
         if (!this.f19441i && TranslateActivity.m16820o() != null && TranslateActivity.m16820o().f14497h) {
             return new Boolean(false);
         }
@@ -114,7 +111,6 @@ public class AsyncTaskC3238r extends AsyncTask<String, String, Boolean> {
                 StringBuffer append = new StringBuffer().append("https://");
                 String str = this.f19435c;
                 stringBuffer = stringBuffer2.append(append.append(str).toString()).append("/translator").toString();
-                r5 = str;
                 break;
             case 2:
             default:
@@ -124,155 +120,88 @@ public class AsyncTaskC3238r extends AsyncTask<String, String, Boolean> {
                 break;
         }
         HttpURLConnection httpURLConnection = (HttpURLConnection) null;
-        BufferedReader bufferedReader3 = (BufferedReader) null;
+        BufferedReader bufferedReader2 = (BufferedReader) null;
         try {
-            try {
-                StringBuilder sb = new StringBuilder();
-                httpURLConnection = (HttpURLConnection) new URL(stringBuffer).openConnection();
-                httpURLConnection.setDefaultUseCaches(false);
-                httpURLConnection.setUseCaches(false);
-                httpURLConnection.setRequestProperty("User-Agent", this.f19437e);
-                httpURLConnection.setRequestProperty("Accept-Encoding", "gzip,deflate,br");
-                httpURLConnection.setRequestMethod("GET");
-                httpURLConnection.setConnectTimeout(6000);
-                httpURLConnection.setReadTimeout(10000);
-                httpURLConnection.connect();
-                List<String> list = httpURLConnection.getHeaderFields().get("Set-Cookie");
-                if (list != null) {
-                    for (int i = 0; i < list.size(); i++) {
-                        HttpCookie httpCookie = HttpCookie.parse(list.get(i)).get(0);
-                        if (i > 0) {
-                            sb.append(";");
-                        }
-                        sb.append(new StringBuffer().append(new StringBuffer().append(httpCookie.getName()).append("=").toString()).append(httpCookie.getValue()).toString());
+            StringBuilder sb = new StringBuilder();
+            httpURLConnection = (HttpURLConnection) new URL(stringBuffer).openConnection();
+            httpURLConnection.setDefaultUseCaches(false);
+            httpURLConnection.setUseCaches(false);
+            httpURLConnection.setRequestProperty("User-Agent", this.f19437e);
+            httpURLConnection.setRequestProperty("Accept-Encoding", "gzip,deflate,br");
+            httpURLConnection.setRequestMethod("GET");
+            httpURLConnection.setConnectTimeout(6000);
+            httpURLConnection.setReadTimeout(10000);
+            httpURLConnection.connect();
+            List<String> list = httpURLConnection.getHeaderFields().get("Set-Cookie");
+            if (list != null) {
+                for (int i = 0; i < list.size(); i++) {
+                    HttpCookie httpCookie = HttpCookie.parse(list.get(i)).get(0);
+                    if (i > 0) {
+                        sb.append(";");
                     }
+                    sb.append(new StringBuffer().append(new StringBuffer().append(httpCookie.getName()).append("=").toString()).append(httpCookie.getValue()).toString());
                 }
-                InputStream inputStream = httpURLConnection.getInputStream();
-                if (inputStream == null) {
-                    Boolean bool = (Boolean) null;
-                    if (httpURLConnection != null) {
-                        httpURLConnection.disconnect();
-                    }
-                    if (bufferedReader3 == null) {
-                        return bool;
-                    }
-                    try {
-                        bufferedReader3.close();
-                        return bool;
-                    } catch (IOException e2) {
-                        e2.printStackTrace();
-                        return bool;
-                    }
-                }
-                bufferedReader2 = "gzip".equals(httpURLConnection.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new GZIPInputStream(inputStream))) : "br".equals(httpURLConnection.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new C1900b(inputStream))) : new BufferedReader(new InputStreamReader(inputStream));
-                try {
-                    StringBuffer stringBuffer3 = new StringBuffer();
-                    while (true) {
-                        String readLine = bufferedReader2.readLine();
-                        if (readLine == null) {
-                            inputStream.close();
-                            if (stringBuffer3.length() == 0) {
-                                Boolean bool2 = new Boolean(false);
-                                if (httpURLConnection != null) {
-                                    httpURLConnection.disconnect();
-                                }
-                                if (bufferedReader2 == null) {
-                                    return bool2;
-                                }
-                                try {
-                                    bufferedReader2.close();
-                                    return bool2;
-                                } catch (IOException e3) {
-                                    e3.printStackTrace();
-                                    return bool2;
-                                }
-                            }
-                            String stringBuffer4 = stringBuffer3.toString();
-                            switch (this.f19440h) {
-                                case 1:
-                                    this.f19438f.put("IG", m19405b("IG:\"([^\"]+)\"", stringBuffer4));
-                                    this.f19438f.put("IID", m19405b("<div id=\"rich_tta\" data-iid=\"([^\"]+)\"", stringBuffer4));
-                                    try {
-                                        C2466a c2466a = new C2466a(m19405b("params_AbusePreventionHelper = (\\[[^\\]]+\\]);", stringBuffer4));
-                                        this.f19438f.put("token", String.valueOf(c2466a.m15579f(1)));
-                                        this.f19438f.put("key", String.valueOf(c2466a.m15578e(0)));
-                                        break;
-                                    } catch (Exception e4) {
-                                        this.f19438f.put("token", "");
-                                        this.f19438f.put("key", "");
-                                        break;
-                                    }
-                                case 3:
-                                    this.f19438f.put("rpcids", "MkEWBc");
-                                    this.f19438f.put("f.sid", m19404a("FdrFJe", stringBuffer4));
-                                    this.f19438f.put("bl", m19404a("cfb2h", stringBuffer4));
-                                    this.f19438f.put("hl", "en");
-                                    this.f19438f.put("soc-app", "1");
-                                    this.f19438f.put("soc-platform", "1");
-                                    this.f19438f.put("soc-device", "2");
-                                    this.f19438f.put("source-path", "/");
-                                    this.f19438f.put("rt", "c");
-                                    break;
-                            }
-                            this.f19438f.put("cookies", sb.toString());
-                            Boolean bool3 = new Boolean(true);
-                            if (httpURLConnection != null) {
-                                httpURLConnection.disconnect();
-                            }
-                            if (bufferedReader2 == null) {
-                                return bool3;
-                            }
-                            try {
-                                bufferedReader2.close();
-                                return bool3;
-                            } catch (IOException e5) {
-                                e5.printStackTrace();
-                                return bool3;
-                            }
-                        }
-                        stringBuffer3.append(readLine).append("\n");
-                    }
-                } catch (Exception e6) {
-                    e = e6;
-                    e.printStackTrace();
-                    if (httpURLConnection != null) {
-                        httpURLConnection.disconnect();
-                    }
-                    if (bufferedReader2 != null) {
-                        try {
-                            bufferedReader2.close();
-                        } catch (IOException e7) {
-                            e7.printStackTrace();
-                        }
-                    }
-                    return new Boolean(false);
-                }
-            } catch (Throwable th) {
-                th = th;
-                bufferedReader = r5;
-                if (httpURLConnection != null) {
-                    httpURLConnection.disconnect();
-                }
-                if (bufferedReader != null) {
-                    try {
-                        bufferedReader.close();
-                    } catch (IOException e8) {
-                        e8.printStackTrace();
-                    }
-                }
-                throw th;
             }
-        } catch (Exception e9) {
-            e = e9;
-            bufferedReader2 = bufferedReader3;
-        } catch (Throwable th2) {
-            th = th2;
-            bufferedReader = bufferedReader3;
+            InputStream inputStream = httpURLConnection.getInputStream();
+            if (inputStream == null) {
+                return (Boolean) null;
+            }
+            bufferedReader2 = "gzip".equals(httpURLConnection.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new GZIPInputStream(inputStream))) : "br".equals(httpURLConnection.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new C1900b(inputStream))) : new BufferedReader(new InputStreamReader(inputStream));
+            StringBuffer stringBuffer3 = new StringBuffer();
+            while (true) {
+                String readLine = bufferedReader2.readLine();
+                if (readLine == null) {
+                    break;
+                }
+                stringBuffer3.append(readLine).append("\n");
+            }
+            inputStream.close();
+            if (stringBuffer3.length() == 0) {
+                return new Boolean(false);
+            }
+            String stringBuffer4 = stringBuffer3.toString();
+            switch (this.f19440h) {
+                case 1:
+                    this.f19438f.put("IG", m19405b("IG:\"([^\"]+)\"", stringBuffer4));
+                    this.f19438f.put("IID", m19405b("<div id=\"rich_tta\" data-iid=\"([^\"]+)\"", stringBuffer4));
+                    try {
+                        C2466a c2466a = new C2466a(m19405b("params_AbusePreventionHelper = (\\[[^\\]]+\\]);", stringBuffer4));
+                        this.f19438f.put("token", String.valueOf(c2466a.m15579f(1)));
+                        this.f19438f.put("key", String.valueOf(c2466a.m15578e(0)));
+                        break;
+                    } catch (Exception e4) {
+                        this.f19438f.put("token", "");
+                        this.f19438f.put("key", "");
+                        break;
+                    }
+                case 3:
+                    this.f19438f.put("rpcids", "MkEWBc");
+                    this.f19438f.put("f.sid", m19404a("FdrFJe", stringBuffer4));
+                    this.f19438f.put("bl", m19404a("cfb2h", stringBuffer4));
+                    this.f19438f.put("hl", "en");
+                    this.f19438f.put("soc-app", "1");
+                    this.f19438f.put("soc-platform", "1");
+                    this.f19438f.put("soc-device", "2");
+                    this.f19438f.put("source-path", "/");
+                    this.f19438f.put("rt", "c");
+                    break;
+            }
+            this.f19438f.put("cookies", sb.toString());
+            return new Boolean(true);
+        } catch (Exception e6) {
+            e6.printStackTrace();
+            return new Boolean(false);
+        } finally {
             if (httpURLConnection != null) {
+                httpURLConnection.disconnect();
             }
-            if (bufferedReader != null) {
+            if (bufferedReader2 != null) {
+                try {
+                    bufferedReader2.close();
+                } catch (IOException e8) {
+                    e8.printStackTrace();
+                }
             }
-            throw th;
         }
     }
 

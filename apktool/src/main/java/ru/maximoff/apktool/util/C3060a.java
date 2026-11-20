@@ -7,14 +7,14 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
-import android.p008os.AsyncTask;
-import android.p008os.Build;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
-import java.p209io.BufferedReader;
-import java.p209io.File;
-import java.p209io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -579,12 +579,12 @@ public class C3060a {
         /* renamed from: a */
         private final C3060a f17222a;
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected Void doInBackground(Void[] voidArr) {
             return m18344a(voidArr);
         }
 
-        @Override // android.p008os.AsyncTask
+        @Override // android.os.AsyncTask
         protected void onPostExecute(Void r1) {
             m18345a(r1);
         }

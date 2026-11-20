@@ -1,7 +1,7 @@
 package org.p217b.p218a.p219a.p221b;
 
-import java.p209io.Serializable;
-import java.p209io.Writer;
+import java.io.Serializable;
+import java.io.Writer;
 
 /* compiled from: StringBuilderWriter.java */
 /* renamed from: org.b.a.a.b.b */
@@ -19,40 +19,40 @@ public class C1884b extends Writer implements Serializable {
         this.f11041a = new StringBuilder(i);
     }
 
-    @Override // java.p209io.Writer, java.lang.Appendable
+    @Override // java.io.Writer, java.lang.Appendable
     public Writer append(char c2) {
         this.f11041a.append(c2);
         return this;
     }
 
-    @Override // java.p209io.Writer, java.lang.Appendable
+    @Override // java.io.Writer, java.lang.Appendable
     public Writer append(CharSequence charSequence) {
         this.f11041a.append(charSequence);
         return this;
     }
 
-    @Override // java.p209io.Writer, java.lang.Appendable
+    @Override // java.io.Writer, java.lang.Appendable
     public Writer append(CharSequence charSequence, int i, int i2) {
         this.f11041a.append(charSequence, i, i2);
         return this;
     }
 
-    @Override // java.p209io.Writer, java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Writer, java.io.Closeable, java.lang.AutoCloseable
     public void close() {
     }
 
-    @Override // java.p209io.Writer, java.p209io.Flushable
+    @Override // java.io.Writer, java.io.Flushable
     public void flush() {
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(String str) {
         if (str != null) {
             this.f11041a.append(str);
         }
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(char[] cArr, int i, int i2) {
         if (cArr != null) {
             this.f11041a.append(cArr, i, i2);

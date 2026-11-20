@@ -1,6 +1,6 @@
 package org.p217b.p218a.p219a.p220a;
 
-import java.p209io.InputStream;
+import java.io.InputStream;
 
 /* compiled from: CountingInputStream.java */
 /* renamed from: org.b.a.a.a.a */
@@ -14,7 +14,7 @@ public class C1880a extends AbstractC1881b {
         super(inputStream);
     }
 
-    @Override // org.p217b.p218a.p219a.p220a.AbstractC1881b, java.p209io.FilterInputStream, java.p209io.InputStream
+    @Override // org.p217b.p218a.p219a.p220a.AbstractC1881b, java.io.FilterInputStream, java.io.InputStream
     public synchronized long skip(long j) {
         long skip;
         skip = super.skip(j);

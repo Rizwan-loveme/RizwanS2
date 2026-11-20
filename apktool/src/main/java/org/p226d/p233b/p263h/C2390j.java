@@ -163,7 +163,7 @@ public class C2390j {
                                         i2 = i4;
                                         int i11 = i3;
                                         while (true) {
-                                            ?? r10 = b8 - 1;
+                                            byte r10 = (byte) (b8 - 1);
                                             if (b8 > 0) {
                                                 int i12 = i10 + 1;
                                                 switch (f12744a[i10]) {

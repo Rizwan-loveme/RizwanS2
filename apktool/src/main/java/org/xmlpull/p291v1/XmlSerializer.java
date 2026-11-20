@@ -1,8 +1,8 @@
 package org.xmlpull.p291v1;
 
-import java.p209io.IOException;
-import java.p209io.OutputStream;
-import java.p209io.Writer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Writer;
 
 /* loaded from: assets/android.dex */
 public interface XmlSerializer {

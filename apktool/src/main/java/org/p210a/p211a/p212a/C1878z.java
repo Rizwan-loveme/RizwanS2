@@ -94,19 +94,20 @@ public class C1878z implements InterfaceC1852g {
     public String m13932a(List<String> list, C1878z c1878z) {
         StringBuilder sb = new StringBuilder();
         sb.append("[");
-        while (this != null && this != c1878z) {
+        C1878z c1878z2 = this;
+        while (c1878z2 != null && c1878z2 != c1878z) {
             if (list == null) {
-                if (!this.m13934m()) {
-                    sb.append(this.f11017k);
+                if (!c1878z2.m13934m()) {
+                    sb.append(c1878z2.f11017k);
                 }
             } else {
-                int mo4288a = this.mo4288a();
+                int mo4288a = c1878z2.mo4288a();
                 sb.append((mo4288a < 0 || mo4288a >= list.size()) ? Integer.toString(mo4288a) : list.get(mo4288a));
             }
-            if (this.f11016j != null && (list != null || !this.f11016j.m13934m())) {
+            if (c1878z2.f11016j != null && (list != null || !c1878z2.f11016j.m13934m())) {
                 sb.append(" ");
             }
-            this = this.f11016j;
+            c1878z2 = c1878z2.f11016j;
         }
         sb.append("]");
         return sb.toString();

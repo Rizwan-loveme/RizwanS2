@@ -1,7 +1,7 @@
 package com.p140g.p141a.p149f;
 
 import java.nio.ByteBuffer;
-import java.p209io.UTFDataFormatException;
+import java.io.UTFDataFormatException;
 
 /* compiled from: Mutf8.java */
 /* renamed from: com.g.a.f.a */
@@ -9,7 +9,7 @@ import java.p209io.UTFDataFormatException;
 public final class C1288a {
     /* JADX WARN: Code restructure failed: missing block: B:20:0x005b, code lost:
     
-        throw new java.p209io.UTFDataFormatException("bad second or third byte");
+        throw new java.io.UTFDataFormatException("bad second or third byte");
      */
     /* renamed from: a */
     /*

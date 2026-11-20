@@ -2,12 +2,12 @@ package ru.maximoff.apktool.util;
 
 import android.graphics.Bitmap;
 import android.icu.text.DateFormat;
-import android.p008os.BatteryManager;
+import android.os.BatteryManager;
 import java.lang.reflect.Array;
 import java.nio.IntBuffer;
-import java.p209io.BufferedWriter;
-import java.p209io.File;
-import java.p209io.FileWriter;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

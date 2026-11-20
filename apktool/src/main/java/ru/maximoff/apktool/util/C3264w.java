@@ -5,7 +5,7 @@ import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import androidx.appcompat.app.DialogInterfaceC0070b;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import ru.maximoff.apktool.fragment.p302b.InterfaceC2995n;

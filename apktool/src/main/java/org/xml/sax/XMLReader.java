@@ -1,6 +1,6 @@
 package org.xml.sax;
 
-import java.p209io.IOException;
+import java.io.IOException;
 
 /* loaded from: assets/android.dex */
 public interface XMLReader {

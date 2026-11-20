@@ -1,9 +1,9 @@
 package p165d.p167b.p173f;
 
-import java.p209io.ByteArrayOutputStream;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
-import java.p209io.Reader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.security.AccessController;
 import java.text.Normalizer;
 import java.util.ArrayList;

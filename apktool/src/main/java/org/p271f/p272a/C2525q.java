@@ -163,37 +163,36 @@ public class C2525q {
         Code decompiled incorrectly, please refer to instructions dump.
     */
     void m15864a(C2525q c2525q, long j, int i) {
-        C2518j c2518j;
-        while (this != null) {
-            C2525q c2525q2 = this.f13210j;
-            this.f13210j = null;
+        C2525q c2525q2 = this;
+        while (c2525q2 != null) {
+            C2525q c2525q3 = c2525q2;
+            c2525q2 = c2525q3.f13210j;
+            c2525q3.f13210j = null;
             if (c2525q != null) {
-                if ((this.f13202b & 2048) != 0) {
-                    this = c2525q2;
-                } else {
-                    this.f13202b |= 2048;
-                    if ((this.f13202b & 256) != 0 && !this.m15867a(c2525q)) {
-                        C2518j c2518j2 = new C2518j();
-                        c2518j2.f13157a = this.f13205e;
-                        c2518j2.f13158b = c2525q.f13209i.f13158b;
-                        c2518j2.f13159c = this.f13209i;
-                        this.f13209i = c2518j2;
-                    }
-                    for (c2518j = this.f13209i; c2518j != null; c2518j = c2518j.f13159c) {
-                        if (((this.f13202b & 128) == 0 || c2518j != this.f13209i.f13159c) && c2518j.f13158b.f13210j == null) {
-                            c2518j.f13158b.f13210j = c2525q2;
-                            c2525q2 = c2518j.f13158b;
-                        }
-                    }
-                    this = c2525q2;
+                if ((c2525q3.f13202b & 2048) != 0) {
+                    continue;
                 }
-            } else if (this.m15866a(j)) {
-                this = c2525q2;
+                c2525q3.f13202b |= 2048;
+                if ((c2525q3.f13202b & 256) != 0 && !c2525q3.m15867a(c2525q)) {
+                    C2518j c2518j2 = new C2518j();
+                    c2518j2.f13157a = c2525q3.f13205e;
+                    c2518j2.f13158b = c2525q.f13209i.f13158b;
+                    c2518j2.f13159c = c2525q3.f13209i;
+                    c2525q3.f13209i = c2518j2;
+                }
             } else {
-                this.m15863a(j, i);
-                while (c2518j != null) {
+                if (c2525q3.m15866a(j)) {
+                    continue;
                 }
-                this = c2525q2;
+                c2525q3.m15863a(j, i);
+            }
+            C2518j c2518j = c2525q3.f13209i;
+            while (c2518j != null) {
+                if (((c2525q3.f13202b & 128) == 0 || c2518j != c2525q3.f13209i.f13159c) && c2518j.f13158b.f13210j == null) {
+                    c2518j.f13158b.f13210j = c2525q2;
+                    c2525q2 = c2518j.f13158b;
+                }
+                c2518j = c2518j.f13159c;
             }
         }
     }

@@ -1,9 +1,9 @@
 package com.p065b.p066a;
 
-import java.p209io.ByteArrayOutputStream;
-import java.p209io.DataOutputStream;
-import java.p209io.IOException;
-import java.p209io.UnsupportedEncodingException;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;

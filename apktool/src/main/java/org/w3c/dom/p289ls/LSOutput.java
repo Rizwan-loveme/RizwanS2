@@ -1,7 +1,7 @@
 package org.w3c.dom.p289ls;
 
-import java.p209io.OutputStream;
-import java.p209io.Writer;
+import java.io.OutputStream;
+import java.io.Writer;
 
 /* loaded from: assets/android.dex */
 public interface LSOutput {

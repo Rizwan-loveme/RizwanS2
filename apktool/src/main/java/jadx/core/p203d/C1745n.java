@@ -2,10 +2,10 @@ package jadx.core.p203d;
 
 import jadx.core.p181a.C1548d;
 import jadx.p180a.C1536d;
-import java.p209io.OutputStream;
-import java.p209io.PrintWriter;
-import java.p209io.StringWriter;
-import java.p209io.Writer;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -101,7 +101,7 @@ public class C1745n {
             Throwable th2 = null;
             try {
                 PrintWriter printWriter = new PrintWriter(new OutputStream() { // from class: jadx.core.d.n.2
-                    @Override // java.p209io.OutputStream
+                    @Override // java.io.OutputStream
                     public void write(int i) {
                         char c2 = (char) i;
                         switch (c2) {

@@ -5,7 +5,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.Arrays;
 import ru.maximoff.apktool.fragment.C2981b;
 import ru.maximoff.apktool.util.C3066aa;

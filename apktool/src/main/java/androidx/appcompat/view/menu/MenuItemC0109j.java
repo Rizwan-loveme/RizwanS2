@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.Log;
 import android.view.ActionProvider;
 import android.view.CollapsibleActionView;
@@ -480,10 +480,7 @@ public class MenuItemC0109j extends AbstractC0102c implements MenuItem {
         public void mo951a(AbstractC0283b.b bVar) {
             this.f1064d = bVar;
             ActionProvider actionProvider = this.f1061a;
-            if (bVar == null) {
-                this = null;
-            }
-            actionProvider.setVisibilityListener(this);
+            actionProvider.setVisibilityListener(bVar == null ? null : this);
         }
 
         @Override // android.view.ActionProvider.VisibilityListener

@@ -6,11 +6,11 @@ import android.content.Context;
 import android.content.p006pm.ApplicationInfo;
 import android.content.p006pm.PackageInfo;
 import android.content.p006pm.PackageManager;
-import android.p008os.Build;
-import android.p008os.Bundle;
-import android.p008os.Handler;
-import android.p008os.Looper;
-import android.p008os.Message;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
@@ -27,7 +27,7 @@ import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -111,7 +111,7 @@ public class RunnableC2983b implements Runnable {
                 this.f16360b = context;
             }
 
-            @Override // android.p008os.Handler
+            @Override // android.os.Handler
             public void handleMessage(Message message) {
                 Bundle data = message.getData();
                 switch (message.what) {

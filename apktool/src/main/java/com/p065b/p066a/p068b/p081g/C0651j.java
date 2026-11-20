@@ -2,7 +2,7 @@ package com.p065b.p066a.p068b.p081g;
 
 import com.p065b.p066a.p084c.InterfaceC0669a;
 import java.nio.ByteBuffer;
-import java.p209io.OutputStream;
+import java.io.OutputStream;
 
 /* compiled from: OutputStreamDataSink.java */
 /* renamed from: com.b.a.b.g.j */

@@ -1,7 +1,7 @@
 package p165d.p167b.p172e;
 
-import java.p209io.IOException;
-import java.p209io.Serializable;
+import java.io.IOException;
+import java.io.Serializable;
 
 /* compiled from: ObjectIdentifier.java */
 /* renamed from: d.b.e.q */

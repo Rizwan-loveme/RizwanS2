@@ -1,8 +1,8 @@
 package androidx.p040f;
 
 import android.annotation.SuppressLint;
-import android.p008os.Build;
-import android.p008os.Trace;
+import android.os.Build;
+import android.os.Trace;
 import android.util.Log;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

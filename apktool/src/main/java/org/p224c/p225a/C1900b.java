@@ -1,7 +1,7 @@
 package org.p224c.p225a;
 
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: BrotliInputStream.java */
 /* renamed from: org.c.a.b */
@@ -45,12 +45,12 @@ public class C1900b extends InputStream {
         }
     }
 
-    @Override // java.p209io.InputStream, java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.InputStream, java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         C1909k.m14074a(this.f11185d);
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public int read() {
         if (this.f11184c >= this.f11183b) {
             this.f11183b = read(this.f11182a, 0, this.f11182a.length);
@@ -65,7 +65,7 @@ public class C1900b extends InputStream {
         return bArr[i] & 255;
     }
 
-    @Override // java.p209io.InputStream
+    @Override // java.io.InputStream
     public int read(byte[] bArr, int i, int i2) {
         if (i < 0) {
             throw new IllegalArgumentException("Bad offset: " + i);

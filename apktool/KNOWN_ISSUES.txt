@@ -1,0 +1,54 @@
+:apktool  KNOWN ISSUES  (CI run #2 and #3 gave the same 207 javac errors; list updated after the package-name fix)
+
+FIXED automatically (sure, mechanical)
+  jadx --deobf had renamed JDK / Android packages: java.io -> java.p209io (1468 refs), android.os -> android.p008os (827 refs).
+  Restored in all sources. This would have produced thousands of "package does not exist" errors after the parse errors.
+
+NOT fixed: places where jadx output is not valid Java (needs the logic re-derived, a guess could change behavior)
+  1) "?? rN" untyped variables / garbled try-finally flow (javac: illegal start of expression):
+     com/p063a/p064a/C0569r.java:554,2580,4322         com/p063a/p064a/C0576y.java:2415,2545
+     com/p065b/p066a/p068b/p075b/C0612a.java:539        com/p129f/p130a/p133c/AbstractC1189d.java:444,448
+     com/p140g/p141a/p148e/C1285e.java:93                org/p226d/p227a/C1913a.java:118,122,126
+     org/p226d/p233b/p263h/C2390j.java:166               p046b/p047a/p056d/C0520b.java:85
+     ru/maximoff/apktool/p300e/AsyncTaskC2904af.java:93, AsyncTaskC2938i.java:74, AsyncTaskC2945p.java:174
+     ru/maximoff/apktool/util/p308f/AsyncTaskC3238r.java:107, AsyncTaskC3241u.java:144
+     (several of these also use undeclared variables such as e / th after the "?? r" line)
+  2) lost loop init "for (0; i < n; i + 1)" (javac: not a statement):
+     jadx/core/p183c/p191d/C1646l.java:437   p165d/p167b/p173f/C1510j.java:141   p165d/p167b/p173f/C1515o.java:187
+     ru/maximoff/apktool/util/C3091aw.java:441
+  3) ru/maximoff/apktool/util/C3106bh.java:48       literal 1152865209611504844 needs an L suffix
+  4) ru/maximoff/apktool/fragment/p302b/InterfaceC2994m.java:11   "extends Comparable<..> extends Comparable"
+  5) androidx/core/widget/InterfaceC0332b.java:13    static {} block inside an interface
+  6) "this = ..." assignments (javac reports these after the parse errors are gone):
+     androidx/appcompat/view/menu/MenuItemC0109j.java:484   com/p129f/p130a/p138h/p139a/AbstractC1222a.java:468
+     com/p140g/p152b/p153a/p154a/AbstractC1322t.java:302     jadx/core/p182b/C1561f.java:124
+     org/p210a/p211a/p212a/C1878z.java:109                   org/p271f/p272a/C2481b.java:195
+     org/p271f/p272a/C2512d.java:52                          org/p271f/p272a/C2525q.java:172,188,191,196
+  7) org/p226d/p233b/p244d/p245a/C2078a.java:48,61,80,93   super() call in the wrong place
+
+Expect more after these: missing symbols, hard-coded resource ids (R.string.x was inlined as 2131362526 in places),
+bundled androidx classes duplicating the real androidx dependency. Fixing 1)-7) by hand is possible, but the code is
+obfuscated, so each fix has to be checked against the smali (apktool/ in the original APK) to keep the behavior.
+
+
+UPDATE (CI run #4 log reviewed, parse-error pass done)
+  Items 1) to 5) and 7) above are FIXED by hand; item 6) ("this = ...") is FIXED in all 11 places.
+  A javac parse pass over all 3075 files of this module now reports 0 syntax errors (only symbol/type errors, see below).
+  Rewritten methods (logic re-derived, please check against smali if behavior matters):
+    - C1646l.mo12254a, C1510j.equals, C1515o.equals     lost "for" init + return false in loop
+    - C3091aw.m18756f                                    QR penalty rule 2 (2x2 same-colour blocks, +3)
+    - AsyncTaskC2938i.mo17058a, AsyncTaskC2904af, AsyncTaskC2945p.mo17049a (3 branches), C0520b.m3897a
+      (try/catch/finally instead of the garbled nested try, cleanup moved into finally)
+    - AsyncTaskC3238r.m19406a, AsyncTaskC3241u.m19447a  HTTP translate calls, null/false on empty body as before
+    - C1913a.m14085b (smali class writer), C1285e.m10448a (dex/zip loader), C0612a.m6124a, AbstractC1189d.subList, C2390j (byte r10)
+    - C0569r.m5234f/m5151E/m5159M, C0576y.m5571G/m5572H   ANTLR rule methods rebuilt as enterRule/try/switch/catch/finally
+    - this = ... : C1878z, C2481b, C2512d, C2525q.m15864a (ASM Label.visitSubroutine), MenuItemC0109j.b, AbstractC1222a.cancel,
+      AbstractC1322t.m10548k, C1561f.m12068h  -> local cursor variable instead of reassigning "this"
+    - C2078a: removed the 4 illegal "{ super(); }" initializer blocks; InterfaceC0332b: field initializer instead of static{}
+    - C3106bh: long literal L suffix; InterfaceC2994m: single "extends Comparable<InterfaceC2994m>"
+
+STILL EXPECTED to fail at the next javac stage (not touched, run #5 will show the real list):
+  - "anonymous class implements interface; cannot have arguments": jadx wrote new Runnable(this, x) { ... } style constructors
+    (several hundred sites, e.g. AsyncTaskC2904af.m17122a). Fix = drop the ctor args and capture the variables as final locals.
+  - "th = th;" / "e = e2;" fragments with undeclared variables in other "Code decompiled incorrectly" methods (123 files carry that marker).
+  - hard-coded resource ids, throws clauses dropped by jadx (unreported IOException), bundled androidx duplicates.

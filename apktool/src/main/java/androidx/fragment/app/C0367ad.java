@@ -1,7 +1,7 @@
 package androidx.fragment.app;
 
 import android.util.Log;
-import java.p209io.Writer;
+import java.io.Writer;
 
 /* compiled from: LogWriter.java */
 /* renamed from: androidx.fragment.app.ad */
@@ -18,17 +18,17 @@ final class C0367ad extends Writer {
         this.f2501a = str;
     }
 
-    @Override // java.p209io.Writer, java.p209io.Closeable, java.lang.AutoCloseable
+    @Override // java.io.Writer, java.io.Closeable, java.lang.AutoCloseable
     public void close() {
         m2693a();
     }
 
-    @Override // java.p209io.Writer, java.p209io.Flushable
+    @Override // java.io.Writer, java.io.Flushable
     public void flush() {
         m2693a();
     }
 
-    @Override // java.p209io.Writer
+    @Override // java.io.Writer
     public void write(char[] cArr, int i, int i2) {
         for (int i3 = 0; i3 < i2; i3++) {
             char c2 = cArr[i + i3];

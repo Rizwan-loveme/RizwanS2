@@ -296,11 +296,10 @@ public abstract class AbstractC1322t implements Cloneable {
 
     /* renamed from: k */
     public AbstractC1322t m10548k() {
-        while (this.f8559a != null) {
-            AbstractC1322t abstractC1322t = this.f8559a;
-            this.f8559a = abstractC1322t;
-            this = abstractC1322t;
+        AbstractC1322t abstractC1322t = this;
+        while (abstractC1322t.f8559a != null) {
+            abstractC1322t = abstractC1322t.f8559a;
         }
-        return this;
+        return abstractC1322t;
     }
 }

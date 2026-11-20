@@ -1,8 +1,8 @@
 package androidx.p021c.p022a;
 
 import android.annotation.SuppressLint;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Parcel;
+import android.os.Parcelable;
 
 /* compiled from: AbsSavedState.java */
 @SuppressLint({"BanParcelableUsage"})
@@ -60,12 +60,12 @@ public abstract class AbstractC0223a implements Parcelable {
         return this.f1799a;
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public int describeContents() {
         return 0;
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeParcelable(this.f1799a, i);
     }

@@ -5,8 +5,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.p008os.Bundle;
-import android.p008os.Parcelable;
+import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -26,8 +26,8 @@ import androidx.lifecycle.ViewModelStore;
 import androidx.lifecycle.ViewModelStoreOwner;
 import androidx.p037e.p038a.AbstractC0357a;
 import androidx.savedstate.C0433b;
-import java.p209io.FileDescriptor;
-import java.p209io.PrintWriter;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 /* compiled from: FragmentActivity.java */
 /* renamed from: androidx.fragment.app.f */

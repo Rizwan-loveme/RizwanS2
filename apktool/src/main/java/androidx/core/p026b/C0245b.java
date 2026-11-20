@@ -1,7 +1,7 @@
 package androidx.core.p026b;
 
-import android.p008os.Build;
-import android.p008os.CancellationSignal;
+import android.os.Build;
+import android.os.CancellationSignal;
 
 /* compiled from: CancellationSignal.java */
 /* renamed from: androidx.core.b.b */

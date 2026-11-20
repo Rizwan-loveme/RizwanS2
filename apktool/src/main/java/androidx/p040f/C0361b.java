@@ -1,6 +1,6 @@
 package androidx.p040f;
 
-import android.p008os.Trace;
+import android.os.Trace;
 
 /* compiled from: TraceApi18Impl.java */
 /* renamed from: androidx.f.b */

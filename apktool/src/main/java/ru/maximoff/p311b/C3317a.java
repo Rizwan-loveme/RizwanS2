@@ -1,10 +1,10 @@
 package ru.maximoff.p311b;
 
-import java.p209io.BufferedInputStream;
-import java.p209io.File;
-import java.p209io.FileOutputStream;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Enumeration;
 import ru.maximoff.apktool.util.C3249i;
 import ru.p294a.C2602u;
@@ -139,30 +139,30 @@ public final class C3317a {
             this.f21286a = outputStream;
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(int i) {
             this.f21286a.write(i);
             this.f21287b++;
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(byte[] bArr) {
             this.f21286a.write(bArr);
             this.f21287b += bArr.length;
         }
 
-        @Override // java.p209io.OutputStream
+        @Override // java.io.OutputStream
         public void write(byte[] bArr, int i, int i2) {
             this.f21286a.write(bArr, i, i2);
             this.f21287b += i2;
         }
 
-        @Override // java.p209io.OutputStream, java.p209io.Flushable
+        @Override // java.io.OutputStream, java.io.Flushable
         public void flush() {
             this.f21286a.flush();
         }
 
-        @Override // java.p209io.OutputStream, java.p209io.Closeable, java.lang.AutoCloseable
+        @Override // java.io.OutputStream, java.io.Closeable, java.lang.AutoCloseable
         public void close() {
             this.f21286a.close();
         }

@@ -1,10 +1,10 @@
 package p176f.p177a.p178a.p179a;
 
 import java.lang.reflect.Field;
-import java.p209io.ByteArrayInputStream;
-import java.p209io.DataInputStream;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /* compiled from: LEDataInputStream.java */
 /* renamed from: f.a.a.a.a */

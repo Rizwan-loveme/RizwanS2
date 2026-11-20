@@ -1,6 +1,6 @@
 package ru.maximoff.apktool.util.p310h;
 
-import java.p209io.File;
+import java.io.File;
 
 /* compiled from: MZipEntry.java */
 /* renamed from: ru.maximoff.apktool.util.h.a */

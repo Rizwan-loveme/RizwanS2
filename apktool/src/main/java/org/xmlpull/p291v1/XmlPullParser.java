@@ -1,8 +1,8 @@
 package org.xmlpull.p291v1;
 
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.Reader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
 
 /* loaded from: assets/android.dex */
 public interface XmlPullParser {

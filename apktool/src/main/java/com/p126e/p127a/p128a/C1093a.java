@@ -1,7 +1,7 @@
 package com.p126e.p127a.p128a;
 
 import android.annotation.TargetApi;
-import android.p008os.Build;
+import android.os.Build;
 import android.view.View;
 
 /* compiled from: Compat.java */

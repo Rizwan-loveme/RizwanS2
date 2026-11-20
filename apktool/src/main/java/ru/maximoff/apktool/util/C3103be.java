@@ -7,7 +7,7 @@ import android.content.p006pm.ShortcutManager;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import com.srizwan.apktool.R;
-import java.p209io.File;
+import java.io.File;
 import java.util.ArrayList;
 
 /* compiled from: Shortcuts.java */

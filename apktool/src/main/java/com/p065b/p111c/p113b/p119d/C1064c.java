@@ -9,8 +9,8 @@ import com.p065b.p111c.p121d.C1072a;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.p209io.Closeable;
-import java.p209io.IOException;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -359,7 +359,7 @@ public class C1064c {
             return this.f6735f;
         }
 
-        @Override // java.p209io.Closeable, java.lang.AutoCloseable
+        @Override // java.io.Closeable, java.lang.AutoCloseable
         public void close() {
             this.f6730a = true;
             this.f6733d = null;

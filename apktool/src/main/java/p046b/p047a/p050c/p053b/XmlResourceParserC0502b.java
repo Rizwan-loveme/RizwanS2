@@ -3,9 +3,9 @@ package p046b.p047a.p050c.p053b;
 import android.content.res.XmlResourceParser;
 import android.util.C0035a;
 import com.srizwan.apktool.R;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.Reader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -893,11 +893,11 @@ public class XmlResourceParserC0502b implements XmlResourceParser {
 
     /* JADX WARN: Code restructure failed: missing block: B:74:0x010a, code lost:
     
-        throw new java.p209io.IOException(new java.lang.StringBuffer().append(new java.lang.StringBuffer().append("Invalid chunk type (").append(r1).toString()).append(").").toString());
+        throw new java.io.IOException(new java.lang.StringBuffer().append(new java.lang.StringBuffer().append("Invalid chunk type (").append(r1).toString()).append(").").toString());
      */
     /* JADX WARN: Code restructure failed: missing block: B:85:0x00c2, code lost:
     
-        throw new java.p209io.IOException(new java.lang.StringBuffer().append(new java.lang.StringBuffer().append("Invalid resource ids size (").append(r1).toString()).append(").").toString());
+        throw new java.io.IOException(new java.lang.StringBuffer().append(new java.lang.StringBuffer().append("Invalid resource ids size (").append(r1).toString()).append(").").toString());
      */
     /* renamed from: d */
     /*

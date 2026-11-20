@@ -1,6 +1,6 @@
 package com.p129f.p130a.p133c;
 
-import java.p209io.Serializable;
+import java.io.Serializable;
 import org.checkerframework.checker.nullness.compatqual.NullableDecl;
 
 /* compiled from: ImmutableEntry.java */

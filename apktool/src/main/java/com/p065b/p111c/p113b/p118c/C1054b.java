@@ -3,7 +3,7 @@ package com.p065b.p111c.p113b.p118c;
 import com.p065b.p111c.p120c.InterfaceC1067a;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.p209io.IOException;
+import java.io.IOException;
 
 /* compiled from: ByteBufferSink.java */
 /* renamed from: com.b.c.b.c.b */

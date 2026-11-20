@@ -5,7 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.p006pm.PackageManager;
-import android.p008os.Bundle;
+import android.os.Bundle;
 import android.util.Log;
 import androidx.core.content.C0255a;
 import java.util.ArrayList;

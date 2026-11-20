@@ -2,8 +2,8 @@ package androidx.fragment.app;
 
 import android.util.Log;
 import android.view.ViewGroup;
-import java.p209io.FileDescriptor;
-import java.p209io.PrintWriter;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;

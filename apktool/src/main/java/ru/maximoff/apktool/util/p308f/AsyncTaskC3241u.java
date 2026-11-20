@@ -2,14 +2,14 @@ package ru.maximoff.apktool.util.p308f;
 
 import android.app.slice.Slice;
 import android.content.Context;
-import android.p008os.AsyncTask;
+import android.os.AsyncTask;
 import com.srizwan.apktool.R;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.p209io.BufferedReader;
-import java.p209io.IOException;
-import java.p209io.InputStream;
-import java.p209io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
@@ -46,12 +46,12 @@ public class AsyncTaskC3241u extends AsyncTask<String, String, String> {
     /* renamed from: g */
     private C3237q.a f19478g;
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected String doInBackground(String[] strArr) {
         return m19447a(strArr);
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPostExecute(String str) {
         m19448a(str);
     }
@@ -139,132 +139,74 @@ public class AsyncTaskC3241u extends AsyncTask<String, String, String> {
     */
     protected String m19447a(String... strArr) {
         String str;
-        BufferedReader bufferedReader;
-        HttpURLConnection httpURLConnection;
-        ?? r5;
-        String str2;
-        String str3;
         if (TranslateActivity.m16820o() != null && TranslateActivity.m16820o().f14497h) {
             return (String) null;
         }
         HttpURLConnection httpURLConnection2 = (HttpURLConnection) null;
-        BufferedReader bufferedReader2 = (BufferedReader) null;
+        BufferedReader bufferedReader = (BufferedReader) null;
         if (this.f19474c.equals("auto") || this.f19477f) {
             str = this.f19475d;
         } else {
-            r5 = 45;
             str = new StringBuffer().append(new StringBuffer().append(this.f19474c).append('-').toString()).append(this.f19475d).toString();
         }
         try {
             StringBuilder sb = new StringBuilder();
             Iterator<String> it = C3239s.m19416a(this.f19473b, 10000).iterator();
-            bufferedReader = bufferedReader2;
-            while (true) {
-                try {
-                    try {
-                        HttpURLConnection httpURLConnection3 = httpURLConnection2;
-                        if (!it.hasNext()) {
-                            String sb2 = sb.toString();
-                            if (httpURLConnection3 != null) {
-                                httpURLConnection3.disconnect();
-                            }
-                            if (bufferedReader != null) {
-                                try {
-                                    bufferedReader.close();
-                                } catch (IOException e2) {
-                                    e2.printStackTrace();
-                                }
-                            }
-                            return sb2;
-                        }
-                        String stringBuffer = new StringBuffer().append(new StringBuffer().append(new StringBuffer().append(new StringBuffer().append(new StringBuffer().append("srv=android&ucid=").append(m19445a()).toString()).append("&lang=").toString()).append(str).toString()).append("&text=").toString()).append(C3112bn.m18994a(it.next())).toString();
-                        URL url = new URL("https://translate.yandex.net/api/v1/tr.json/translate");
-                        byte[] bytes = stringBuffer.getBytes("UTF-8");
-                        httpURLConnection2 = (HttpURLConnection) url.openConnection();
-                        try {
-                            httpURLConnection2.setDefaultUseCaches(false);
-                            httpURLConnection2.setUseCaches(false);
-                            httpURLConnection2.setRequestProperty("User-Agent", this.f19476e);
-                            httpURLConnection2.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                            httpURLConnection2.setRequestProperty("X-Requested-With", "XMLHttpRequest");
-                            httpURLConnection2.setRequestProperty("Accept-Encoding", "gzip,deflate,br");
-                            httpURLConnection2.setRequestMethod("POST");
-                            httpURLConnection2.setConnectTimeout(6000);
-                            httpURLConnection2.setReadTimeout(10000);
-                            httpURLConnection2.setDoOutput(true);
-                            httpURLConnection2.getOutputStream().write(bytes);
-                            httpURLConnection2.connect();
-                            InputStream inputStream = httpURLConnection2.getInputStream();
-                            if (inputStream == null) {
-                                break;
-                            }
-                            bufferedReader = "gzip".equals(httpURLConnection2.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new GZIPInputStream(inputStream))) : "br".equals(httpURLConnection2.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new C1900b(inputStream))) : new BufferedReader(new InputStreamReader(inputStream));
-                            StringBuffer stringBuffer2 = new StringBuffer();
-                            while (true) {
-                                String readLine = bufferedReader.readLine();
-                                if (readLine == null) {
-                                    break;
-                                }
-                                stringBuffer2.append(readLine).append("\n");
-                            }
-                            inputStream.close();
-                            int length = stringBuffer2.length();
-                            if (length == 0) {
-                                break;
-                            }
-                            sb.append(stringBuffer2);
-                            r5 = length;
-                        } catch (Exception e3) {
-                            e = e3;
-                            httpURLConnection = httpURLConnection2;
-                            e.printStackTrace();
-                            if (httpURLConnection != null) {
-                                httpURLConnection.disconnect();
-                            }
-                            if (bufferedReader != null) {
-                                try {
-                                    bufferedReader.close();
-                                } catch (IOException e4) {
-                                    e4.printStackTrace();
-                                }
-                            }
-                            return (String) null;
-                        } catch (Throwable th) {
-                            th = th;
-                            if (httpURLConnection2 != null) {
-                                httpURLConnection2.disconnect();
-                            }
-                            if (bufferedReader != null) {
-                                try {
-                                    bufferedReader.close();
-                                } catch (IOException e5) {
-                                    e5.printStackTrace();
-                                }
-                            }
-                            throw th;
-                        }
-                    } catch (Exception e6) {
-                        e = e6;
-                        httpURLConnection = r5;
+            while (it.hasNext()) {
+                String stringBuffer = new StringBuffer().append(new StringBuffer().append(new StringBuffer().append(new StringBuffer().append(new StringBuffer().append("srv=android&ucid=").append(m19445a()).toString()).append("&lang=").toString()).append(str).toString()).append("&text=").toString()).append(C3112bn.m18994a(it.next())).toString();
+                URL url = new URL("https://translate.yandex.net/api/v1/tr.json/translate");
+                byte[] bytes = stringBuffer.getBytes("UTF-8");
+                httpURLConnection2 = (HttpURLConnection) url.openConnection();
+                httpURLConnection2.setDefaultUseCaches(false);
+                httpURLConnection2.setUseCaches(false);
+                httpURLConnection2.setRequestProperty("User-Agent", this.f19476e);
+                httpURLConnection2.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                httpURLConnection2.setRequestProperty("X-Requested-With", "XMLHttpRequest");
+                httpURLConnection2.setRequestProperty("Accept-Encoding", "gzip,deflate,br");
+                httpURLConnection2.setRequestMethod("POST");
+                httpURLConnection2.setConnectTimeout(6000);
+                httpURLConnection2.setReadTimeout(10000);
+                httpURLConnection2.setDoOutput(true);
+                httpURLConnection2.getOutputStream().write(bytes);
+                httpURLConnection2.connect();
+                InputStream inputStream = httpURLConnection2.getInputStream();
+                if (inputStream == null) {
+                    return (String) null;
+                }
+                bufferedReader = "gzip".equals(httpURLConnection2.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new GZIPInputStream(inputStream))) : "br".equals(httpURLConnection2.getContentEncoding()) ? new BufferedReader(new InputStreamReader(new C1900b(inputStream))) : new BufferedReader(new InputStreamReader(inputStream));
+                StringBuffer stringBuffer2 = new StringBuffer();
+                while (true) {
+                    String readLine = bufferedReader.readLine();
+                    if (readLine == null) {
+                        break;
                     }
-                } catch (Throwable th2) {
-                    th = th2;
-                    httpURLConnection2 = r5;
+                    stringBuffer2.append(readLine).append("\n");
+                }
+                inputStream.close();
+                if (stringBuffer2.length() == 0) {
+                    return (String) null;
+                }
+                sb.append(stringBuffer2);
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return (String) null;
+        } finally {
+            if (httpURLConnection2 != null) {
+                httpURLConnection2.disconnect();
+            }
+            if (bufferedReader != null) {
+                try {
+                    bufferedReader.close();
+                } catch (IOException e4) {
+                    e4.printStackTrace();
                 }
             }
-        } catch (Exception e7) {
-            e = e7;
-            bufferedReader = bufferedReader2;
-            httpURLConnection = httpURLConnection2;
-        } catch (Throwable th3) {
-            th = th3;
-            bufferedReader = bufferedReader2;
         }
-        return str3;
-        return str2;
     }
 
-    @Override // android.p008os.AsyncTask
+    @Override // android.os.AsyncTask
     protected void onPreExecute() {
         super.onPreExecute();
     }

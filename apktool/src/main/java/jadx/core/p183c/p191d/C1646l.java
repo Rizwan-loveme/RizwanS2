@@ -429,16 +429,16 @@ public class C1646l extends AbstractC1577k {
     /* renamed from: a */
     public boolean mo12254a(C1646l c1646l) {
         int size;
-        int i;
         if (this == c1646l) {
             return true;
         }
         if (this.f10370c == c1646l.f10370c && (size = this.f10372e.size()) == c1646l.f10372e.size()) {
-            for (0; i < size; i + 1) {
+            for (int i = 0; i < size; i++) {
                 AbstractC1598c abstractC1598c = this.f10372e.get(i);
                 AbstractC1598c abstractC1598c2 = c1646l.f10372e.get(i);
-                i = (!abstractC1598c.mo12312j() || (abstractC1598c2.mo12312j() && ((C1599d) abstractC1598c).m12316d().mo12254a(((C1599d) abstractC1598c2).m12316d()))) ? i + 1 : 0;
-                return false;
+                if (abstractC1598c.mo12312j() && !(abstractC1598c2.mo12312j() && ((C1599d) abstractC1598c).m12316d().mo12254a(((C1599d) abstractC1598c2).m12316d()))) {
+                    return false;
+                }
             }
             return true;
         }

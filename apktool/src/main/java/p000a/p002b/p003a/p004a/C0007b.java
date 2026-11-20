@@ -1,9 +1,9 @@
 package p000a.p002b.p003a.p004a;
 
-import java.p209io.ByteArrayOutputStream;
-import java.p209io.EOFException;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.OutputStream;
 import p000a.p001a.InterfaceC0004e;
 
 /* compiled from: ChainedDataSource.java */
@@ -48,12 +48,12 @@ public class C0007b implements InterfaceC0008c {
                 this.f26b = interfaceC0004e;
             }
 
-            @Override // java.p209io.OutputStream
+            @Override // java.io.OutputStream
             public void write(int i) {
                 this.f26b.mo6a(i);
             }
 
-            @Override // java.p209io.OutputStream
+            @Override // java.io.OutputStream
             public void write(byte[] bArr, int i, int i2) {
                 this.f26b.mo9a(bArr, i, i2);
             }

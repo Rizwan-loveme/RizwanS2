@@ -1,6 +1,6 @@
 package androidx.core.widget;
 
-import android.p008os.Build;
+import android.os.Build;
 
 /* compiled from: AutoSizeableTextView.java */
 /* renamed from: androidx.core.widget.b */
@@ -8,9 +8,5 @@ import android.p008os.Build;
 public interface InterfaceC0332b {
 
     /* renamed from: d */
-    public static final boolean f2352d;
-
-    static {
-        f2352d = Build.VERSION.SDK_INT >= 27;
-    }
+    public static final boolean f2352d = Build.VERSION.SDK_INT >= 27;
 }

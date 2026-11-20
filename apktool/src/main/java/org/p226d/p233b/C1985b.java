@@ -1,6 +1,6 @@
 package org.p226d.p233b;
 
-import android.p008os.Build;
+import android.os.Build;
 import org.p226d.p269d.C2453g;
 
 /* compiled from: AnnotationVisibility.java */

@@ -2,8 +2,8 @@ package p165d.p167b.p173f;
 
 import android.bluetooth.BluetoothHidDevice;
 import java.lang.reflect.InvocationTargetException;
-import java.p209io.IOException;
-import java.p209io.OutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.security.cert.CRLException;
 import java.security.cert.CertificateException;
 import java.util.Collection;
@@ -132,13 +132,12 @@ public class C1510j {
     public boolean equals(Object obj) {
         Object[] array;
         int length;
-        int i;
         if (this == obj) {
             return true;
         }
         if ((obj instanceof C1510j) && (length = (array = ((C1510j) obj).m11655a().toArray()).length) == this.f9712b.size()) {
             String str = null;
-            for (0; i < length; i + 1) {
+            for (int i = 0; i < length; i++) {
                 if (array[i] instanceof InterfaceC1513m) {
                     str = ((InterfaceC1513m) array[i]).mo11473a();
                 }
@@ -147,8 +146,9 @@ public class C1510j {
                     str = c1463ah.m11489c().toString();
                 }
                 C1463ah c1463ah2 = this.f9712b.get(str);
-                i = (c1463ah2 != null && c1463ah2.equals(c1463ah)) ? i + 1 : 0;
-                return false;
+                if (c1463ah2 == null || !c1463ah2.equals(c1463ah)) {
+                    return false;
+                }
             }
             return true;
         }

@@ -47,9 +47,10 @@ public class C2512d {
     /* renamed from: c */
     final int m15762c() {
         int i = 0;
-        while (this != null) {
+        C2512d c2512d = this;
+        while (c2512d != null) {
             i++;
-            this = this.f13087c;
+            c2512d = c2512d.f13087c;
         }
         return i;
     }

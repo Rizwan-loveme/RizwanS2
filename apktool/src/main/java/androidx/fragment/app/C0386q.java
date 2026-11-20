@@ -1,9 +1,9 @@
 package androidx.fragment.app;
 
 import android.annotation.SuppressLint;
-import android.p008os.Bundle;
-import android.p008os.Parcel;
-import android.p008os.Parcelable;
+import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import androidx.fragment.app.AbstractC0384o;
 import java.util.ArrayList;
 
@@ -70,12 +70,12 @@ final class C0386q implements Parcelable {
         this.f2809h = parcel.createTypedArrayList(AbstractC0384o.c.CREATOR);
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public int describeContents() {
         return 0;
     }
 
-    @Override // android.p008os.Parcelable
+    @Override // android.os.Parcelable
     public void writeToParcel(Parcel parcel, int i) {
         parcel.writeTypedList(this.f2802a);
         parcel.writeStringList(this.f2803b);

@@ -3,7 +3,7 @@ package androidx.p041g.p042a.p043a;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
-import android.p008os.Build;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Xml;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -20,7 +20,7 @@ import android.view.animation.OvershootInterpolator;
 import androidx.p034d.p035a.p036a.C0344a;
 import androidx.p034d.p035a.p036a.C0345b;
 import androidx.p034d.p035a.p036a.C0346c;
-import java.p209io.IOException;
+import java.io.IOException;
 import org.xmlpull.p291v1.XmlPullParser;
 import org.xmlpull.p291v1.XmlPullParserException;
 

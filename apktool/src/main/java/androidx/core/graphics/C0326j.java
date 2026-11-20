@@ -4,14 +4,14 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Typeface;
-import android.p008os.CancellationSignal;
+import android.os.CancellationSignal;
 import android.util.Log;
 import androidx.core.content.p028a.C0258c;
 import androidx.core.p027c.C0251f;
 import java.lang.reflect.Field;
-import java.p209io.File;
-import java.p209io.IOException;
-import java.p209io.InputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.ConcurrentHashMap;
 
 /* compiled from: TypefaceCompatBaseImpl.java */

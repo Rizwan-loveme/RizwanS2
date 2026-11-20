@@ -5,7 +5,7 @@ import com.p065b.p086b.p100d.C0906n;
 import com.p065b.p086b.p100d.EnumC0903k;
 import com.p065b.p086b.p110h.C1018i;
 import com.p065b.p086b.p110h.C1022m;
-import java.p209io.EOFException;
+import java.io.EOFException;
 
 /* compiled from: DecodedInstruction.java */
 /* renamed from: com.b.b.d.a.f */

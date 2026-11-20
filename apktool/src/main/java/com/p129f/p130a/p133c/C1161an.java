@@ -1,7 +1,7 @@
 package com.p129f.p130a.p133c;
 
 import com.p129f.p130a.p131a.C1120o;
-import java.p209io.Serializable;
+import java.io.Serializable;
 
 /* compiled from: NaturalOrdering.java */
 /* renamed from: com.f.a.c.an */

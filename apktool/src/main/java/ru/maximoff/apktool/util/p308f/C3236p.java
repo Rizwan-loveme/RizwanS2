@@ -1,6 +1,6 @@
 package ru.maximoff.apktool.util.p308f;
 
-import java.p209io.File;
+import java.io.File;
 import ru.maximoff.apktool.util.C3112bn;
 
 /* compiled from: StringItem.java */

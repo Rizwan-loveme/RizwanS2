@@ -1,6 +1,6 @@
 package androidx.lifecycle;
 
-import android.p008os.Handler;
+import android.os.Handler;
 import androidx.lifecycle.Lifecycle;
 
 /* loaded from: classes.dex */

@@ -1,7 +1,7 @@
 package androidx.core.p027c;
 
-import android.p008os.Handler;
-import android.p008os.Process;
+import android.os.Handler;
+import android.os.Process;
 import androidx.core.p030e.InterfaceC0266a;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;

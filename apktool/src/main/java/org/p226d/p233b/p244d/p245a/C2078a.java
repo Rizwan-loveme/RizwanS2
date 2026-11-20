@@ -43,11 +43,6 @@ public class C2078a extends AbstractC2091b implements InterfaceC2177a {
         switch (this.f11804b) {
             case 1:
                 return new a() { // from class: org.d.b.d.a.a.1
-                    /* JADX WARN: 'super' call moved to the top of the method (can break code semantics) */
-                    {
-                        super();
-                    }
-
                     @Override // org.p226d.p233b.p244d.p248d.AbstractC2133d
                     /* renamed from: a, reason: merged with bridge method [inline-methods] */
                     public Number mo14625b(int i2) {
@@ -56,11 +51,6 @@ public class C2078a extends AbstractC2091b implements InterfaceC2177a {
                 };
             case 2:
                 return new a() { // from class: org.d.b.d.a.a.2
-                    /* JADX WARN: 'super' call moved to the top of the method (can break code semantics) */
-                    {
-                        super();
-                    }
-
                     @Override // org.p226d.p233b.p244d.p248d.AbstractC2133d
                     /* renamed from: a, reason: merged with bridge method [inline-methods] */
                     public Number mo14625b(int i2) {
@@ -75,11 +65,6 @@ public class C2078a extends AbstractC2091b implements InterfaceC2177a {
                 throw new C2453g("Invalid element width: %d", Integer.valueOf(this.f11804b));
             case 4:
                 return new a() { // from class: org.d.b.d.a.a.3
-                    /* JADX WARN: 'super' call moved to the top of the method (can break code semantics) */
-                    {
-                        super();
-                    }
-
                     @Override // org.p226d.p233b.p244d.p248d.AbstractC2133d
                     /* renamed from: a, reason: merged with bridge method [inline-methods] */
                     public Number mo14625b(int i2) {
@@ -88,11 +73,6 @@ public class C2078a extends AbstractC2091b implements InterfaceC2177a {
                 };
             case 8:
                 return new a() { // from class: org.d.b.d.a.a.4
-                    /* JADX WARN: 'super' call moved to the top of the method (can break code semantics) */
-                    {
-                        super();
-                    }
-
                     @Override // org.p226d.p233b.p244d.p248d.AbstractC2133d
                     /* renamed from: a, reason: merged with bridge method [inline-methods] */
                     public Number mo14625b(int i2) {

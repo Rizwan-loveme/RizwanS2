@@ -2412,71 +2412,60 @@ public class C0576y extends AbstractC1873u {
     /* JADX WARN: Type inference failed for: r3v0, types: [com.a.a.y, org.a.a.a.u] */
     /* renamed from: G */
     public final bn m5571G() {
-        ?? r0;
-        bn bnVar;
         bn bnVar2 = new bn(this.f10993k, m13930cG());
         m13886a(bnVar2, 56, 28);
         try {
-            try {
-                m13931f(Opcodes.OP_CHECK_CAST_JUMBO);
-                this.f10990h.mo13700c(this);
-                r0 = this.f10991i.mo13711a(1);
-            } catch (C1876x e2) {
-                e = e2;
-                r0 = bnVar2;
+            m13931f(Opcodes.OP_CHECK_CAST_JUMBO);
+            this.f10990h.mo13700c(this);
+            switch (this.f10991i.mo13711a(1)) {
+                case 2:
+                    ao aoVar = new ao(bnVar2);
+                    m13885a(aoVar, 3);
+                    m13931f(507);
+                    m13878a(2);
+                    m13931f(508);
+                    m5595aE();
+                    bnVar2 = aoVar;
+                    break;
+                case 25:
+                    ao aoVar2 = new ao(bnVar2);
+                    m13885a(aoVar2, 2);
+                    m13931f(HttpURLConnection.HTTP_VERSION);
+                    m13878a(25);
+                    m13931f(506);
+                    m5595aE();
+                    bnVar2 = aoVar2;
+                    break;
+                case 44:
+                    h hVar = new h(bnVar2);
+                    m13885a(hVar, 4);
+                    m13931f(509);
+                    m13878a(44);
+                    m13931f(510);
+                    m5595aE();
+                    bnVar2 = hVar;
+                    break;
+                case 45:
+                    ao aoVar3 = new ao(bnVar2);
+                    m13885a(aoVar3, 1);
+                    m13931f(HttpURLConnection.HTTP_UNAVAILABLE);
+                    m13878a(45);
+                    m13931f(HttpURLConnection.HTTP_GATEWAY_TIMEOUT);
+                    m5595aE();
+                    bnVar2 = aoVar3;
+                    break;
+                default:
+                    throw new C1872t(this);
+                
             }
-            try {
-                switch (r0) {
-                    case 2:
-                        ao aoVar = new ao(bnVar2);
-                        m13885a(aoVar, 3);
-                        m13931f(507);
-                        m13878a(2);
-                        m13931f(508);
-                        m5595aE();
-                        r0 = aoVar;
-                        break;
-                    case 25:
-                        ao aoVar2 = new ao(bnVar2);
-                        m13885a(aoVar2, 2);
-                        m13931f(HttpURLConnection.HTTP_VERSION);
-                        m13878a(25);
-                        m13931f(506);
-                        m5595aE();
-                        r0 = aoVar2;
-                        break;
-                    case 44:
-                        h hVar = new h(bnVar2);
-                        m13885a(hVar, 4);
-                        m13931f(509);
-                        m13878a(44);
-                        m13931f(510);
-                        m5595aE();
-                        r0 = hVar;
-                        break;
-                    case 45:
-                        ao aoVar3 = new ao(bnVar2);
-                        m13885a(aoVar3, 1);
-                        m13931f(HttpURLConnection.HTTP_UNAVAILABLE);
-                        m13878a(45);
-                        m13931f(HttpURLConnection.HTTP_GATEWAY_TIMEOUT);
-                        m5595aE();
-                        r0 = aoVar3;
-                        break;
-                    default:
-                        throw new C1872t(this);
-                }
-            } catch (C1876x e3) {
-                e = e3;
-                r0.f11002h = e;
-                this.f10990h.mo13699b(this, e);
-                this.f10990h.mo13697a(this, e);
-                return bnVar;
-            }
-            return bnVar;
+        } catch (C1876x e2) {
+            bnVar2.f11002h = e2;
+            this.f10990h.mo13699b(this, e2);
+            this.f10990h.mo13697a(this, e2);
         } finally {
             m13905cy();
         }
+        return bnVar2;
     }
 
     /* compiled from: css3Parser.java */
@@ -2542,77 +2531,66 @@ public class C0576y extends AbstractC1873u {
     /* JADX WARN: Type inference failed for: r3v0, types: [com.a.a.y, org.a.a.a.u] */
     /* renamed from: H */
     public final br m5572H() {
-        ?? r0;
-        br brVar;
         br brVar2 = new br(this.f10993k, m13930cG());
         m13886a(brVar2, 58, 29);
         try {
-            try {
-                m13931f(522);
-                this.f10990h.mo13700c(this);
-                r0 = this.f10991i.mo13711a(1);
-                try {
-                    switch (r0) {
-                        case 17:
-                        case 18:
-                        case 19:
-                        case 50:
-                        case 52:
-                        case 53:
-                        case 61:
-                            ap apVar = new ap(brVar2);
-                            m13885a(apVar, 1);
-                            m13931f(513);
-                            m5594aD();
-                            m13931f(514);
-                            m5595aE();
-                            r0 = apVar;
-                            break;
-                        case 39:
-                            i iVar = new i(brVar2);
-                            m13885a(iVar, 3);
-                            m13931f(518);
-                            m13878a(39);
-                            m13931f(519);
-                            m5594aD();
-                            r0 = iVar;
-                            break;
-                        case 47:
-                            i iVar2 = new i(brVar2);
-                            m13885a(iVar2, 4);
-                            m13931f(BluetoothClass.Device.PHONE_CORDLESS);
-                            m13878a(47);
-                            m13931f(521);
-                            m5594aD();
-                            r0 = iVar2;
-                            break;
-                        case 59:
-                            ap apVar2 = new ap(brVar2);
-                            m13885a(apVar2, 2);
-                            m13931f(516);
-                            m13878a(59);
-                            m13931f(517);
-                            m5595aE();
-                            r0 = apVar2;
-                            break;
-                        default:
-                            throw new C1872t(this);
-                    }
-                } catch (C1876x e2) {
-                    e = e2;
-                    r0.f11002h = e;
-                    this.f10990h.mo13699b(this, e);
-                    this.f10990h.mo13697a(this, e);
-                    return brVar;
-                }
-            } finally {
-                m13905cy();
+            m13931f(522);
+            this.f10990h.mo13700c(this);
+            switch (this.f10991i.mo13711a(1)) {
+                case 17:
+                case 18:
+                case 19:
+                case 50:
+                case 52:
+                case 53:
+                case 61:
+                    ap apVar = new ap(brVar2);
+                    m13885a(apVar, 1);
+                    m13931f(513);
+                    m5594aD();
+                    m13931f(514);
+                    m5595aE();
+                    brVar2 = apVar;
+                    break;
+                case 39:
+                    i iVar = new i(brVar2);
+                    m13885a(iVar, 3);
+                    m13931f(518);
+                    m13878a(39);
+                    m13931f(519);
+                    m5594aD();
+                    brVar2 = iVar;
+                    break;
+                case 47:
+                    i iVar2 = new i(brVar2);
+                    m13885a(iVar2, 4);
+                    m13931f(BluetoothClass.Device.PHONE_CORDLESS);
+                    m13878a(47);
+                    m13931f(521);
+                    m5594aD();
+                    brVar2 = iVar2;
+                    break;
+                case 59:
+                    ap apVar2 = new ap(brVar2);
+                    m13885a(apVar2, 2);
+                    m13931f(516);
+                    m13878a(59);
+                    m13931f(517);
+                    m5595aE();
+                    brVar2 = apVar2;
+                    break;
+                default:
+                    throw new C1872t(this);
+                    
             }
-        } catch (C1876x e3) {
-            e = e3;
-            r0 = brVar2;
+        } catch (C1876x e2) {
+            brVar2.f11002h = e2;
+            this.f10990h.mo13699b(this, e2);
+            this.f10990h.mo13697a(this, e2);
+        } finally {
+            m13905cy();
         }
-        return brVar;
+        return brVar2;
     }
 
     /* compiled from: css3Parser.java */

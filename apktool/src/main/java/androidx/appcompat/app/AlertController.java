@@ -6,9 +6,9 @@ import android.content.DialogInterface;
 import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.drawable.Drawable;
-import android.p008os.Build;
-import android.p008os.Handler;
-import android.p008os.Message;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Message;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -204,7 +204,7 @@ class AlertController {
             this.f543a = new WeakReference<>(dialogInterface);
         }
 
-        @Override // android.p008os.Handler
+        @Override // android.os.Handler
         public void handleMessage(Message message) {
             switch (message.what) {
                 case -3:
