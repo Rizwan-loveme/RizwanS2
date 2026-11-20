@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
 
@@ -183,6 +184,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private boolean requestAppPermissions() {
+        // Win11 declares WRITE_EXTERNAL_STORAGE with maxSdkVersion="28", so on Android 10+ it can never be
+        // granted: the request is refused at once without a dialog, onRequestPermissionsResult() got
+        // "denied" and called finish() - Winlator closed right after opening. The set-up only needs the
+        // app's own storage; shared storage (drive F:) uses the all-files access that Win11 asks for itself.
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) return false;
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) return false;
 
