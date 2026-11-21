@@ -5,7 +5,6 @@ package com.srizwan.YouTube.player
 import android.content.Context
 import android.os.Handler
 import android.os.SystemClock
-import android.widget.Toast
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -14,6 +13,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.srizwan.YouTube.R
+import com.srizwan.YouTube.ui.GlassToast
 import com.srizwan.YouTube.data.StreamDetails
 import com.srizwan.YouTube.data.YtDownloader
 
@@ -35,6 +35,13 @@ object YtPlayer {
      */
     @Volatile
     var screenVisible: Boolean = false
+
+    /**
+     * True while the floating popup ([FloatingPlayer]) shows the video. [PlaybackService] then does not
+     * free the player, because the popup is a screen too.
+     */
+    @Volatile
+    var floating: Boolean = false
 
     /** page url of the video that is loaded now (used to avoid reloading the same video) */
     var currentUrl: String? = null
@@ -95,7 +102,7 @@ object YtPlayer {
             load(ctx, d, lowest, startPositionMs = player.currentPosition, playWhenReady = player.playWhenReady)
             maxHeight = StreamSources.AUTO // still "Auto" for the menu; only the picture got smaller
             autoLowered = true
-            Toast.makeText(ctx, R.string.yt_player_weak_network, Toast.LENGTH_SHORT).show()
+            GlassToast.show(ctx, R.drawable.ic_signal_low) // weak network: glass toast, icon only
         } catch (e: Exception) {
             // keep playing what plays now
         }
@@ -290,6 +297,7 @@ object YtPlayer {
 
     /** Stops playback and frees the player (and the background service that shows it). */
     fun release() {
+        FloatingPlayer.hide() // the popup shows this player: it goes with it
         val ctx = appContext
         saveResume()
         handler.removeCallbacks(saveTick)

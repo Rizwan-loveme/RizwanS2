@@ -2,23 +2,17 @@ package com.srizwan.YouTube.player
 
 import android.Manifest
 import android.app.Activity
-import android.app.PendingIntent
-import android.app.PictureInPictureParams
-import android.app.RemoteAction
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.drawable.Icon
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.PowerManager
-import android.util.Rational
+import android.provider.Settings
 import android.view.View
-import android.widget.Toast
+import android.widget.ImageView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -26,37 +20,32 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.appcompat.app.AlertDialog
-import androidx.lifecycle.Lifecycle
-import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
-import androidx.media3.common.VideoSize
-import androidx.media3.ui.PlayerView
 import com.srizwan.YouTube.R
 import com.srizwan.YouTube.data.YtRepository
 import com.srizwan.YouTube.databinding.ActivityPlayerBinding
+import com.srizwan.YouTube.ui.GlassDrawable
+import com.srizwan.YouTube.ui.GlassSheet
+import com.srizwan.YouTube.ui.GlassToast
+import com.srizwan.YouTube.ui.VectorLabelDrawable
 import java.io.IOException
 
 /**
  * Player screen of the built-in YouTube app. Open it with [start].
  *
- * Part 1 of the player plan: fetch the streams, play them with the shared [YtPlayer] and show
- * Media3's standard controls. Part 2: speed chip (top right, 0.25x - 2x, saved in [PlayerPrefs]).
- * Part 3: quality chip ("Auto" or the playing height, list of the heights the video has, saved in [PlayerPrefs]).
- * Part 5: background playback ([PlaybackService]); a "Background" chip turns it on / off (saved).
- * Part 7: picture-in-picture. A "PiP" chip, automatic PiP when you leave the screen while a video plays
- * (home gesture), and play/pause and -10s/+10s buttons inside the PiP window. Closing the PiP window stops
- * the video; tapping it brings the player screen back.
- * Part 4: fullscreen. The button in the player controls (or turning the phone sideways) hides the status and
- * navigation bars and, for a wide video, turns the screen to landscape; Back or the button leaves it.
- * Part 8: touch gestures ([PlayerGestures]): double-tap seek, volume / brightness swipes, tap for controls.
- * Part 9: remembered settings and resume position ([PlayerPrefs]): speed, quality and background playback are
- * saved when changed; the position of each video is saved every 5 s and when the screen is left, and the video
- * continues from it ("Continuing from 12:34 | Start over" hint for a few seconds).
- * The other parts are added on top of this screen.
+ * It shows no text: controls are vector icons ([com.srizwan.YouTube.ui.GlassControls]), numbers such as the
+ * speed are drawn as glyph outlines ([VectorLabelDrawable]), lists are a glass sheet ([GlassSheet]) and
+ * messages are glass toasts ([GlassToast]).
+ *
+ * Part 1: fetch the streams, play them with the shared [YtPlayer]. Part 2: speed chip (0.25x - 2x).
+ * Part 3: quality chip (Auto or the playing height). Part 4: fullscreen. Part 5: background playback
+ * ([PlaybackService]), a chip turns it on / off. Part 7 (now): the floating popup window instead of
+ * picture-in-picture ([FloatingPlayer]): the float chip, or leaving the app while a video plays, shows the video
+ * in a small glass window over any app; its cross closes it. Part 8: touch gestures ([PlayerGestures]).
+ * Part 9: remembered settings and resume position ([PlayerPrefs]).
  */
 class PlayerActivity : AppCompatActivity() {
 
@@ -65,7 +54,7 @@ class PlayerActivity : AppCompatActivity() {
     private var started = false
     private var fetching = false
 
-    /** set in onStop: the video goes on in the background, so onDestroy must not release the player */
+    /** set in onStop: the video goes on in the background / in the popup, so onDestroy must not release the player */
     private var keepAlive = false
 
     // ---- Part 4: fullscreen ----
@@ -78,45 +67,13 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Part 7: picture-in-picture ----
-    /** this device can show PiP windows (API 26+ is guaranteed by minSdk, the feature flag is not) */
-    private val pipSupported: Boolean by lazy {
-        packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
-    }
-
-    /** the PiP window was just left (expanded or closed); cleared in onResume, which only an expand reaches */
-    private var pipExitPending = false
-    private var pipReceiverRegistered = false
-
-    private val pipReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val p = YtPlayer.peek() ?: return
-            when (intent.action) {
-                ACTION_PIP_PLAY_PAUSE ->
-                    if (p.playWhenReady && p.playbackState != Player.STATE_ENDED) {
-                        p.pause()
-                    } else {
-                        if (p.playbackState == Player.STATE_ENDED) p.seekTo(0)
-                        p.play()
-                    }
-                ACTION_PIP_REWIND -> p.seekTo((p.currentPosition - PIP_SEEK_MS).coerceAtLeast(0L))
-                ACTION_PIP_FORWARD -> {
-                    val target = p.currentPosition + PIP_SEEK_MS
-                    val d = p.duration
-                    p.seekTo(if (d != C.TIME_UNSET) target.coerceAtMost(d) else target)
-                }
-            }
-            updatePipParams()
-        }
-    }
-
     // Android 13+: the playback notification needs this permission to be visible (asked once)
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val listener = object : Player.Listener {
         override fun onPlayerError(error: PlaybackException) {
-            showError(messageFor(error))
+            showError(iconFor(error))
         }
 
         // playback began while this screen is visible: start the background service now
@@ -125,16 +82,6 @@ class PlayerActivity : AppCompatActivity() {
             if (isPlaying && started && PlayerPrefs.backgroundPlay(this@PlayerActivity)) {
                 PlaybackService.start(this@PlayerActivity)
             }
-            updatePipParams() // auto-enter only while playing; play / pause button
-        }
-
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            updatePipParams()
-        }
-
-        // the PiP window takes the shape of the video (portrait, 16:9, ultra-wide)
-        override fun onVideoSizeChanged(videoSize: VideoSize) {
-            updatePipParams()
         }
 
         // part 3: the heights of a manifest video (live / HLS) are known only once its tracks are parsed
@@ -142,7 +89,7 @@ class PlayerActivity : AppCompatActivity() {
             updateQualityChip()
         }
 
-        // fires for the speed chip, and also for Media3's own settings menu
+        // fires for the speed chip
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
             PlayerPrefs.setSpeed(this@PlayerActivity, playbackParameters.speed)
             updateSpeedChip(playbackParameters.speed)
@@ -160,29 +107,27 @@ class PlayerActivity : AppCompatActivity() {
             finish()
             return
         }
+        styleGlass()
+        b.retryButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.ic_retry, iconSizeDp = 24f))
+        b.resumeRestart.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.ic_restart, iconSizeDp = 20f))
         b.retryButton.setOnClickListener { fetchAndPlay() }
         b.resumeRestart.setOnClickListener {
             YtPlayer.peek()?.seekTo(0L)
             hideResumeHint()
         }
-        b.speedButton.setOnClickListener { showSpeedDialog() }
+        b.speedButton.setOnClickListener { showSpeedSheet() }
         onBackPressedDispatcher.addCallback(this, fullscreenBack)
         PlayerGestures(
             this, b.playerView, b.gestureHint, b.seekHintLeft, b.seekHintRight,
             player = { YtPlayer.peek() },
-            toggleControls = {
-                if (b.playerView.isControllerFullyVisible) b.playerView.hideController()
-                else b.playerView.showController()
-            }
+            toggleControls = { b.controls.toggle() }
         ).attach()
-        b.playerView.setFullscreenButtonClickListener { toFullscreen -> setFullscreen(toFullscreen) }
-        b.qualityButton.setOnClickListener { showQualityDialog() }
+        b.controls.onFullscreenClick = { setFullscreen(!fullscreen) }
+        b.controls.onVisibilityChanged = { shown -> b.chipRow.visibility = if (shown) View.VISIBLE else View.GONE }
+        b.qualityButton.setOnClickListener { showQualitySheet() }
         b.backgroundButton.setOnClickListener { toggleBackground() }
-        b.pipButton.visibility = if (pipSupported) View.VISIBLE else View.GONE
-        b.pipButton.setOnClickListener { enterPip() }
-        b.playerView.setControllerVisibilityListener(
-            PlayerView.ControllerVisibilityListener { visibility -> b.chipRow.visibility = visibility }
-        )
+        b.floatButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.ic_float, iconSizeDp = 20f))
+        b.floatButton.setOnClickListener { startFloating(auto = false) }
         updateSpeedChip(PlayerPrefs.speed(this))
         updateQualityChip()
         updateBackgroundChip()
@@ -190,6 +135,18 @@ class PlayerActivity : AppCompatActivity() {
         // opened while the phone is already sideways: start in fullscreen
         if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) setFullscreen(true, rotate = false)
         if (!YtPlayer.isLoaded(url)) fetchAndPlay()
+    }
+
+    /** Glass background for every chip and hint (the look is code, so there is no shape xml). */
+    private fun styleGlass() {
+        listOf(b.floatButton, b.backgroundButton, b.qualityButton, b.speedButton).forEach {
+            it.background = GlassDrawable(this, 20f)
+        }
+        listOf(b.seekHintLeft, b.seekHintRight, b.gestureHint).forEach {
+            it.background = GlassDrawable(this, 18f)
+        }
+        b.resumeBox.background = GlassDrawable(this, 20f)
+        b.retryButton.background = GlassDrawable(this, 28f, strong = true)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -207,76 +164,66 @@ class PlayerActivity : AppCompatActivity() {
         started = true
         YtPlayer.screenVisible = true
         keepAlive = false
+        GlassToast.host = this
+        // the popup window gives the picture back to this screen
+        FloatingPlayer.hide()
         // the video picture was switched off while playing in the background: back on
         YtPlayer.setVideoEnabled(true)
         attachPlayer()
-        // the player was freed while we were away (notification dismissed): load the video again
+        // the player was freed while we were away (notification dismissed, popup closed): load the video again
         if (!YtPlayer.isLoaded(url) && !fetching) fetchAndPlay()
-        updatePipParams()
     }
 
-    /** Bars come back after a dialog, the keyboard or a swipe; keep them hidden while in fullscreen. */
+    /** Bars come back after a sheet, the keyboard or a swipe; keep them hidden while in fullscreen. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && fullscreen && !isInPictureInPictureMode) applyFullscreen()
+        if (hasFocus && fullscreen) applyFullscreen()
     }
 
     /** Turning the phone sideways = fullscreen, back upright = normal (for a video that was not forced). */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (isInPictureInPictureMode) return
         val landscape = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
         if (landscape && !fullscreen) setFullscreen(true, rotate = false)
         else if (!landscape && fullscreen && isWideVideo()) setFullscreen(false)
     }
 
-    override fun onResume() {
-        super.onResume()
-        // back from PiP by tapping the window: the screen is shown again, so it was not closed
-        pipExitPending = false
-    }
-
-    /** Home gesture / home button while a video plays: Android 12+ enters PiP by itself (auto-enter), older ones here. */
+    /** Home gesture / home button while a video plays: it goes on in the floating popup (if allowed). */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        // all versions: harmless when Android 12+ already entered PiP by itself (auto-enter)
-        if (canEnterPip() && !isInPictureInPictureMode) enterPip(fromUser = false)
+        if (canFloat()) startFloating(auto = true)
     }
 
     override fun onStop() {
         started = false
         YtPlayer.screenVisible = false
+        if (GlassToast.host === this) GlassToast.host = null
         YtPlayer.saveResume() // part 9: remember where the video was left
         hideResumeHint()
         val player = YtPlayer.peek()
-        // Part 7: stopped while the PiP window was on screen and the screen is still on = the user closed
-        // the PiP window. That ends the video (a screen-off in PiP is not a close: background playback decides).
-        val pipClosed = (isInPictureInPictureMode || pipExitPending) && isScreenOn()
-        if (pipClosed) {
-            player?.pause()
-            PlaybackService.stop(this)
-        }
         if (player != null) {
-            // Part 5: with background playback on, a playing video keeps playing (audio only, the
-            // picture is switched off) and PlaybackService keeps the app alive. Otherwise pause.
-            keepAlive = !pipClosed && PlayerPrefs.backgroundPlay(this) && PlaybackService.isPlaying(player)
-            if (keepAlive) {
-                YtPlayer.setVideoEnabled(false)
+            val floating = FloatingPlayer.isShowing
+            // The popup window keeps playing with its picture. Otherwise, with background playback on, a playing
+            // video keeps playing (audio only, the picture is switched off) and PlaybackService keeps the app
+            // alive; else pause.
+            keepAlive = floating || (PlayerPrefs.backgroundPlay(this) && PlaybackService.isPlaying(player))
+            if (floating) {
                 PlaybackService.start(this) // no-op for an already running service
+            } else if (keepAlive) {
+                YtPlayer.setVideoEnabled(false)
+                PlaybackService.start(this)
             } else {
                 player.pause()
             }
             player.removeListener(listener)
         }
+        b.controls.bind(null)
         b.playerView.player = null
-        unregisterPipReceiver()
         super.onStop()
-        if (pipClosed && !isFinishing) finish() // onDestroy then frees the player
     }
 
     override fun onDestroy() {
-        unregisterPipReceiver()
-        // finishing while it plays in the background: leave the player to the service
+        // finishing while it plays in the background / popup: leave the player to the service
         if (isFinishing && !keepAlive) YtPlayer.release()
         super.onDestroy()
     }
@@ -305,7 +252,7 @@ class PlayerActivity : AppCompatActivity() {
         }
         applyFullscreen()
         fullscreenBack.isEnabled = on
-        b.playerView.setFullscreenButtonState(on)
+        b.controls.setFullscreen(on)
     }
 
     private fun applyFullscreen() {
@@ -333,140 +280,51 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Part 7: picture-in-picture
+    // Part 7: floating popup window (replaces picture-in-picture)
     // ---------------------------------------------------------------------------------------------
 
-    private fun isScreenOn(): Boolean =
-        (getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive
-
-    /** A video is loaded and playing (or about to), so a PiP window makes sense. */
-    private fun canEnterPip(): Boolean =
-        pipSupported && !isFinishing && PlaybackService.isPlaying(YtPlayer.peek()) &&
+    /** A video is playing (or about to), the popup is allowed and nothing is wrong: leaving the app may float it. */
+    private fun canFloat(): Boolean =
+        !isFinishing && FloatingPlayer.canDraw(this) && PlaybackService.isPlaying(YtPlayer.peek()) &&
             b.errorBox.visibility != View.VISIBLE
 
-    /** The PiP chip: shrink the video into a floating window. */
-    private fun enterPip(fromUser: Boolean = true) {
-        if (!pipSupported || YtPlayer.peek() == null || isInPictureInPictureMode) return
-        var error: Throwable? = null
-        val entered = try {
-            enterPictureInPictureMode(buildPipParams())
-        } catch (e: Throwable) {
-            error = e
-            android.util.Log.w("PlayerActivity", "enterPictureInPictureMode failed, retrying without buttons", e)
-            // a bad button / icon must not block PiP: try again with the picture only
-            try { enterPictureInPictureMode(buildPipParams(withActions = false)) }
-            catch (e2: Throwable) { error = e2; false }
-        }
-        if (!entered && !isInPictureInPictureMode && fromUser) {
-            val why = error?.let { "${it.javaClass.simpleName}: ${it.message}" }
-            val text = if (why != null) "PiP failed: $why" else getString(R.string.yt_player_pip_unavailable)
-            Toast.makeText(this, text, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    /** Keeps the system's PiP params current (aspect ratio, buttons, auto-enter). Cheap; safe to call often. */
-    private fun updatePipParams() {
-        if (!pipSupported || isFinishing || isDestroyed) return
-        try {
-            setPictureInPictureParams(buildPipParams())
-        } catch (e: Throwable) {
-            // before, this was swallowed silently and auto-enter was never switched on
-            android.util.Log.w("PlayerActivity", "setPictureInPictureParams failed, retrying without buttons", e)
-            try { setPictureInPictureParams(buildPipParams(withActions = false)) }
-            catch (e2: Throwable) { android.util.Log.w("PlayerActivity", "PiP params rejected", e2) }
-        }
-    }
-
-    private fun buildPipParams(withActions: Boolean = true): PictureInPictureParams {
-        val player = YtPlayer.peek()
-        val builder = PictureInPictureParams.Builder()
-            .setAspectRatio(pipAspect(player?.videoSize))
-        if (withActions) builder.setActions(pipActions(player))
-        if (Build.VERSION.SDK_INT >= 31) {
-            // leaving the app while a video plays opens PiP without any extra code; no zoom animation glitch
-            builder.setAutoEnterEnabled(canEnterPip())
-            builder.setSeamlessResizeEnabled(false)
-        }
-        return builder.build()
-    }
-
-    /** Video shape for the PiP window; the system only accepts 1:2.39 ... 2.39:1. */
-    private fun pipAspect(size: VideoSize?): Rational {
-        var ratio = 16f / 9f
-        if (size != null && size.width > 0 && size.height > 0) {
-            ratio = size.width * size.pixelWidthHeightRatio / size.height
-        }
-        ratio = ratio.coerceIn(0.42f, 2.38f)
-        return Rational((ratio * 1000).toInt(), 1000)
-    }
-
-    private fun pipActions(player: Player?): List<RemoteAction> {
-        val playing = player != null && player.playWhenReady && player.playbackState != Player.STATE_ENDED
-        return listOf(
-            pipAction(R.drawable.ic_pip_rewind, R.string.yt_player_pip_rewind, ACTION_PIP_REWIND, 1),
-            if (playing) pipAction(R.drawable.ic_pip_pause, R.string.yt_player_pip_pause, ACTION_PIP_PLAY_PAUSE, 2)
-            else pipAction(R.drawable.ic_pip_play, R.string.yt_player_pip_play, ACTION_PIP_PLAY_PAUSE, 2),
-            pipAction(R.drawable.ic_pip_forward, R.string.yt_player_pip_forward, ACTION_PIP_FORWARD, 3)
-        )
-    }
-
-    private fun pipAction(icon: Int, title: Int, action: String, requestCode: Int): RemoteAction {
-        val pi = PendingIntent.getBroadcast(
-            this, requestCode,
-            Intent(action).setPackage(packageName),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        val text = getString(title)
-        return RemoteAction(Icon.createWithResource(this, icon), text, text, pi)
-    }
-
-    /** In the PiP window the screen's own chips and controls are hidden; they come back on expand. */
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        if (isInPictureInPictureMode) {
-            pipExitPending = false
-            b.playerView.useController = false
-            b.chipRow.visibility = View.GONE
-            hideResumeHint()
-            registerPipReceiver()
-        } else {
-            pipExitPending = true
-            unregisterPipReceiver()
-            b.playerView.useController = true
-            b.playerView.showController()
-            if (fullscreen) applyFullscreen()
-            // closed (not expanded): the activity is already stopped by now, onStop ends the video; if
-            // the callback comes after onStop (older Android), do it here
-            if (lifecycle.currentState == Lifecycle.State.CREATED && !isFinishing) {
-                keepAlive = false
-                YtPlayer.peek()?.pause()
-                PlaybackService.stop(this)
-                finish()
+    /**
+     * Shows the video in the floating popup over any app. [auto] = leaving the app by itself (the screen stays
+     * where it is); the float chip ([auto] false) also closes this screen so the app behind it is shown.
+     * Without the "Display over other apps" permission the chip opens that settings page (once granted, tap again).
+     */
+    private fun startFloating(auto: Boolean) {
+        if (YtPlayer.peek() == null) return
+        if (!FloatingPlayer.canDraw(this)) {
+            if (!auto) {
+                GlassToast.show(this, R.drawable.ic_lock)
+                runCatching {
+                    startActivity(
+                        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                    )
+                }
             }
+            return
         }
+        PlaybackService.start(this) // keeps the app alive while the popup is on screen
+        YtPlayer.setVideoEnabled(true)
+        if (!FloatingPlayer.show(applicationContext)) {
+            if (!auto) GlassToast.show(this, R.drawable.ic_error)
+            return
+        }
+        if (!auto) finish() // onStop sees the popup and keeps the player alive
     }
 
-    private fun registerPipReceiver() {
-        if (pipReceiverRegistered) return
-        val filter = IntentFilter().apply {
-            addAction(ACTION_PIP_PLAY_PAUSE)
-            addAction(ACTION_PIP_REWIND)
-            addAction(ACTION_PIP_FORWARD)
-        }
-        ContextCompat.registerReceiver(this, pipReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        pipReceiverRegistered = true
-    }
-
-    private fun unregisterPipReceiver() {
-        if (!pipReceiverRegistered) return
-        runCatching { unregisterReceiver(pipReceiver) }
-        pipReceiverRegistered = false
-    }
+    // ---------------------------------------------------------------------------------------------
 
     private fun updateBackgroundChip() {
         val on = PlayerPrefs.backgroundPlay(this)
-        b.backgroundButton.setText(
-            if (on) R.string.yt_player_background_on else R.string.yt_player_background_off
+        b.backgroundButton.setImageDrawable(
+            VectorLabelDrawable(
+                this, null,
+                if (on) R.drawable.ic_headphones else R.drawable.ic_headphones_off,
+                iconSizeDp = 20f
+            )
         )
         b.backgroundButton.alpha = if (on) 1f else 0.6f
     }
@@ -499,12 +357,13 @@ class PlayerActivity : AppCompatActivity() {
         player.removeListener(listener)
         player.addListener(listener)
         b.playerView.player = player
+        b.controls.bind(player)
         updateSpeedChip(player.playbackParameters.speed)
         updateQualityChip()
     }
 
     /**
-     * The quality chip: "Auto" or the height that plays now. Hidden while there is nothing to choose
+     * The quality chip: the auto icon, or the height that plays now. Hidden while there is nothing to choose
      * (nothing loaded yet, or the video has a single quality).
      */
     private fun updateQualityChip() {
@@ -515,68 +374,66 @@ class PlayerActivity : AppCompatActivity() {
         }
         b.qualityButton.visibility = View.VISIBLE
         val cap = YtPlayer.maxHeight
-        b.qualityButton.text = if (cap == StreamSources.AUTO) {
-            getString(R.string.yt_player_quality_auto)
+        val drawable = if (cap == StreamSources.AUTO) {
+            VectorLabelDrawable(this, null, R.drawable.ic_auto_quality, iconSizeDp = 20f)
         } else {
-            getString(R.string.yt_player_quality_height, StreamSources.nearest(heights, cap) ?: cap)
+            VectorLabelDrawable(
+                this, "${StreamSources.nearest(heights, cap) ?: cap}p", R.drawable.ic_quality,
+                textSizeDp = 13f, iconSizeDp = 18f
+            )
         }
+        b.qualityButton.setImageDrawable(drawable)
     }
 
     /**
-     * Quality list: Auto + every height of the video, best first. The choice is applied at once and saved
+     * Quality sheet: Auto + every height of the video, best first. The choice is applied at once and saved
      * for the next videos. A video that does not have the saved height plays the nearest lower one.
      */
-    private fun showQualityDialog() {
+    private fun showQualitySheet() {
         val heights = YtPlayer.availableHeights()
         if (heights.isEmpty()) return
         val cap = YtPlayer.maxHeight
         val isMerged = YtPlayer.plan is StreamSources.Plan.Progressive
-        val labels = ArrayList<String>(heights.size + 1)
-        // merged streams: Auto is a known height; manifests change height by themselves, so just "Auto"
+        // merged streams: Auto is a known height; manifests change height by themselves, so just the icon
         val autoHeight = if (YtPlayer.autoLowered) heights.lastOrNull()
             else StreamSources.nearest(heights, StreamSources.AUTO_CAP)
-        labels.add(
-            if (isMerged && autoHeight != null) getString(R.string.yt_player_quality_auto_height, autoHeight)
-            else getString(R.string.yt_player_quality_auto)
-        )
-        heights.forEach { labels.add(getString(R.string.yt_player_quality_height, it)) }
         val checked = if (cap == StreamSources.AUTO) 0 else {
             val idx = heights.indexOf(StreamSources.nearest(heights, cap))
             if (idx >= 0) idx + 1 else -1
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.yt_player_quality_title)
-            .setSingleChoiceItems(labels.toTypedArray(), checked) { dialog, which ->
-                dialog.dismiss()
-                val wanted = if (which == 0) StreamSources.AUTO else heights[which - 1]
-                PlayerPrefs.setQuality(this, wanted)
-                runCatching { YtPlayer.setQuality(this, wanted) }
-                    .onFailure { showError(messageFor(it)) }
-                updateQualityChip()
-            }
-            .show()
+        val rows = ArrayList<GlassSheet.Row>(heights.size + 1)
+        rows.add(
+            GlassSheet.Row(
+                R.drawable.ic_auto_quality,
+                if (isMerged && autoHeight != null) "${autoHeight}p" else null,
+                checked == 0
+            )
+        )
+        heights.forEachIndexed { i, h -> rows.add(GlassSheet.Row(R.drawable.ic_quality, "${h}p", checked == i + 1)) }
+        GlassSheet.show(this, rows) { which ->
+            val wanted = if (which == 0) StreamSources.AUTO else heights[which - 1]
+            PlayerPrefs.setQuality(this, wanted)
+            runCatching { YtPlayer.setQuality(this, wanted) }
+                .onFailure { showError(iconFor(it)) }
+            updateQualityChip()
+        }
     }
 
     private fun updateSpeedChip(speed: Float) {
-        b.speedButton.text = PlayerPrefs.speedLabel(speed)
+        b.speedButton.setImageDrawable(
+            VectorLabelDrawable(this, PlayerPrefs.speedLabel(speed), R.drawable.ic_speed, textSizeDp = 13f, iconSizeDp = 18f)
+        )
     }
 
-    /** Speed list (0.25x - 2x); the choice is applied at once and saved for the next video. */
-    private fun showSpeedDialog() {
+    /** Speed sheet (0.25x - 2x); the choice is applied at once and saved for the next video. */
+    private fun showSpeedSheet() {
         val player = YtPlayer.peek() ?: return
         val current = player.playbackParameters.speed
         val speeds = PlayerPrefs.SPEEDS
-        val labels = speeds.map {
-            if (it == 1f) getString(R.string.yt_player_speed_normal) else PlayerPrefs.speedLabel(it)
-        }.toTypedArray()
-        val checked = speeds.indexOfFirst { Math.abs(it - current) < 0.001f }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.yt_player_speed_title)
-            .setSingleChoiceItems(labels, checked) { dialog, which ->
-                player.setPlaybackSpeed(speeds[which])
-                dialog.dismiss()
-            }
-            .show()
+        val rows = speeds.map {
+            GlassSheet.Row(R.drawable.ic_speed, PlayerPrefs.speedLabel(it), Math.abs(it - current) < 0.001f)
+        }
+        GlassSheet.show(this, rows) { which -> player.setPlaybackSpeed(speeds[which]) }
     }
 
     /** Fetches the stream list on a background thread, then starts playback on the main thread. */
@@ -603,19 +460,21 @@ class PlayerActivity : AppCompatActivity() {
                         updateQualityChip()
                         if (started && YtPlayer.resumedFromMs > 0L) showResumeHint(YtPlayer.resumedFromMs)
                     }
-                    .onFailure { showError(messageFor(it)) }
-            }.onFailure { showError(messageFor(it)) }
+                    .onFailure { showError(iconFor(it)) }
+            }.onFailure { showError(iconFor(it)) }
         }
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Part 9: resume hint ("Continuing from 12:34 | Start over")
+    // Part 9: resume hint (clock icon + saved time + start-over icon)
     // ---------------------------------------------------------------------------------------------
 
     private val hideResume = Runnable { b.resumeBox.visibility = View.GONE }
 
     private fun showResumeHint(positionMs: Long) {
-        b.resumeText.text = getString(R.string.yt_player_resume_hint, formatTime(positionMs))
+        b.resumeText.setImageDrawable(
+            VectorLabelDrawable(this, formatTime(positionMs), R.drawable.ic_resume, textSizeDp = 13f, iconSizeDp = 18f)
+        )
         b.resumeBox.visibility = View.VISIBLE
         b.resumeBox.removeCallbacks(hideResume)
         b.resumeBox.postDelayed(hideResume, RESUME_HINT_MS)
@@ -642,28 +501,22 @@ class PlayerActivity : AppCompatActivity() {
         b.fetchProgress.visibility = View.VISIBLE
     }
 
-    private fun showError(text: String) {
+    private fun showError(iconRes: Int) {
         b.fetchProgress.visibility = View.GONE
-        b.errorText.text = text
+        b.errorIcon.setImageDrawable(VectorLabelDrawable(this, null, iconRes, iconSizeDp = 48f))
         b.errorBox.visibility = View.VISIBLE
     }
 
-    private fun messageFor(t: Throwable): String = getString(
-        when {
-            t is StreamSources.NoStreamException -> R.string.yt_player_error_no_stream
-            t is IOException || t.cause is IOException -> R.string.yt_player_error_network
-            t is PlaybackException && t.cause is IOException -> R.string.yt_player_error_network
-            else -> R.string.yt_player_error_generic
-        }
-    )
+    /** No connection = the wifi-off icon; anything else (no stream, cannot decode) = the error icon. */
+    private fun iconFor(t: Throwable): Int = when {
+        t is IOException || t.cause is IOException -> R.drawable.ic_wifi_off
+        t is PlaybackException && t.cause is IOException -> R.drawable.ic_wifi_off
+        else -> R.drawable.ic_error
+    }
 
     companion object {
         const val EXTRA_URL = "com.srizwan.YouTube.player.URL"
 
-        private const val ACTION_PIP_PLAY_PAUSE = "com.srizwan.YouTube.player.PIP_PLAY_PAUSE"
-        private const val ACTION_PIP_REWIND = "com.srizwan.YouTube.player.PIP_REWIND"
-        private const val ACTION_PIP_FORWARD = "com.srizwan.YouTube.player.PIP_FORWARD"
-        private const val PIP_SEEK_MS = 10_000L
         private const val RESUME_HINT_MS = 7_000L
 
         /** Opens the player for a YouTube page url (the `url` of a [com.srizwan.YouTube.data.YtItem.Video]). */

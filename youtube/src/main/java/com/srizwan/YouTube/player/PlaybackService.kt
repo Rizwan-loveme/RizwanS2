@@ -91,7 +91,7 @@ class PlaybackService : MediaSessionService() {
         session = null
         // The service ended (notification dismissed / video finished) and no screen is showing the player:
         // free it, otherwise it would stay loaded with nothing to control it.
-        if (!YtPlayer.screenVisible) YtPlayer.release()
+        if (!YtPlayer.screenVisible && !YtPlayer.floating) YtPlayer.release()
         super.onDestroy()
     }
 
@@ -120,7 +120,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun stopIfNoScreen() {
-        if (!YtPlayer.screenVisible) stopSelf()
+        if (!YtPlayer.screenVisible && !YtPlayer.floating) stopSelf()
     }
 
     companion object {

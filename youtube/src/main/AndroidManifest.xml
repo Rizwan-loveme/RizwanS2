@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- "Display over other apps": the floating popup player (FloatingPlayer) and the glass toast over other apps -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application>
         <!-- Built-in YouTube app (opened from the Win11 Start menu) -->
@@ -16,13 +18,12 @@
             android:theme="@style/Theme.YouTube"
             android:label="YouTube"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
-            android:supportsPictureInPicture="true"
             android:windowSoftInputMode="adjustResize" />
 
         <!-- Video player of the built-in YouTube app (part 1 of the player plan).
              Not exported: it is opened from inside Win11 with PlayerActivity.start().
-             Part 7: picture-in-picture (PiP chip, auto-enter when leaving while playing, play/pause and
-             +-10s buttons in the PiP window). configChanges below lets the window resize without a restart. -->
+             Part 7: no picture-in-picture any more; the video can float in a popup window over any app
+             (FloatingPlayer, needs "Display over other apps"). -->
         <activity
             android:name="com.srizwan.YouTube.player.PlayerActivity"
             android:exported="false"
@@ -30,8 +31,7 @@
             android:label="YouTube"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode|layoutDirection"
-            android:resizeableActivity="true"
-            android:supportsPictureInPicture="true" />
+            android:resizeableActivity="true" />
 
         <!-- Background playback (part 5): foreground MediaSessionService around the shared player.
              Started with startForegroundService() from the visible player screen. -->

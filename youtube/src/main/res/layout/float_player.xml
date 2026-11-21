@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating popup player (FloatingPlayer): a glass frame around the video, the compact controls and a cross.
+     Added to the window manager over any app. Only a video, its controls and the cross; nothing else. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/float_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="2dp">
+
+    <FrameLayout
+        android:id="@+id/float_clip"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000">
+
+        <!-- TextureView so the rounded corners clip the picture -->
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/float_player"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:resize_mode="fit"
+            app:show_buffering="always"
+            app:surface_type="texture_view"
+            app:use_controller="false" />
+
+        <com.srizwan.YouTube.ui.GlassControls
+            android:id="@+id/float_controls"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <ImageView
+            android:id="@+id/float_close"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="6dp"
+            android:contentDescription="@string/yt_cd_close"
+            android:padding="8dp" />
+    </FrameLayout>
+</FrameLayout>

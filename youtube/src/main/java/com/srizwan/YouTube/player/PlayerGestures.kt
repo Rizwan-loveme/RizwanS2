@@ -8,10 +8,12 @@ import android.provider.Settings
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
-import android.widget.TextView
+import android.widget.ImageView
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import com.srizwan.YouTube.R
+import com.srizwan.YouTube.ui.GlassDrawable
+import com.srizwan.YouTube.ui.VectorLabelDrawable
 import kotlin.math.abs
 
 /**
@@ -28,9 +30,9 @@ import kotlin.math.abs
 class PlayerGestures(
     private val activity: Activity,
     private val touchView: View,
-    private val hint: TextView,
-    private val seekBackHint: TextView,
-    private val seekForwardHint: TextView,
+    private val hint: ImageView,
+    private val seekBackHint: ImageView,
+    private val seekForwardHint: ImageView,
     private val player: () -> Player?,
     private val toggleControls: () -> Unit
 ) {
@@ -131,9 +133,13 @@ class PlayerGestures(
         if (d != C.TIME_UNSET) target = target.coerceAtMost(d)
         p.seekTo(target.coerceAtLeast(0L))
         val view = if (dir < 0) seekBackHint else seekForwardHint
-        view.text = activity.getString(
-            if (dir < 0) R.string.yt_player_seek_back else R.string.yt_player_seek_forward,
-            (seekTotalMs / 1000).toInt()
+        // vector icon + the seconds as glyph outlines
+        view.setImageDrawable(
+            VectorLabelDrawable(
+                activity, "${seekTotalMs / 1000}s",
+                if (dir < 0) R.drawable.ic_seek_back else R.drawable.ic_seek_forward,
+                textSizeDp = 16f, iconSizeDp = 24f
+            )
         )
         flash(view)
     }
@@ -159,7 +165,9 @@ class PlayerGestures(
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         val index = Math.round(fraction * max)
         runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0) }
-        hint.text = activity.getString(R.string.yt_player_gesture_volume, Math.round(index * 100f / max))
+        hint.setImageDrawable(
+            VectorLabelDrawable(activity, "${Math.round(index * 100f / max)}%", R.drawable.ic_volume, textSizeDp = 16f, iconSizeDp = 24f)
+        )
         flash(hint)
     }
 
@@ -179,14 +187,17 @@ class PlayerGestures(
         val lp = activity.window.attributes
         lp.screenBrightness = value
         activity.window.attributes = lp
-        hint.text = activity.getString(R.string.yt_player_gesture_brightness, Math.round(value * 100f))
+        hint.setImageDrawable(
+            VectorLabelDrawable(activity, "${Math.round(value * 100f)}%", R.drawable.ic_brightness, textSizeDp = 16f, iconSizeDp = 24f)
+        )
         flash(hint)
     }
 
     // ---- feedback ----
 
     /** Shows [v] and fades it out shortly after the last update. */
-    private fun flash(v: TextView) {
+    private fun flash(v: ImageView) {
+        if (v.background == null) v.background = GlassDrawable(activity, 18f)
         v.animate().cancel()
         v.alpha = 1f
         v.visibility = View.VISIBLE

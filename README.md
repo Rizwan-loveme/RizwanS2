@@ -10,20 +10,49 @@
 | 4 | Fullscreen | done |
 | 5 | Background playback service (`PlaybackService`) | done |
 | 6 | Notification and lock-screen controls (custom) | skipped (Media3's default notification is used) |
-| 7 | Picture-in-picture | done |
+| 7 | ~~Picture-in-picture~~ → floating popup window over any app (`FloatingPlayer`) | done |
 | 8 | Touch gestures: double-tap seek, volume and brightness swipes (`PlayerGestures`) | done |
 | 9 | Remember settings and resume position (`PlayerPrefs`) | done |
 | 10 | Hook it into `:app`, final checks and docs | done |
 
-## Update — 360p default, weak-network drop, PiP robustness
+## Update — floating popup, no text, glass UI
+
+**Picture-in-picture is removed** (`supportsPictureInPicture`, the PiP chip, receivers and params are gone).
+It is replaced by a **floating popup window** (`player/FloatingPlayer.kt`, `res/layout/float_player.xml`):
+
+- The video of the shared `YtPlayer` appears in a small glass window over ANY app, sliding in from the top like a
+  heads-up notification. It shows only the picture, the compact controls (play / pause, -10 s / +10 s, a thin seek
+  bar) and a **cross** that closes the window and stops the video.
+- Drag it anywhere; pinch to resize; the window takes the shape of the video (wide, square or tall); tap the picture
+  to show / hide the controls.
+- How it starts: the **float chip** on the player screen (closes the player screen so the app behind it shows), or
+  leaving the app (home gesture) while a video plays. Opening the player screen again (for example from the
+  notification) brings the picture back there.
+- It needs **Display over other apps** (`SYSTEM_ALERT_WINDOW`, added to the `:youtube` manifest). Without it the chip
+  opens that settings page; tap the chip again after allowing. It is the only extra permission.
+- While it is on screen `YtPlayer.floating` is true, so `PlaybackService` does not free the player.
+
+**No text in the YouTube app.** Every control is a vector icon (`res/drawable/ic_*.xml`). Numbers that must be shown
+(speed `1.5x`, quality `720p`, times `12:34`, `10s`, `50%`) are drawn as **glyph outlines** by
+`ui/VectorLabelDrawable.kt` (`Paint.getTextPath`), so they are paths too. Media3's text controller is replaced by
+`ui/GlassControls.kt` (icons, vector times, drawn seek bar); `YouTubeActivity` is a logo, a link field, paste and
+play icons. `strings.xml` only has content descriptions for screen readers. Left as real text on purpose: the link
+you type in `YouTubeActivity`, and the system notification of background playback (Android draws it).
+
+**Glass UI** (`ui/GlassDrawable.kt`): smoked translucent body, light gradient and a bright rim.
+- `ui/GlassToast.kt` replaces every `Toast` of this module: a glass pill with an icon (and optional vector label),
+  floating at the top of the player screen, or over other apps when the popup permission is on.
+- `ui/GlassSheet.kt` replaces the speed / quality `AlertDialog`s: a glass card at the bottom over a dimmed, blurred
+  backdrop (system window blur on Android 12+).
+
+Scope: only the `:youtube` module. The other screens of `:app` still use their own `Toast`s.
+
+## Update — 360p default, weak-network drop
 
 - **Auto = 360p** (`StreamSources.AUTO_CAP`). HLS / DASH videos adapt by themselves below that cap.
 - **Weak network** (merged streams, Auto only): 2 stalls (buffering after playing, not a seek) within 40 s switch the
-  video to its lowest height at the same position, once per video, with a short message. Picking a height by hand
+  video to its lowest height at the same position, once per video, with a glass toast. Picking a height by hand
   turns this off; picking Auto again re-enables it. Not for live streams.
-- **PiP**: errors from `setPictureInPictureParams` / `enterPictureInPictureMode` were swallowed (auto-enter could stay
-  off with no sign). Now they are logged (tag `PlayerActivity`), retried without the +-10s/play buttons, and the PiP chip
-  shows the error text. Leaving the screen also calls `enterPip()` on Android 12+ as a second path.
 
 ## Fix — ForegroundServiceDidNotStartInTimeException
 
