@@ -124,12 +124,6 @@ class MainActivity : AppCompatActivity() {
     internal var customViewCallback: WebChromeClient.CustomViewCallback? = null
     internal var originalOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-    // ── Video PiP (file player only) ─────────────────────────────
-    internal var pipVideoView: VideoView? = null
-    internal var pipHideHandler: Handler? = null
-    internal var pipHideRunnable: Runnable? = null
-    internal var pipControlOverlay: LinearLayout? = null
-    internal var isInPipMode = false
 
     // ── Prefs ────────────────────────────────────────────────────
     internal lateinit var prefs: SharedPreferences
@@ -331,9 +325,7 @@ class MainActivity : AppCompatActivity() {
         webTabs.getOrNull(currentTabIndex)?.let {
             try { it.webView.onResume() } catch (e: Exception) { }
         }
-        if (!isInPipMode) {
-            if (isUIInitialized) tabLayout.visibility = View.VISIBLE
-        }
+        if (isUIInitialized) tabLayout.visibility = View.VISIBLE
     }
 
     override fun onDestroy() {
@@ -359,7 +351,6 @@ class MainActivity : AppCompatActivity() {
             smsExec.shutdownNow()
         } catch (e: Exception) { }
         releaseTorch()
-        pipHideHandler?.removeCallbacks(pipHideRunnable ?: Runnable { })
         super.onDestroy()
     }
 
@@ -679,6 +670,9 @@ class MainActivity : AppCompatActivity() {
                 } else if (section == "youtube") {
                     try { startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open YouTubeActivity", e) }
+                } else if (section == "video") {
+                    try { startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java)) }
+                    catch (e: Throwable) { AppLog.e(LOGT, "cannot open VideoHomeActivity", e) }
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -803,7 +797,7 @@ class MainActivity : AppCompatActivity() {
         pendingSendTo?.let { pendingSendTo = null; handleSendTo(it) }
     }
 
-    /** rizwans2://open | files | browser | dialer | sms | winlator | youtube | start | quick  (anything else just opens the launcher). */
+    /** rizwans2://open | files | browser | dialer | sms | winlator | youtube | video | start | quick  (anything else just opens the launcher). */
     internal fun handleDeepLink(uri: Uri) {
         AppLog.i(LOGT, "deep link: $uri")
         if (!isUIInitialized || !::shell.isInitialized) { pendingDeepLink = uri; return }
@@ -819,6 +813,7 @@ class MainActivity : AppCompatActivity() {
                 "winlator" -> WinlatorLauncher.open(this)
                 "parallel" -> startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java))
                 "youtube" -> startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java))
+                "video" -> startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java))
                 else -> { // "open" and anything unknown
                     if (shell.isStartOpen()) shell.closeStart()
                     switchToSection("desktop")
@@ -887,26 +882,6 @@ class MainActivity : AppCompatActivity() {
     internal fun highlightTab(activeIndex: Int) {
         val names = arrayOf("files", "browser", "dialer", "sms")
         shell.setActive(names.getOrElse(activeIndex) { "desktop" })
-    }
-
-    // =====================================================================
-    // VIDEO PiP (file player only — no app-wide PiP)
-    // =====================================================================
-
-    override fun onPictureInPictureModeChanged(
-        isInPictureInPictureMode: Boolean,
-        newConfig: android.content.res.Configuration
-    ) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        isInPipMode = isInPictureInPictureMode
-        if (isInPictureInPictureMode) {
-            tabLayout.visibility = View.GONE
-            pipControlOverlay?.visibility = View.GONE
-            pipHideHandler?.removeCallbacks(pipHideRunnable ?: return)
-        } else {
-            tabLayout.visibility = View.VISIBLE
-            pipControlOverlay?.visibility = View.VISIBLE
-        }
     }
 
     internal var dialInput: EditText? = null

@@ -142,29 +142,9 @@ public abstract class AppUtils {
     }
 
     public static Toast showToast(final Context context, final String text) {
-        if (!isUiThread()) {
-            if (context instanceof Activity) {
-                ((Activity)context).runOnUiThread(() -> showToast(context, text));
-            }
-            return null;
-        }
-
-        if (globalToastReference != null) {
-            Toast toast = globalToastReference.get();
-            if (toast != null) toast.cancel();
-            globalToastReference = null;
-        }
-
-        View view = LayoutInflater.from(context).inflate(R.layout.custom_toast, null);
-        ((TextView)view.findViewById(R.id.TextView)).setText(text);
-
-        Toast toast = new Toast(context);
-        toast.setGravity(Gravity.CENTER | Gravity.BOTTOM, 0, 50);
-        toast.setDuration(text.length() >= 40 ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
-        toast.setView(view);
-        toast.show();
-        globalToastReference = new WeakReference<>(toast);
-        return toast;
+        // glass pill (GlassMessage) instead of the system toast; kept as Toast-returning for source compatibility
+        GlassMessage.show(context, text, text != null && text.length() >= 40);
+        return null;
     }
 
     public static PopupWindow showPopupWindow(View anchor, View contentView) {

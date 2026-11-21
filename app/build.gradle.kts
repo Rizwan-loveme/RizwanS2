@@ -16,8 +16,8 @@ android {
         // 28: Android blocks running programs from the app data folder above 28 (Winlator runs box64 / wine
         // there). Same reason the BlackBox engine prefers 28. See README "Winlator inside Win11", part 3.
         targetSdk = 28
-        versionCode = 116
-        versionName = "2.4.0"
+        versionCode = 118
+        versionName = "2.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -70,6 +70,8 @@ dependencies {
     implementation(project(":winlator"))
     // Built-in YouTube app (package com.srizwan.YouTube)
     implementation(project(":youtube"))
+    // Glass video player + built-in Video app (package com.srizwan.video), used by the File Manager
+    implementation(project(":video"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

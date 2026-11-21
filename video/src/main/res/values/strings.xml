@@ -1,0 +1,21 @@
+<resources>
+    <!-- The Video app shows no text of its own: these are content descriptions (read by screen readers). -->
+    <string name="vp_cd_play">Play</string>
+    <string name="vp_cd_pause">Pause</string>
+    <string name="vp_cd_rewind">Back 10 seconds</string>
+    <string name="vp_cd_forward">Forward 10 seconds</string>
+    <string name="vp_cd_fullscreen">Fullscreen</string>
+    <string name="vp_cd_float">Floating window</string>
+    <string name="vp_cd_close">Close</string>
+    <string name="vp_cd_background">Background playback</string>
+    <string name="vp_cd_quality">Video resolution</string>
+    <string name="vp_cd_speed">Playback speed</string>
+    <string name="vp_cd_restart">Start over</string>
+    <string name="vp_cd_retry">Retry</string>
+    <string name="vp_cd_next">Next video</string>
+    <string name="vp_cd_prev">Previous video</string>
+    <string name="vp_cd_back">Back</string>
+    <string name="vp_cd_refresh">Refresh the list</string>
+    <string name="vp_cd_empty">No videos found</string>
+    <string name="vp_cd_lock">Permission needed</string>
+</resources>

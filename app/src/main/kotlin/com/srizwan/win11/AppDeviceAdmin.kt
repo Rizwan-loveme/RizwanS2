@@ -6,7 +6,7 @@ import android.app.admin.DeviceAdminReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
+import com.srizwan.win11.Toast
 
 /**
  * Device-admin receiver used only to make uninstalling the app a deliberate,

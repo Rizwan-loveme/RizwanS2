@@ -67,28 +67,6 @@ import java.util.zip.ZipInputStream
 // File manager and file viewers: text, image, PDF, video, zip (split out of MainActivity).
 // All functions are extensions of MainActivity; state lives in MainActivity.
 
-internal fun MainActivity.enterFilePip(videoView: VideoView) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-        Toast.makeText(this, "PiP requires Android 8.0+", Toast.LENGTH_SHORT).show()
-        return
-    }
-    try {
-        val builder =
-            android.app.PictureInPictureParams.Builder()
-                .setAspectRatio(android.util.Rational(16, 9))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setSeamlessResizeEnabled(true)
-        }
-        val rect = Rect()
-        videoView.getGlobalVisibleRect(rect)
-        if (!rect.isEmpty) builder.setSourceRectHint(rect)
-        pipVideoView = videoView
-        enterPictureInPictureMode(builder.build())
-    } catch (e: Exception) {
-        Toast.makeText(this, "PiP error: ${e.message}", Toast.LENGTH_SHORT).show()
-    }
-}
-
 // =====================================================================
 // CUSTOM URL SCHEME
 // =====================================================================
@@ -110,8 +88,7 @@ internal fun MainActivity.createFileManagerView(): LinearLayout {
 internal fun MainActivity.openFile(file: File) {
     when {
         file.isDirectory -> loadFiles(file)
-        file.name.endsWith(".mp4", true) || file.name.endsWith(".mkv", true) ||
-                file.name.endsWith(".avi", true) -> playVideo(file)
+        isVideoFile(file.name) -> playVideo(file)
         file.name.endsWith(".txt", true) -> openTextFile(file)
         file.name.endsWith(".pdf", true) -> openPdfFile(file)
         file.name.endsWith(".zip", true) -> showZipOptions(file)
@@ -297,225 +274,30 @@ internal fun MainActivity.extractZipToDcim(zipFile: File) {
 }
 
 // ── Video Player ─────────────────────────────────────────────
-
+// Videos open in the glass video player of the :video module (package com.srizwan.video): the same player as the
+// built-in YouTube app (glass controls, gestures, speed, 4K resolution chip, floating popup window, background
+// playback, resume). The old VideoView dialog and its picture-in-picture code are gone.
 
 internal fun MainActivity.playVideo(file: File) {
     try {
-        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            dialog.window?.attributes?.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
-        dialog.window?.setFlags(
-            WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN
-        )
-        @Suppress("DEPRECATION")
-        dialog.window?.decorView?.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
-        val rootFrame = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-        // FIX: Use 'this' (Activity context) for VideoView, not applicationContext
-        val videoView = VideoView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER
-            )
-            setVideoPath(file.absolutePath)
-            setOnPreparedListener { mp ->
-                mp.isLooping = false
-                mp.setVideoScalingMode(android.media.MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-                start()
-            }
-            setOnErrorListener { _, _, _ ->
-                Toast.makeText(
-                    act, "Cannot play this video", Toast.LENGTH_SHORT
-                ).show()
-                true
-            }
-        }
-        rootFrame.addView(videoView)
-
-        val controlOverlay = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#CC000000"))
-            setPadding(dp(8), dp(8), dp(8), dp(16))
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM
-            )
-            visibility = View.GONE
-        }
-        pipControlOverlay = controlOverlay
-
-        val topControls = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val playPauseBtn = Button(this).apply {
-            iconOnly(R.drawable.ic_w_pause, 26, Color.WHITE)
-            setBackgroundColor(Color.TRANSPARENT)
-            setTextColor(Color.WHITE)
-            setOnClickListener {
-                if (videoView.isPlaying) {
-                    videoView.pause(); iconOnly(R.drawable.ic_w_play, 26, Color.WHITE)
-                } else {
-                    videoView.start(); iconOnly(R.drawable.ic_w_pause, 26, Color.WHITE)
-                }
-            }
-        }
-        val seekBar = SeekBar(this).apply {
-            layoutParams =
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        val timeText = TextView(this).apply {
-            text = "00:00 / 00:00"
-            setTextColor(Color.WHITE)
-            textSize = 12f
-            setPadding(dp(8), 0, dp(8), 0)
-        }
-        topControls.addView(playPauseBtn)
-        topControls.addView(seekBar)
-        topControls.addView(timeText)
-
-        val orientationControls = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, dp(4), 0, dp(4))
-        }
-
-        fun makeCtrlBtn(
-            label: String,
-            color: String = "#333333",
-            w: Int = 70,
-            icon: Int? = null,
-            action: () -> Unit
-        ) = Button(this).apply {
-            text = label
-            if (icon != null) {
-                if (label.isEmpty()) iconOnly(icon, 20, Color.WHITE) else iconStart(icon, 16, Color.WHITE, 6)
-            }
-            textSize = 12f
-            setBackgroundColor(Color.parseColor(color))
-            setTextColor(Color.WHITE)
-            layoutParams =
-                LinearLayout.LayoutParams(dp(w), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    setMargins(dp(4), 0, dp(4), 0)
-                }
-            setOnClickListener { action() }
-        }
-
-        orientationControls.addView(makeCtrlBtn("", icon = R.drawable.ic_w_portrait) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        })
-        orientationControls.addView(makeCtrlBtn("", icon = R.drawable.ic_w_landscape) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        })
-        orientationControls.addView(makeCtrlBtn("", icon = R.drawable.ic_qs_rotate) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-        })
-        val pipBtn = makeCtrlBtn("PiP", "#1565C0", 80, R.drawable.ic_w_pip) {
-            enterFilePip(videoView)
-        }.apply {
-            isEnabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-            alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 1f else 0.4f
-        }
-        orientationControls.addView(pipBtn)
-        orientationControls.addView(makeCtrlBtn("", "#D32F2F", 60, R.drawable.ic_qs_close) {
-            try { videoView.stopPlayback() } catch (e: Exception) { }
-            pipVideoView = null
-            pipControlOverlay = null
-            pipHideHandler = null
-            pipHideRunnable = null
-            dialog.dismiss()
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        })
-
-        controlOverlay.addView(topControls)
-        controlOverlay.addView(orientationControls)
-        rootFrame.addView(controlOverlay)
-
-        val hideHandler = Handler(Looper.getMainLooper())
-        pipHideHandler = hideHandler
-        val hideRunnable = Runnable { controlOverlay.visibility = View.GONE }
-        pipHideRunnable = hideRunnable
-
-        fun showControlsTemporarily() {
-            hideHandler.removeCallbacks(hideRunnable)
-            if (!isInPipMode) controlOverlay.visibility = View.VISIBLE
-            hideHandler.postDelayed(hideRunnable, 3000L)
-        }
-
-        rootFrame.setOnClickListener {
-            if (isInPipMode) return@setOnClickListener
-            if (controlOverlay.visibility == View.VISIBLE) {
-                hideHandler.removeCallbacks(hideRunnable)
-                controlOverlay.visibility = View.GONE
-            } else {
-                showControlsTemporarily()
-            }
-        }
-
-        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) videoView.seekTo(progress)
-            }
-            override fun onStartTrackingTouch(sb: SeekBar?) {
-                hideHandler.removeCallbacks(hideRunnable)
-            }
-            override fun onStopTrackingTouch(sb: SeekBar?) { showControlsTemporarily() }
-        })
-
-        val timer = Timer()
-        timer.schedule(object : TimerTask() {
-            override fun run() {
-                runOnUiThread {
-                    try {
-                        if (videoView.isPlaying) {
-                            val cur = videoView.currentPosition
-                            val dur = videoView.duration
-                            if (dur > 0) {
-                                seekBar.max = dur
-                                seekBar.progress = cur
-                                timeText.text = "${formatTime(cur)} / ${formatTime(dur)}"
-                            }
-                        }
-                    } catch (e: Exception) { }
-                }
-            }
-        }, 0, 1000)
-
-        dialog.setOnDismissListener {
-            timer.cancel()
-            hideHandler.removeCallbacks(hideRunnable)
-            pipVideoView = null
-            pipControlOverlay = null
-            pipHideHandler = null
-            pipHideRunnable = null
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-        dialog.setContentView(rootFrame)
-        dialog.show()
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    } catch (e: Exception) {
+        // the videos of the same folder (name order) = next / previous and auto-play of the next one
+        val around = file.parentFile?.listFiles()
+            ?.filter { it.isFile && isVideoFile(it.name) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { it.absolutePath }
+            ?: emptyList()
+        com.srizwan.video.player.VideoPlayerActivity.start(this, file.absolutePath, file.name, around)
+    } catch (e: Throwable) {
         Toast.makeText(this, "Error playing video: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }
 
-
-internal fun MainActivity.formatTime(millis: Int): String {
-    if (millis < 0) return "00:00"
-    val s = millis / 1000; val m = s / 60; val h = m / 60
-    return if (h > 0) String.format("%02d:%02d:%02d", h, m % 60, s % 60)
-    else String.format("%02d:%02d", m, s % 60)
+/** Video files the File Manager opens in the video player (`ts` is left out: it is almost always TypeScript). */
+internal fun MainActivity.isVideoFile(name: String): Boolean {
+    val ext = name.substringAfterLast('.', "").lowercase()
+    return ext in setOf(
+        "mp4", "m4v", "mkv", "webm", "3gp", "3gpp", "3g2", "mov", "avi", "flv", "wmv", "mpg", "mpeg", "ogv"
+    )
 }
 
 // ── Text Viewer ──────────────────────────────────────────────

@@ -26,3 +26,6 @@ include(":compiler")
 include(":winlator")
 // Built-in YouTube app (native client: NewPipeExtractor + Media3), package com.srizwan.YouTube
 include(":youtube")
+// Glass video player (Media3 ExoPlayer, 4K ready) + the built-in Video app, package com.srizwan.video.
+// Used by the File Manager (video files), the Start menu and the Home screen.
+include(":video")

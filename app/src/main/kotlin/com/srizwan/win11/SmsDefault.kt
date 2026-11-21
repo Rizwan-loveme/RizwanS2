@@ -22,7 +22,7 @@ import android.telephony.SmsManager
 import android.view.Gravity
 import android.view.View
 import android.widget.TextView
-import android.widget.Toast
+import com.srizwan.win11.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 

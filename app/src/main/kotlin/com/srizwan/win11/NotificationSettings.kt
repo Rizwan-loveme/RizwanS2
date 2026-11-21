@@ -11,7 +11,7 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
-import android.widget.Toast
+import com.srizwan.win11.Toast
 
 // =====================================================================
 // NOTIFICATION SETTINGS: master on/off, per-app on/off (every installed

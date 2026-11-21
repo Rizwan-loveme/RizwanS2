@@ -70,7 +70,7 @@ private fun fmtSize(size: Long): String {
 }
 
 internal fun fileTypeColor(ext: String): Int = when (ext) {
-    "mp4", "mkv", "avi", "mov", "webm", "3gp", "flv", "wmv" -> Color.parseColor("#A78BFA")
+    "mp4", "m4v", "mkv", "avi", "mov", "webm", "3gp", "3gpp", "3g2", "flv", "wmv", "mpg", "mpeg", "ogv" -> Color.parseColor("#A78BFA")
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic" -> Color.parseColor("#29A3E0")
     "mp3", "m4a", "wav", "ogg", "flac", "aac", "opus" -> Color.parseColor("#E8579B")
     "pdf" -> Color.parseColor("#E5484D")

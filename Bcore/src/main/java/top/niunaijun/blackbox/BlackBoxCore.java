@@ -2118,7 +2118,7 @@ public class BlackBoxCore extends ClientConfiguration {
                     
                     new Handler(Looper.getMainLooper()).post(() -> {
                          try {
-                             android.widget.Toast.makeText(getContext(), "Log Upload Failed: " + error, android.widget.Toast.LENGTH_LONG).show();
+                             top.niunaijun.blackbox.util.GlassMessage.show(getContext(), "Log Upload Failed: " + error, true);
                          } catch (Exception e) {}
                         if (listener != null) {
                             listener.onFailure(error);
@@ -2149,7 +2149,7 @@ public class BlackBoxCore extends ClientConfiguration {
                     
                      new Handler(Looper.getMainLooper()).post(() -> {
                          try {
-                             android.widget.Toast.makeText(getContext(), "Log Upload Success", android.widget.Toast.LENGTH_SHORT).show();
+                             top.niunaijun.blackbox.util.GlassMessage.show(getContext(), "Log Upload Success", false);
                          } catch (Exception e) {}
                          if (listener != null) {
                              listener.onSuccess();

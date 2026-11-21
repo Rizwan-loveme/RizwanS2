@@ -26,7 +26,7 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.DisplayMetrics
 import android.view.WindowManager
-import android.widget.Toast
+import com.srizwan.win11.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.io.File

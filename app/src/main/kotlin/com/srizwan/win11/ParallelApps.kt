@@ -3,7 +3,7 @@ package com.srizwan.win11
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.widget.Toast
+import com.srizwan.win11.Toast
 import com.srizwan.win11.parallel.Engine
 
 // =====================================================================

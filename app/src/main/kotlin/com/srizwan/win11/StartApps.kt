@@ -102,6 +102,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_PARALLEL = "builtin.parallel"
         private const val BUILTIN_CLS_WINLATOR = "builtin.winlator"
         private const val BUILTIN_CLS_YOUTUBE = "builtin.youtube"
+        private const val BUILTIN_CLS_VIDEO = "builtin.video"
+        /** Film frame (Material "movie"): the built-in Video app (:video module, package com.srizwan.video). */
+        private const val VIDEO_PATH =
+            "M18,4l2,4h-3l-2,-4h-2l2,4h-3l-2,-4H8l2,4H5L3,4H2.99C1.9,4 2,5 2,6v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4h-4z"
         /** Rounded screen with a hollow play triangle (even-odd fill): the built-in YouTube app. */
         private const val YOUTUBE_PATH =
             "M21.6,7.2c-0.2,-0.9 -0.9,-1.5 -1.8,-1.7C18.2,5 12,5 12,5s-6.2,0 -7.8,0.5c-0.9,0.2 -1.6,0.8 -1.8,1.7C2,8.8 2,12 2,12s0,3.2 0.4,4.8c0.2,0.9 0.9,1.5 1.8,1.7C5.8,19 12,19 12,19s6.2,0 7.8,-0.5c0.9,-0.2 1.6,-0.8 1.8,-1.7C22,15.2 22,12 22,12s0,-3.2 -0.4,-4.8z M10,15V9l5.2,3z"
@@ -237,6 +241,12 @@ class AppRepository(private val ctx: Context) {
             "YouTube", ctx.packageName, BUILTIN_CLS_YOUTUBE,
             BuiltInIconDrawable(YOUTUBE_PATH, Color.parseColor("#FF3B30"), evenOdd = true),
             section = "youtube"
+        ),
+        // Built-in Video app (:video module, com.srizwan.video.home.VideoHomeActivity), vector icon only
+        AppEntry(
+            "Video", ctx.packageName, BUILTIN_CLS_VIDEO,
+            BuiltInIconDrawable(VIDEO_PATH, Color.parseColor("#FF6B8B")),
+            section = "video"
         )
     ) + (
         // Winlator (PC software: .exe via Wine + Box64) exists only for 64-bit ARM phones.

@@ -20,6 +20,40 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Search screen (step 3): suggestions, filters (all / videos / channels / playlists), results.
+             Opened from the search button of YouTubeActivity (YtNav.openSearch). -->
+        <activity
+            android:name="com.srizwan.YouTube.search.SearchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTube"
+            android:label="YouTube"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- History screen (step 4): watched videos and past searches (local, from YtHistory). -->
+        <activity
+            android:name="com.srizwan.YouTube.history.HistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTube"
+            android:label="YouTube"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" />
+
+        <!-- Channel screen (step 5): header + Videos / Playlists tabs. Opened with YtNav.openChannel. -->
+        <activity
+            android:name="com.srizwan.YouTube.channel.ChannelActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTube"
+            android:label="YouTube"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" />
+
+        <!-- Playlist screen (step 5): header + the videos of the playlist. Opened with YtNav.openPlaylist. -->
+        <activity
+            android:name="com.srizwan.YouTube.playlist.PlaylistActivity"
+            android:exported="false"
+            android:theme="@style/Theme.YouTube"
+            android:label="YouTube"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" />
+
         <!-- Video player of the built-in YouTube app (part 1 of the player plan).
              Not exported: it is opened from inside Win11 with PlayerActivity.start().
              Part 7: no picture-in-picture any more; the video can float in a popup window over any app

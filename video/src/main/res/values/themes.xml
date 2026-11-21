@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Video" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/vp_bg</item>
+        <item name="android:statusBarColor">@color/vp_bg</item>
+        <item name="android:navigationBarColor">@color/vp_bg</item>
+        <item name="colorAccent">@color/vp_accent</item>
+    </style>
+</resources>

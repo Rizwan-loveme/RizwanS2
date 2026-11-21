@@ -25,6 +25,7 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import com.srizwan.YouTube.R
+import com.srizwan.YouTube.data.YtHistory
 import com.srizwan.YouTube.data.YtRepository
 import com.srizwan.YouTube.databinding.ActivityPlayerBinding
 import com.srizwan.YouTube.ui.GlassDrawable
@@ -454,6 +455,13 @@ class PlayerActivity : AppCompatActivity() {
                     )
                 }
                     .onSuccess {
+                        // step 7: the video is in the local watch history (newest first; watching it again moves it up)
+                        YtHistory.init(this)
+                        YtHistory.addWatch(
+                            url = wanted, title = details.title, thumb = details.thumb,
+                            channel = details.uploader, channelUrl = details.uploaderUrl,
+                            duration = details.duration
+                        )
                         b.fetchProgress.visibility = View.GONE
                         b.errorBox.visibility = View.GONE
                         if (started) attachPlayer()

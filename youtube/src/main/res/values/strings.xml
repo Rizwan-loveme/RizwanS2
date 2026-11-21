@@ -14,4 +14,27 @@
     <string name="yt_cd_retry">Retry</string>
     <string name="yt_cd_paste">Paste a link</string>
     <string name="yt_cd_go">Play</string>
+    <string name="yt_cd_search">Search</string>
+    <string name="yt_cd_back">Back</string>
+    <string name="yt_cd_clear">Clear</string>
+    <string name="yt_cd_fill_query">Use this text in the search field</string>
+    <string name="yt_cd_remove_history">Remove from search history</string>
+    <string name="yt_cd_clear_history">Clear search history</string>
+    <string name="yt_cd_filter_all">All results</string>
+    <string name="yt_cd_filter_videos">Videos only</string>
+    <string name="yt_cd_filter_channels">Channels only</string>
+    <string name="yt_cd_filter_playlists">Playlists only</string>
+    <string name="yt_cd_no_results">No results</string>
+    <string name="yt_cd_history">History</string>
+    <string name="yt_cd_tab_watched">Watched videos</string>
+    <string name="yt_cd_tab_searches">Search history</string>
+    <string name="yt_cd_remove_watch">Remove from watch history</string>
+    <string name="yt_cd_clear_all">Clear all</string>
+    <string name="yt_cd_cancel">Cancel</string>
+    <string name="yt_cd_empty_history">Nothing here yet</string>
+    <string name="yt_cd_tab_videos">Videos</string>
+    <string name="yt_cd_tab_playlists">Playlists</string>
+    <string name="yt_cd_channel_avatar">Channel picture</string>
+    <string name="yt_cd_description">Show more or less of the description</string>
+    <string name="yt_cd_home">Home</string>
 </resources>

@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Toast;
 
 import top.niunaijun.blackbox.utils.AppFailureNotifier;
 import top.niunaijun.blackbox.utils.FailureLog;
@@ -93,7 +92,7 @@ public class AppFailureActivity extends Activity {
                 String full = FailureLog.read(getApplicationContext(), pkg);
                 if (full != null) all.append("\n========== ORIGINAL ERROR LOG ==========\n").append(full);
                 cm.setPrimaryClip(ClipData.newPlainText("app-failure", all.toString()));
-                Toast.makeText(this, "কপি হয়েছে (original error লগসহ)", Toast.LENGTH_SHORT).show();
+                top.niunaijun.blackbox.util.GlassMessage.show(this, "কপি হয়েছে (original error লগসহ)", false);
             } catch (Throwable ignored) {
             }
         });

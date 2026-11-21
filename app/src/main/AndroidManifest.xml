@@ -101,7 +101,6 @@
             android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:supportsPictureInPicture="true"
             android:launchMode="singleTask"
             android:stateNotNeeded="true"
             android:excludeFromRecents="false">
@@ -115,7 +114,7 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, start, quick) -->
+            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, start, quick) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

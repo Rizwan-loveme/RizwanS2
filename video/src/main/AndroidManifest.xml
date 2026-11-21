@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- "Display over other apps": the floating popup player (FloatingPlayer) and the glass toast over other apps -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application>
+        <!-- Built-in Video app: the glass list of the videos on the device (Start menu / Home screen icon). -->
+        <activity
+            android:name="com.srizwan.video.home.VideoHomeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Video"
+            android:label="Video"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" />
+
+        <!-- The player screen. Opened from the File Manager / the Video app with VideoPlayerActivity.start(),
+             and by other apps that "open" a video (VIEW intent, file / content / http links). -->
+        <activity
+            android:name="com.srizwan.video.player.VideoPlayerActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Video"
+            android:label="Video"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode|layoutDirection"
+            android:resizeableActivity="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+        </activity>
+
+        <!-- Background playback: foreground MediaSessionService around the shared player. Started with
+             startForegroundService() from the visible player screen. -->
+        <service
+            android:name="com.srizwan.video.player.PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

@@ -35,7 +35,7 @@ import kotlin.math.abs
  *
  *  - drag the window anywhere; pinch to resize it (the shape follows the video: wide, square or tall)
  *  - tap the picture to show / hide the controls
- *  - the cross stops the video and removes the window
+ *  - the cross stops the video and removes the window; it appears with the controls and fades out with them
  *
  * It needs "Display over other apps" ([canDraw]). The player screen calls [show]; opening the player screen
  * again calls [hide], which gives the picture back without stopping anything.
@@ -105,11 +105,14 @@ object FloatingPlayer {
         b.floatClose.background = GlassDrawable(ctx, 20f, strong = true)
         b.floatClose.setImageDrawable(VectorLabelDrawable(ctx, null, R.drawable.ic_close, iconSizeDp = 18f))
         b.floatClose.setOnClickListener { close() }
+        // the cross follows the controls: it fades in with a touch and fades out with them after a few seconds
+        b.floatControls.onVisibilityChanged = { visible -> setCloseVisible(b, visible) }
 
         YtPlayer.setVideoEnabled(true)
         b.floatPlayer.player = player
         b.floatControls.compact = true
         b.floatControls.bind(player)
+        setCloseVisible(b, b.floatControls.isOpen, animate = false)
         player.addListener(playerListener)
         attachedPlayer = player
 
@@ -162,6 +165,8 @@ object FloatingPlayer {
         attachedPlayer?.removeListener(playerListener)
         attachedPlayer = null
         if (b != null) {
+            b.floatControls.onVisibilityChanged = null
+            b.floatClose.animate().cancel()
             b.floatControls.bind(null)
             b.floatPlayer.player = null
             runCatching { windowManager?.removeViewImmediate(b.root) }
@@ -175,6 +180,28 @@ object FloatingPlayer {
     fun close() {
         hide()
         YtPlayer.release()
+    }
+
+    /**
+     * Shows / hides the cross together with the controls. While it is hidden it is INVISIBLE (not just
+     * transparent), so a touch on that spot reaches the window and brings the controls (and the cross) back.
+     */
+    private fun setCloseVisible(b: FloatPlayerBinding, visible: Boolean, animate: Boolean = true) {
+        val v = b.floatClose
+        v.animate().cancel()
+        if (!animate) {
+            v.alpha = if (visible) 1f else 0f
+            v.visibility = if (visible) View.VISIBLE else View.INVISIBLE
+            return
+        }
+        if (visible) {
+            v.visibility = View.VISIBLE
+            v.animate().alpha(1f).setDuration(140L).start()
+        } else {
+            v.animate().alpha(0f).setDuration(140L).withEndAction {
+                if (b.floatControls.isOpen.not()) v.visibility = View.INVISIBLE
+            }.start()
+        }
     }
 
     // ---- touch: drag, pinch, tap ----
