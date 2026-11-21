@@ -135,7 +135,7 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             
             
             if ("com.android.vending".equals(packageName)) {
-                return createFakeGooglePlayServicesPackageInfo();
+                return getPlayStorePackageInfo(flags);
             }
             
             PackageInfo packageInfo = BlackBoxCore.getBPackageManager().getPackageInfo(packageName, flags, BlackBoxCore.getUserId());
@@ -171,6 +171,31 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             return null;
         }
         
+        /**
+         * Facebook Lite (ModularityInstallSourceChecker, X.0LB.A00) calls
+         * getPackageInfo("com.android.vending", GET_SIGNATURES) and does `pi.signatures.length`.
+         * The old fake PackageInfo had no signatures -> NullPointerException "length of null array"
+         * on every start. Prefer the real Play Store info of the host device (real certificate), and
+         * otherwise return the fake one with a non-null signatures array.
+         */
+        private PackageInfo getPlayStorePackageInfo(int flags) {
+            try {
+                PackageInfo real = BlackBoxCore.getPackageManager().getPackageInfo("com.android.vending", flags);
+                if (real != null) {
+                    if ((flags & PackageManager.GET_SIGNATURES) != 0 && (real.signatures == null || real.signatures.length == 0)) {
+                        real.signatures = new android.content.pm.Signature[]{new android.content.pm.Signature(new byte[]{0})};
+                    }
+                    return real;
+                }
+            } catch (Throwable ignored) {
+            }
+            PackageInfo fake = createFakeGooglePlayServicesPackageInfo();
+            if ((flags & PackageManager.GET_SIGNATURES) != 0) {
+                fake.signatures = new android.content.pm.Signature[]{new android.content.pm.Signature(new byte[]{0})};
+            }
+            return fake;
+        }
+
         private PackageInfo createFakeGooglePlayServicesPackageInfo() {
             PackageInfo packageInfo = new PackageInfo();
             packageInfo.packageName = "com.android.vending";
