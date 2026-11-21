@@ -13,6 +13,7 @@ import android.content.pm.PackageParser;
 import android.content.pm.PermissionInfo;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ServiceInfo;
+import android.content.pm.Signature;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.Build;
@@ -199,25 +200,63 @@ public class PackageManagerCompat {
             base = BlackBoxCore.getContext().getPackageManager().getPackageInfo(p.packageName, flags);
         } catch (PackageManager.NameNotFoundException ignored) {
         }
+        // Some apps (e.g. Facebook Lite) do `pi.signatures.length` unconditionally. Never hand out null.
         if ((flags & PackageManager.GET_SIGNATURES) != 0) {
-            if (base == null) {
-                pi.signatures = p.mSignatures;
-            } else {
-                pi.signatures = base.signatures;
-            }
+            pi.signatures = resolveSignatures(p, base);
         }
         if (BuildCompat.isPie()) {
             if ((flags & PackageManager.GET_SIGNING_CERTIFICATES) != 0) {
-                if (base == null) {
-                    PackageParser.SigningDetails signingDetails = PackageParser.SigningDetails.UNKNOWN;
-                    BRPackageParserSigningDetails.get(signingDetails)._set_signatures(p.mSigningDetails.signatures);
-                    pi.signingInfo = BRSigningInfo.get()._new(signingDetails);
-                } else {
+                if (base != null && base.signingInfo != null) {
                     pi.signingInfo = base.signingInfo;
+                } else {
+                    try {
+                        Signature[] sigs = resolveSignatures(p, base);
+                        PackageParser.SigningDetails signingDetails = PackageParser.SigningDetails.UNKNOWN;
+                        BRPackageParserSigningDetails.get(signingDetails)._set_signatures(sigs);
+                        pi.signingInfo = BRSigningInfo.get()._new(signingDetails);
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
         }
         return pi;
+    }
+
+    private static Signature[] resolveSignatures(BPackage p, PackageInfo base) {
+        if (base != null && base.signatures != null && base.signatures.length > 0) {
+            return base.signatures;
+        }
+        if (p.mSignatures != null && p.mSignatures.length > 0) {
+            return p.mSignatures;
+        }
+        if (BuildCompat.isPie() && p.mSigningDetails != null
+                && p.mSigningDetails.signatures != null && p.mSigningDetails.signatures.length > 0) {
+            p.mSignatures = p.mSigningDetails.signatures;
+            return p.mSignatures;
+        }
+        // Certificates were not collected at install time (or came back null): read them from the APK.
+        try {
+            if (p.baseCodePath != null) {
+                PackageManager hostPm = BlackBoxCore.getContext().getPackageManager();
+                PackageInfo archive = hostPm.getPackageArchiveInfo(p.baseCodePath, PackageManager.GET_SIGNATURES);
+                if (archive != null && archive.signatures != null && archive.signatures.length > 0) {
+                    p.mSignatures = archive.signatures;
+                    return p.mSignatures;
+                }
+                if (BuildCompat.isPie()) {
+                    archive = hostPm.getPackageArchiveInfo(p.baseCodePath, PackageManager.GET_SIGNING_CERTIFICATES);
+                    if (archive != null && archive.signingInfo != null) {
+                        Signature[] s = archive.signingInfo.getApkContentsSigners();
+                        if (s != null && s.length > 0) {
+                            p.mSignatures = s;
+                            return s;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return new Signature[0];
     }
 
     public static ActivityInfo generateActivityInfo(BPackage.Activity a, int flags, BPackageUserState state, int userId) {
