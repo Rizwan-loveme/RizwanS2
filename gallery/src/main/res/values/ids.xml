@@ -1,0 +1,4 @@
+<resources>
+    <!-- Tag of an ImageView that is being filled by ImageLoader: the request that owns the view right now. -->
+    <item name="gl_tag_request" type="id" />
+</resources>

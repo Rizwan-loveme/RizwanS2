@@ -103,7 +103,8 @@ internal fun MainActivity.openFile(file: File) {
 internal fun MainActivity.isImageFile(name: String): Boolean {
     val lower = name.lowercase()
     return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") ||
-            lower.endsWith(".gif") || lower.endsWith(".bmp") || lower.endsWith(".webp")
+            lower.endsWith(".gif") || lower.endsWith(".bmp") || lower.endsWith(".webp") ||
+            lower.endsWith(".heic") || lower.endsWith(".heif")
 }
 
 
@@ -421,109 +422,31 @@ internal fun MainActivity.openTextFile(file: File) {
 }
 
 // ── Image Viewer ──────────────────────────────────────────────
-
+// Pictures open in the glass viewer of the :gallery module (package com.srizwan.gallery): swipe left / right through the
+// folder, pinch / double-tap zoom, swipe down to close, share / delete / rename / rotate / info / slideshow. The old
+// full-screen dialog (one picture, pinch only) and its bitmap loader are gone.
 
 internal fun MainActivity.openImageFile(file: File) {
     try {
-        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            dialog.window?.attributes?.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
-        val rootFrame = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
-        val bitmap = loadBitmapSafe(file)
-        if (bitmap == null) {
-            Toast.makeText(this, "Cannot open image", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val zoomMatrix = Matrix()
-        var zoomScale = 1f
-        val imageView = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setImageBitmap(bitmap)
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER
-            )
-        }
-        val scaleDetector =
-            ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                override fun onScale(d: ScaleGestureDetector): Boolean {
-                    zoomScale = (zoomScale * d.scaleFactor).coerceIn(0.5f, 8f)
-                    zoomMatrix.setScale(zoomScale, zoomScale, d.focusX, d.focusY)
-                    imageView.imageMatrix = zoomMatrix
-                    return true
-                }
-            })
-        imageView.setOnTouchListener { v, event ->
-            scaleDetector.onTouchEvent(event)
-            if (event.action == MotionEvent.ACTION_UP && !scaleDetector.isInProgress) v.performClick()
-            true
-        }
-        rootFrame.addView(imageView)
-        val topOverlay = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#CC000000"))
-            setPadding(dp(12), dp(8), dp(8), dp(8))
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP
-            )
-        }
-        val infoText = TextView(this).apply {
-            text =
-                "${file.name}  |  ${bitmap.width}×${bitmap.height}  |  ${getSize(file.length())}"
-            setTextColor(Color.WHITE)
-            textSize = 12f
-            layoutParams =
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            setSingleLine(true)
-            ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
-        }
-        val closeBtn = Button(this).apply {
-            iconOnly(R.drawable.ic_qs_close, 18, Color.WHITE)
-            setBackgroundColor(Color.parseColor("#D32F2F"))
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
-            setPadding(0, 0, 0, 0)
-            setOnClickListener { dialog.dismiss() }
-        }
-        topOverlay.addView(infoText)
-        topOverlay.addView(closeBtn)
-        rootFrame.addView(topOverlay)
-        rootFrame.addView(TextView(this).apply {
-            text = "Pinch to zoom"
-            setTextColor(Color.parseColor("#AAFFFFFF"))
-            textSize = 11f
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#88000000"))
-            setPadding(dp(16), dp(6), dp(16), dp(6))
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            ).apply { setMargins(0, 0, 0, dp(24)) }
-        })
-        dialog.setContentView(rootFrame)
-        dialog.show()
-    } catch (e: Exception) {
+        // The pictures of this folder in the File Manager's own order (what the list on screen shows), so swiping moves
+        // through them the same way playVideo() hands over the videos around the one that was tapped.
+        val shown = if (::explorerUi.isInitialized) explorerUi.shownFiles() else emptyList()
+        val path = file.absolutePath
+        val around: List<String> =
+            if (shown.any { it.path == path }) {
+                shown.filter { !it.isDir && isImageFile(it.name) }.map { it.path }
+            } else {
+                // not the folder on screen (or nothing shown yet): the folder's pictures in name order
+                file.parentFile?.listFiles()
+                    ?.filter { it.isFile && isImageFile(it.name) }
+                    ?.sortedBy { it.name.lowercase() }
+                    ?.map { it.absolutePath }
+                    ?: emptyList()
+            }
+        com.srizwan.gallery.viewer.GalleryViewerActivity.start(this, path, around)
+    } catch (e: Throwable) {
         Toast.makeText(this, "Image error: ${e.message}", Toast.LENGTH_SHORT).show()
     }
-}
-
-
-internal fun MainActivity.loadBitmapSafe(file: File): Bitmap? {
-    return try {
-        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.absolutePath, opts)
-        val max = 2048; var sample = 1
-        while ((opts.outWidth / sample) > max || (opts.outHeight / sample) > max) sample *= 2
-        BitmapFactory.decodeFile(
-            file.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample }
-        )
-    } catch (e: Exception) { null }
 }
 
 

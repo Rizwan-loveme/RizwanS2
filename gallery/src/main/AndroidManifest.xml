@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Reading the device's pictures (Android 13+ uses READ_MEDIA_IMAGES, older versions READ_EXTERNAL_STORAGE) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Delete / rename / rotate-save write to the files (the app targets API 28: plain File access once granted), and the
+         view menu opens "All files access" on Android 11+ (step 12). Same lines as :app, so the merge is a no-op. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- Viewer action "Set as wallpaper" (step 8); a normal permission, granted at install -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <application>
+        <!-- Built-in Gallery app: the glass grid of the photos and albums on the device
+             (Start menu entry, Home screen icon and the rizwans2://gallery deep link of :app, step 11; started with an explicit
+             intent from the same app, so it stays exported="false"). -->
+        <activity
+            android:name="com.srizwan.gallery.home.GalleryHomeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Gallery"
+            android:label="Gallery"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" />
+
+        <!-- One folder's pictures (opened from the Albums tab, step 6). -->
+        <activity
+            android:name="com.srizwan.gallery.album.GalleryAlbumActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Gallery"
+            android:label="Gallery"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" />
+
+        <!-- The full-screen photo viewer (step 7; its action toolbar is step 8). Opened from the File Manager / the Gallery with
+             GalleryViewerActivity.start(). Translucent theme: the screen behind shows while a picture is swiped down
+             to close. Step 10: exported, with a VIEW filter for image/* (file and content uris), so other apps can open
+             pictures here too. A path or picture list is only accepted from an intent made by start() (it carries a
+             per-process token); an intent from outside can only bring a data uri (see GalleryViewerActivity.readIntent). -->
+        <activity
+            android:name="com.srizwan.gallery.viewer.GalleryViewerActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Gallery.Viewer"
+            android:label="Gallery"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode|layoutDirection"
+            android:resizeableActivity="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
+
+        <!-- Share (step 8): hands the picture file to other apps as a content:// uri. Own subclass + authority, like
+             WinlatorFileProvider, so it never clashes with another FileProvider in the merged manifest. -->
+        <provider
+            android:name="com.srizwan.gallery.data.GalleryFileProvider"
+            android:authorities="${applicationId}.gallery.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/gl_file_paths" />
+        </provider>
+    </application>
+</manifest>

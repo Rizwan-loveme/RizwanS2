@@ -673,6 +673,9 @@ class MainActivity : AppCompatActivity() {
                 } else if (section == "video") {
                     try { startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open VideoHomeActivity", e) }
+                } else if (section == "gallery") {
+                    try { startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java)) }
+                    catch (e: Throwable) { AppLog.e(LOGT, "cannot open GalleryHomeActivity", e) }
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -797,11 +800,47 @@ class MainActivity : AppCompatActivity() {
         pendingSendTo?.let { pendingSendTo = null; handleSendTo(it) }
     }
 
-    /** rizwans2://open | files | browser | dialer | sms | winlator | youtube | video | start | quick  (anything else just opens the launcher). */
+    /**
+     * The number in a link like rizwans2://3, rizwans2://#3 or rizwans2://app/3 (1 = the first app of the Start menu's "All apps"
+     * list), or null when the link carries no number.
+     */
+    private fun deepLinkNumber(uri: Uri): Int? {
+        val host = (uri.host ?: "").lowercase()
+        val text = when {
+            host.isNotEmpty() && host.all { it.isDigit() } -> host
+            host == "app" -> uri.pathSegments.firstOrNull()?.trim()
+            host.isEmpty() -> uri.fragment?.trim()
+            else -> null
+        }
+        return text?.takeIf { it.isNotEmpty() && it.length <= 6 && it.all { c -> c.isDigit() } }?.toIntOrNull()
+    }
+
+    /** Opens app number [n] (1-based) of the Start menu's "All apps" list. Out of range: nothing opens, nothing crashes. */
+    private fun launchAppNumber(n: Int, retry: Boolean = true) {
+        val list = shell.allAppsInOrder()
+        if (list.isEmpty() && retry) {
+            // the app list is still loading (cold start): load it, then try once more
+            shell.appRepo.load { launchAppNumber(n, retry = false) }
+            return
+        }
+        val entry = list.getOrNull(n - 1)
+        if (entry == null) {
+            AppLog.w(LOGT, "deep link: no app number $n (the list has ${list.size})")
+            return
+        }
+        shell.launchApp(entry)
+    }
+
+    /**
+     * rizwans2://open | files | browser | dialer | sms | winlator | youtube | video | gallery | start | quick  (anything else just opens the launcher).
+     * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
+     */
     internal fun handleDeepLink(uri: Uri) {
         AppLog.i(LOGT, "deep link: $uri")
         if (!isUIInitialized || !::shell.isInitialized) { pendingDeepLink = uri; return }
         try {
+            val number = deepLinkNumber(uri)
+            if (number != null) { launchAppNumber(number); return }
             when ((uri.host ?: "").lowercase()) {
                 "files", "browser", "dialer", "sms" -> {
                     shell.closeStart(animated = false)
@@ -814,6 +853,7 @@ class MainActivity : AppCompatActivity() {
                 "parallel" -> startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java))
                 "youtube" -> startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java))
                 "video" -> startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java))
+                "gallery" -> startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java))
                 else -> { // "open" and anything unknown
                     if (shell.isStartOpen()) shell.closeStart()
                     switchToSection("desktop")

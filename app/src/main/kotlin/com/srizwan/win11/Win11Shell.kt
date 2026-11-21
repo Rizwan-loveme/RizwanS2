@@ -89,6 +89,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         const val DOWNLOAD = "download"
         const val WINLATOR = "winlator"
         const val VIDEO = "video"
+        const val GALLERY = "gallery"
 
         private fun data(type: String): String? = when (type) {
             FILES -> "M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z"
@@ -108,6 +109,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             DELETE -> "M6,19c0,1.1 0.9,2 2,2h8c1.1,0 2,-0.9 2,-2V7H6v12zM19,4h-3.5l-1,-1h-5l-1,1H5v2h14V4z"
             WINLATOR -> "M6,2 H18 L17.3,8.6 C16.9,11.9 14.8,14.2 12.9,14.8 V19.2 H16.2 V21.2 H7.8 V19.2 H11.1 V14.8 C9.2,14.2 7.1,11.9 6.7,8.6 Z M8.2,4 L8.6,8.3 C8.9,10.2 10.2,11.9 12,12.4 C13.8,11.9 15.1,10.2 15.4,8.3 L15.8,4 Z"
             VIDEO -> "M18,4l2,4h-3l-2,-4h-2l2,4h-3l-2,-4H8l2,4H5L3,4H2.99C1.9,4 2,5 2,6v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4h-4z"
+            GALLERY -> "M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z"
             else -> null
         }
 
@@ -120,6 +122,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             PC -> Color.parseColor("#4CC2FF")
             WINLATOR -> Color.parseColor("#C77DFF")
             VIDEO -> Color.parseColor("#FF6B8B")
+            GALLERY -> Color.parseColor("#4FD1A5")
             START -> Color.parseColor("#4CC2FF")
             else -> Color.WHITE
         }
@@ -1037,6 +1040,16 @@ class Win11Shell(
 
     private fun String.codePointAtOrNull(): Int? = if (isEmpty()) null else codePointAt(0)
 
+    /**
+     * The visible apps in exactly the order the Start menu's "All apps" list shows them (the "#" group first, then A to Z by
+     * label; hidden apps left out). The list on screen and the number deep link rizwans2://N both use this one function,
+     * so number 1 is always the first row on screen.
+     */
+    fun allAppsInOrder(): List<AppEntry> = appRepo.visibleApps().sortedWith(
+        compareBy<AppEntry>({ if (letterOf(it) == "#") "" else letterOf(it) },
+            { it.label.lowercase(Locale.ROOT) })
+    )
+
     private fun buildAllAppsList(): View {
         val frame = FrameLayout(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
@@ -1091,10 +1104,7 @@ class Win11Shell(
             return
         }
 
-        val sorted = visible.sortedWith(
-            compareBy<AppEntry>({ if (letterOf(it) == "#") "" else letterOf(it) },
-                { it.label.lowercase(Locale.ROOT) })
-        )
+        val sorted = allAppsInOrder()
         var current = ""
         for (e in sorted) {
             val l = letterOf(e)
@@ -1496,8 +1506,18 @@ class Win11Shell(
         column.addView(desktopIcon(VectorIconView.MESSAGES, "Messages", "sms"))
         // Home screen icon of the built-in Video app (:video module)
         column.addView(desktopIcon(VectorIconView.VIDEO, "Video", "video"))
+        // Home screen icon of the built-in Gallery app (:gallery module)
+        column.addView(desktopIcon(VectorIconView.GALLERY, "Gallery", "gallery"))
         if (WinlatorLauncher.isSupported()) column.addView(desktopIcon(VectorIconView.WINLATOR, "Winlator", WinlatorLauncher.SECTION))
-        desktop.addView(column)
+        // Seven icons no longer always fit under each other on a short screen (landscape, split screen): the column scrolls.
+        desktop.addView(android.widget.ScrollView(ctx).apply {
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            addView(column)
+        })
         return desktop
     }
 

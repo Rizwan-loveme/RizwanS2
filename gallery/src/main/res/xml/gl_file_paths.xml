@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 8 (Share): the Gallery shares a picture file as a content:// uri through GalleryFileProvider. A picture can be
+     anywhere on the shared storage or on an SD card, so the whole file system is allowed (root-path); only files the
+     user picked in the viewer are ever handed out. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <root-path name="gl_root" path="" />
+</paths>

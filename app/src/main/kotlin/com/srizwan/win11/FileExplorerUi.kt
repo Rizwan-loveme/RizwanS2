@@ -735,6 +735,12 @@ class ExplorerUi(
         }
     }
 
+    /**
+     * The files on screen now, in the order they are shown (the folder's sort, hidden files as the user chose). Main thread
+     * only. The Gallery viewer swipes through the pictures of this list (step 10).
+     */
+    internal fun shownFiles(): List<FileItem> = adapter.snapshot()
+
     /** Current list mode ([ExplorerViewMode.LIST], [ExplorerViewMode.GRID] or, step 4.6, [ExplorerViewMode.LARGE]). */
     val viewMode: ExplorerViewMode get() = mode
 
@@ -1557,6 +1563,9 @@ class ExplorerUi(
         private val diffPool = Executors.newSingleThreadExecutor { r ->
             Thread(r, "explorer-diff").apply { isDaemon = true }
         }
+
+        /** The items now shown, in order (the list is replaced, never changed in place). */
+        fun snapshot(): List<FileItem> = items
 
         /** File at adapter [position] (header / footer / stale positions give null). */
         fun itemAt(position: Int): FileItem? = items.getOrNull(position - 1)

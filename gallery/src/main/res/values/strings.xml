@@ -1,0 +1,121 @@
+<resources>
+    <!-- The Gallery shows no text of its own: these are content descriptions (read by screen readers). -->
+    <string name="gl_cd_back">Back</string>
+    <string name="gl_cd_close">Close</string>
+    <string name="gl_cd_search">Search</string>
+    <string name="gl_cd_share">Share</string>
+    <string name="gl_cd_delete">Delete</string>
+    <string name="gl_cd_info">Details</string>
+    <string name="gl_cd_rotate">Rotate</string>
+    <string name="gl_cd_favorite">Favorite</string>
+    <string name="gl_cd_slideshow">Slideshow</string>
+    <string name="gl_cd_select">Select</string>
+    <string name="gl_cd_refresh">Refresh the list</string>
+    <string name="gl_cd_empty">No photos found</string>
+    <string name="gl_cd_lock">Permission needed</string>
+    <string name="gl_cd_rename">Rename</string>
+    <string name="gl_cd_wallpaper">Set as wallpaper</string>
+    <string name="gl_cd_sort">Sort</string>
+    <string name="gl_cd_more">More</string>
+    <string name="gl_cd_select_all">Select all</string>
+    <string name="gl_cd_photos">Photos</string>
+    <string name="gl_cd_albums">Albums</string>
+    <string name="gl_cd_play">Play slideshow</string>
+    <string name="gl_cd_pause">Pause slideshow</string>
+    <string name="gl_cd_grid">Grid size</string>
+    <string name="gl_cd_error">Cannot open this picture</string>
+    <string name="gl_cd_confirm">Confirm</string>
+    <string name="gl_cd_open_map">Open the location on a map</string>
+    <string name="gl_cd_save_rotation">Save the rotation to the file</string>
+    <string name="gl_cd_undo_rotation">Undo the rotation</string>
+    <string name="gl_cd_exit_selection">Close the selection</string>
+
+    <!-- Visible labels (drawn as vector outlines by VectorText / VectorLabelDrawable) -->
+    <string name="gl_title">Gallery</string>
+    <string name="gl_today">Today</string>
+    <string name="gl_yesterday">Yesterday</string>
+    <string name="gl_search_hint">Search photos and albums</string>
+    <string name="gl_menu_group_by_date">Group by date</string>
+    <string name="gl_menu_columns">%d columns</string>
+    <string name="gl_menu_refresh">Refresh</string>
+    <string name="gl_empty_title">No photos yet</string>
+    <string name="gl_empty_text">Pictures on this device will show up here.</string>
+    <string name="gl_no_match_title">No matches</string>
+    <string name="gl_no_match_text">Try another name or folder.</string>
+    <string name="gl_perm_title">Allow access to your photos</string>
+    <string name="gl_perm_text">The Gallery needs permission to read the pictures on this device.</string>
+    <string name="gl_allow">Allow access</string>
+    <string name="gl_open_settings">Open settings</string>
+    <string name="gl_sort_newest">Newest first</string>
+    <string name="gl_sort_oldest">Oldest first</string>
+    <string name="gl_sort_name">Name (A to Z)</string>
+    <string name="gl_sort_size">Size (biggest first)</string>
+    <string name="gl_viewer_counter">%1$d / %2$d</string>
+
+    <!-- Viewer actions (step 8) -->
+    <string name="gl_delete_confirm">Delete this photo</string>
+    <string name="gl_action_cancel">Cancel</string>
+    <string name="gl_rename_title">Rename</string>
+    <string name="gl_wallpaper_home">Home screen</string>
+    <string name="gl_wallpaper_lock">Lock screen</string>
+    <string name="gl_wallpaper_both">Home and lock screen</string>
+    <string name="gl_slideshow_seconds">%d seconds</string>
+    <string name="gl_info_title">Details</string>
+    <string name="gl_info_name">Name</string>
+    <string name="gl_info_path">Path</string>
+    <string name="gl_info_size">Size</string>
+    <string name="gl_info_resolution">Resolution</string>
+    <string name="gl_info_date">Date</string>
+    <string name="gl_info_camera">Camera</string>
+    <string name="gl_info_iso">ISO</string>
+    <string name="gl_info_aperture">Aperture</string>
+    <string name="gl_info_exposure">Exposure</string>
+    <string name="gl_info_focal">Focal length</string>
+    <string name="gl_info_location">Location</string>
+    <string name="gl_toast_deleted">Deleted</string>
+    <string name="gl_toast_delete_failed">Could not delete</string>
+    <string name="gl_toast_renamed">Renamed</string>
+    <string name="gl_toast_rename_bad">This name is not allowed</string>
+    <string name="gl_toast_rename_exists">That name is already used</string>
+    <string name="gl_toast_rename_failed">Could not rename</string>
+    <string name="gl_toast_wallpaper_set">Wallpaper set</string>
+    <string name="gl_toast_wallpaper_failed">Could not set the wallpaper</string>
+    <string name="gl_toast_share_failed">Could not share this picture</string>
+    <string name="gl_toast_fav_added">Added to favorites</string>
+    <string name="gl_toast_fav_removed">Removed from favorites</string>
+    <string name="gl_toast_rotation_saved">Rotation saved</string>
+    <string name="gl_toast_rotation_failed">Could not save the rotation</string>
+    <string name="gl_toast_rotation_unsupported">This file type can only be turned in the viewer</string>
+    <string name="gl_toast_rotation_too_big">Too big to save turned</string>
+    <string name="gl_toast_no_map">No map app found</string>
+    <string name="gl_toast_slideshow_start">Slideshow: %d seconds</string>
+    <string name="gl_toast_slideshow_single">A slideshow needs more than one picture</string>
+
+    <!-- Settings and polish (step 12) -->
+    <string name="gl_menu_favorites">Favorites only</string>
+    <string name="gl_menu_slideshow">Slideshow interval</string>
+    <string name="gl_menu_all_files">All files access</string>
+    <string name="gl_no_fav_title">No favorites yet</string>
+    <string name="gl_no_fav_text">Tap the heart in the viewer to see a picture here.</string>
+    <string name="gl_show_all">Show all photos</string>
+
+    <!-- Multi-select (step 9) -->
+    <string name="gl_toast_delete_some_failed">Could not delete %d</string>
+    <string name="gl_toast_share_too_many">Select at most %d photos to share</string>
+    <plurals name="gl_n_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="gl_delete_many_confirm">
+        <item quantity="one">Delete %d photo</item>
+        <item quantity="other">Delete %d photos</item>
+    </plurals>
+    <plurals name="gl_toast_deleted_many">
+        <item quantity="one">Deleted %d photo</item>
+        <item quantity="other">Deleted %d photos</item>
+    </plurals>
+    <plurals name="gl_n_photos">
+        <item quantity="one">%d photo</item>
+        <item quantity="other">%d photos</item>
+    </plurals>
+</resources>

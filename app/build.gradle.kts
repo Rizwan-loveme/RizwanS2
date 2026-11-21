@@ -72,6 +72,8 @@ dependencies {
     implementation(project(":youtube"))
     // Glass video player + built-in Video app (package com.srizwan.video), used by the File Manager
     implementation(project(":video"))
+    // Glass Gallery + built-in Gallery app (package com.srizwan.gallery), used by the File Manager for images
+    implementation(project(":gallery"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

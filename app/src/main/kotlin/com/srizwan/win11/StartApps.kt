@@ -103,6 +103,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_WINLATOR = "builtin.winlator"
         private const val BUILTIN_CLS_YOUTUBE = "builtin.youtube"
         private const val BUILTIN_CLS_VIDEO = "builtin.video"
+        private const val BUILTIN_CLS_GALLERY = "builtin.gallery"
+        /** Framed picture with a mountain (Material "image"): the built-in Gallery app (:gallery module, package com.srizwan.gallery). */
+        private const val GALLERY_PATH =
+            "M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z"
         /** Film frame (Material "movie"): the built-in Video app (:video module, package com.srizwan.video). */
         private const val VIDEO_PATH =
             "M18,4l2,4h-3l-2,-4h-2l2,4h-3l-2,-4H8l2,4H5L3,4H2.99C1.9,4 2,5 2,6v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4h-4z"
@@ -247,6 +251,12 @@ class AppRepository(private val ctx: Context) {
             "Video", ctx.packageName, BUILTIN_CLS_VIDEO,
             BuiltInIconDrawable(VIDEO_PATH, Color.parseColor("#FF6B8B")),
             section = "video"
+        ),
+        // Built-in Gallery app (:gallery module, com.srizwan.gallery.home.GalleryHomeActivity), vector icon only
+        AppEntry(
+            "Gallery", ctx.packageName, BUILTIN_CLS_GALLERY,
+            BuiltInIconDrawable(GALLERY_PATH, Color.parseColor("#4FD1A5")),
+            section = "gallery"
         )
     ) + (
         // Winlator (PC software: .exe via Wine + Box64) exists only for 64-bit ARM phones.
