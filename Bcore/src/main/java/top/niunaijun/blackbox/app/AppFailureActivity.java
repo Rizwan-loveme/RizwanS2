@@ -49,6 +49,9 @@ public class AppFailureActivity extends Activity {
         if (detail != null && !detail.isEmpty()) msg.append("\n\n").append(detail);
         msg.append("\n\nExit চাপলে অ্যাপটি সম্পূর্ণ বন্ধ (destroy) হবে।");
 
+        // debug: save the guest's decompressed dex files to Downloads/BlackBoxDebug (no root needed)
+        top.niunaijun.blackbox.utils.DexExporter.exportAsync(this, pkg, userId);
+
         // post the notification from this (host main) process
         try {
             AppFailureNotifier.postNotification(getApplicationContext(), pkg, userId, pid, label,
