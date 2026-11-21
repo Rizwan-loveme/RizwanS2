@@ -46,6 +46,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    // appcompat 1.6.1 -> lifecycle 2.5.1 asks for coroutines 1.6.1, which CI could not resolve (build #12).
+    // The root build.gradle.kts forces 1.8.1 for every module; it is declared here too so :video is explicit.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // Player: ExoPlayer + UI (PlayerView surface) + media session (background playback / notification controls).
     // HLS / DASH only matter for network links; local files use the progressive extractors.

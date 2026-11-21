@@ -183,7 +183,7 @@ Gradle module (`:video`, resources prefixed `vp_`, so nothing clashes with `:you
   ogv are opened (what ExoPlayer cannot decode shows the error icon). The old file-player PiP state in `MainActivity` and
   `supportsPictureInPicture` in the manifest were removed (the popup window replaces it).
 - `:youtube` is unchanged; the UI classes were copied (not shared) into `:video` so both modules stay independent.
-- Version 2.5.1 (code 118).
+- Version 2.5.2 (code 119).
 
 ### Video player — next / previous (part 6)
 
@@ -213,4 +213,11 @@ Gradle build was **not** run; build once on your side with `./gradlew :app:assem
 - Checked and left as is: resources all prefixed `vp_` (no clash with `:youtube`; every referenced drawable / string exists),
   `targetSdk = 28` (storage permission and edge-to-edge behave like the other built-in apps), Media3 1.8.0 in both modules.
 - Unused (kept): `vp_ic_delete`, `vp_ic_search`.
+
+### Build fix (CI run #12, release)
+
+`:video:dataBindingMergeDependencyArtifactsRelease` failed with *Could not find org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1*
+(required by `androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1`, pulled in by appcompat 1.6.1). Fix: the root
+`build.gradle.kts` forces one coroutines version (1.8.1) for all modules, and `:video` declares
+`kotlinx-coroutines-android:1.8.1` explicitly. No source code changed. Version 2.5.2 (code 119).
 

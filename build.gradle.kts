@@ -15,3 +15,18 @@ extra["compileSdkVersion"] = 37
 extra["targetSdkVersion"] = 28
 extra["minSdk"] = 21
 extra["ndkVer"] = "29.0.13846066"
+
+// Release build #12 failed in :video: "Could not find org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1"
+// (required by androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1, which appcompat 1.6.1 brings in).
+// Every module now uses one coroutines version that is published for sure, so nothing asks for 1.6.1.
+val coroutinesVersion = "1.8.1"
+allprojects {
+    configurations.configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-coroutines-")) {
+                useVersion(coroutinesVersion)
+                because("1.6.1 (from androidx.lifecycle 2.5.1) could not be resolved in the CI build")
+            }
+        }
+    }
+}
