@@ -247,9 +247,19 @@ import top.niunaijun.blackbox.utils.compat.PackageParserCompat;
         // the real split files of the phone's copy (empty for an app with a single APK)
         List<String> splits = PhoneSplits.read(systemPackageInfo.packageName, phone.sourceDir, phone.splitSourceDirs);
         option.withSplits(splits);
-        PackageParser.Package aPackage = splits.isEmpty()
-                ? parserApk(phone.sourceDir)
-                : SplitPackageParser.parse(new File(phone.sourceDir), splits);
+        PackageParser.Package aPackage;
+        if (splits.isEmpty()) {
+            aPackage = parserApk(phone.sourceDir);
+        } else {
+            try {
+                aPackage = SplitPackageParser.parse(new File(phone.sourceDir), splits);
+            } catch (Exception e) {
+                throw e;
+            } catch (Throwable t) {
+                // SplitPackageParser.parse declares Throwable; this method only declares Exception
+                throw new RuntimeException(t.getMessage() != null ? t.getMessage() : "parser apk error.", t);
+            }
+        }
         if (aPackage == null) {
             throw new RuntimeException("parser apk error.");
         }
