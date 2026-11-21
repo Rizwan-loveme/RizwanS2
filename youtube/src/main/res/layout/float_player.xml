@@ -30,6 +30,25 @@
             android:layout_height="match_parent" />
 
         <ImageView
+            android:id="@+id/float_expand"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="6dp"
+            android:contentDescription="@string/yt_cd_fullscreen"
+            android:padding="8dp" />
+
+        <!-- volume / brightness feedback of the swipes: icon + percent, shown for a moment -->
+        <ImageView
+            android:id="@+id/float_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="8dp"
+            android:padding="6dp"
+            android:visibility="gone" />
+
+        <ImageView
             android:id="@+id/float_close"
             android:layout_width="34dp"
             android:layout_height="34dp"

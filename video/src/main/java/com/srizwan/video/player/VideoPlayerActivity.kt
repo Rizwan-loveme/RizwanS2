@@ -85,7 +85,6 @@ class VideoPlayerActivity : AppCompatActivity() {
             hideResumeHint()
             updateTitle()
             updateQualityChip()
-            updateSkipChips()
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -137,11 +136,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
         b.qualityButton.setOnClickListener { showQualitySheet() }
         b.backgroundButton.setOnClickListener { toggleBackground() }
-        b.prevButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.vp_ic_skip_prev, iconSizeDp = 20f))
-        b.nextButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.vp_ic_skip_next, iconSizeDp = 20f))
-        b.prevButton.setOnClickListener { VideoEngine.playPrevious() }
-        b.nextButton.setOnClickListener { VideoEngine.playNext() }
-        updateSkipChips()
+        placeTitleAboveOrBeside()
         b.floatButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.vp_ic_float, iconSizeDp = 20f))
         b.floatButton.setOnClickListener { startFloating(auto = false) }
         updateSpeedChip(VideoPrefs.speed(this))
@@ -150,7 +145,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         updateTitle()
         askNotificationPermissionOnce()
         // opened while the phone is already sideways: start in fullscreen
-        if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) setFullscreen(true, rotate = false)
+        if (intent?.getBooleanExtra(EXTRA_FULLSCREEN, false) == true) setFullscreen(true)
+        else if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) setFullscreen(true, rotate = false)
     }
 
     /** File path / uri of the intent: our own extra first, then the data of a VIEW intent from another app. */
@@ -160,7 +156,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     /** Glass background for every chip and hint (the look is code, so there is no shape xml). */
     private fun styleGlass() {
-        listOf(b.prevButton, b.nextButton, b.floatButton, b.backgroundButton, b.qualityButton, b.speedButton).forEach {
+        listOf(b.floatButton, b.backgroundButton, b.qualityButton, b.speedButton).forEach {
             it.background = GlassDrawable(this, 20f)
         }
         listOf(b.seekHintLeft, b.seekHintRight, b.gestureHint).forEach {
@@ -173,6 +169,7 @@ class VideoPlayerActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_FULLSCREEN, false)) setFullscreen(true)
         val newSource = sourceOf(intent)
         if (newSource.isBlank() || newSource == source) return
         source = newSource
@@ -391,14 +388,35 @@ class VideoPlayerActivity : AppCompatActivity() {
         updateTitle()
     }
 
-    /** Previous / next chips: only for a video opened from a list; a chip with nothing to go to is dimmed. */
-    private fun updateSkipChips() {
-        val inList = VideoEngine.queue.size > 1
-        val v = if (inList) View.VISIBLE else View.GONE
-        b.prevButton.visibility = v
-        b.nextButton.visibility = v
-        b.prevButton.alpha = if (VideoEngine.hasPrevious()) 1f else 0.4f
-        b.nextButton.alpha = if (VideoEngine.hasNext()) 1f else 0.4f
+    /**
+     * The file name sits at the top left, beside the chip row. The row is wider than half of a portrait screen, so
+     * when less than [TITLE_MIN_DP] dp stay free beside it the name moves to its own line BELOW the row (it never
+     * overlaps a chip). Re-run whenever the row or the screen changes size.
+     */
+    private fun placeTitleAboveOrBeside() {
+        val update = {
+            val total = b.root.width
+            val rowW = b.chipRow.width
+            if (total > 0 && rowW > 0) {
+                val density = resources.displayMetrics.density
+                val rowLp = b.chipRow.layoutParams as android.widget.FrameLayout.LayoutParams
+                val lp = b.titleView.layoutParams as android.widget.FrameLayout.LayoutParams
+                val gap = (12 * density).toInt()
+                val rowSpace = rowW + rowLp.marginEnd + gap
+                val free = total - lp.marginStart - rowSpace
+                val beside = free >= (TITLE_MIN_DP * density).toInt()
+                val endMargin = if (beside) rowSpace else (16 * density).toInt()
+                val topMargin = if (beside) (22 * density).toInt()
+                else rowLp.topMargin + b.chipRow.height + (6 * density).toInt()
+                if (lp.marginEnd != endMargin || lp.topMargin != topMargin) {
+                    lp.marginEnd = endMargin
+                    lp.topMargin = topMargin
+                    b.titleView.layoutParams = lp
+                }
+            }
+        }
+        b.chipRow.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> update() }
+        b.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> update() }
     }
 
     private fun updateTitle() {
@@ -482,7 +500,6 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
         if (started) attachPlayer()
         updateTitle()
-        updateSkipChips()
         if (started && VideoEngine.resumedFromMs > 0L) showResumeHint(VideoEngine.resumedFromMs)
     }
 
@@ -534,7 +551,20 @@ class VideoPlayerActivity : AppCompatActivity() {
         const val EXTRA_SOURCE = "com.srizwan.video.player.SOURCE"
         const val EXTRA_TITLE = "com.srizwan.video.player.TITLE"
 
+        /** true = open in fullscreen (the popup's expand button) */
+        const val EXTRA_FULLSCREEN = "com.srizwan.video.player.FULLSCREEN"
+
         private const val RESUME_HINT_MS = 7_000L
+        private const val TITLE_MIN_DP = 120f
+
+        /**
+         * Intent that brings the player screen back in fullscreen for the video that is loaded (the popup window's
+         * expand button). No source: the screen uses the loaded video, and its onStart takes the picture from the popup.
+         */
+        fun fullscreenIntent(context: Context): Intent =
+            Intent(context, VideoPlayerActivity::class.java)
+                .putExtra(EXTRA_FULLSCREEN, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
         /** Opens the player for a file path, a content uri or a link. [title] defaults to the file name. [playlist] = the videos around it (same folder / list). */
         fun start(context: Context, source: String, title: String? = null, playlist: List<String>? = null) {

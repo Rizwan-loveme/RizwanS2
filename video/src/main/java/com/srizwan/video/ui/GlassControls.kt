@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import com.srizwan.video.R
+import com.srizwan.video.player.VideoEngine
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -28,7 +29,11 @@ import kotlin.math.min
  * Everything is a vector: play / pause, -10 s / +10 s, a seek bar, the position and duration (glyph outlines,
  * see [VectorLabelDrawable]) and the fullscreen button. There is no text view and no Media3 controller.
  *
- * [compact] (floating window): only the three centre buttons and a thin seek bar.
+ * The centre row is previous | -10 s | play / pause | +10 s | next. Previous / next only show for a video that
+ * belongs to a list (a folder or the Video app list, see [VideoEngine.queue]); one with nothing to go to is dimmed.
+ *
+ * [compact] (floating window): only the centre buttons and a thin seek bar (previous / next only when the window
+ * is wide enough for them).
  * Touches on empty areas are NOT consumed, so the view below keeps its own gestures.
  */
 class GlassControls @JvmOverloads constructor(
@@ -58,6 +63,8 @@ class GlassControls @JvmOverloads constructor(
     private var lastPosSec = -1L
     private var lastDurSec = -2L
 
+    private val previous = iconButton(R.drawable.vp_ic_skip_prev)
+    private val next = iconButton(R.drawable.vp_ic_skip_next)
     private val rewind = iconButton(R.drawable.vp_ic_seek_back)
     private val forward = iconButton(R.drawable.vp_ic_seek_forward)
     private val playPause = iconButton(R.drawable.vp_ic_play).apply {
@@ -71,9 +78,11 @@ class GlassControls @JvmOverloads constructor(
     private val centre = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
+        addView(previous)
         addView(rewind)
         addView(playPause)
         addView(forward)
+        addView(next)
     }
     private val bottom = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -114,6 +123,10 @@ class GlassControls @JvmOverloads constructor(
         rewind.contentDescription = context.getString(R.string.vp_cd_rewind)
         forward.contentDescription = context.getString(R.string.vp_cd_forward)
         fullscreen.contentDescription = context.getString(R.string.vp_cd_fullscreen)
+        previous.contentDescription = context.getString(R.string.vp_cd_prev)
+        next.contentDescription = context.getString(R.string.vp_cd_next)
+        previous.setOnClickListener { VideoEngine.playPrevious(); scheduleHide() }
+        next.setOnClickListener { VideoEngine.playNext(); scheduleHide() }
         rewind.setOnClickListener { seekBy(-SEEK_MS) }
         forward.setOnClickListener { seekBy(SEEK_MS) }
         playPause.setOnClickListener { togglePlay() }
@@ -179,8 +192,12 @@ class GlassControls @JvmOverloads constructor(
     // ---- internals ----
 
     private fun applyCompact() {
-        val big = if (compact) 36f else 48f
-        val bigPlay = if (compact) 48f else 64f
+        // five buttons have to fit a 360 dp portrait screen (and a small popup), so they are a little smaller
+        val big = if (compact) 32f else 44f
+        val bigPlay = if (compact) 44f else 60f
+        val skip = if (compact) 26f else 36f
+        setSize(previous, skip)
+        setSize(next, skip)
         setSize(rewind, big)
         setSize(forward, big)
         setSize(playPause, bigPlay)
@@ -198,8 +215,8 @@ class GlassControls @JvmOverloads constructor(
         val lp = (v.layoutParams as? LinearLayout.LayoutParams) ?: LinearLayout.LayoutParams(0, 0)
         lp.width = dp(sizeDp)
         lp.height = dp(sizeDp)
-        lp.marginStart = dp(if (compact) 6f else 14f)
-        lp.marginEnd = dp(if (compact) 6f else 14f)
+        lp.marginStart = dp(if (compact) 4f else 8f)
+        lp.marginEnd = dp(if (compact) 4f else 8f)
         v.layoutParams = lp
         v.setPadding(dp(sizeDp * 0.22f), dp(sizeDp * 0.22f), dp(sizeDp * 0.22f), dp(sizeDp * 0.22f))
     }
@@ -227,9 +244,26 @@ class GlassControls @JvmOverloads constructor(
             playing -> R.drawable.vp_ic_pause
             else -> R.drawable.vp_ic_play
         }
+        refreshSkip()
         playPause.setImageDrawable(ContextCompat.getDrawable(context, res))
         playPause.contentDescription = context.getString(if (playing) R.string.vp_cd_pause else R.string.vp_cd_play)
         if (playing) scheduleHide() else removeCallbacks(hideRunnable)
+    }
+
+    /** Previous / next: shown for a video of a list (in the popup only when the window is wide enough). */
+    private fun refreshSkip() {
+        val inList = VideoEngine.queue.size > 1
+        val room = !compact || width == 0 || width >= dp(230f)
+        val v = if (inList && room) VISIBLE else GONE
+        previous.visibility = v
+        next.visibility = v
+        previous.alpha = if (VideoEngine.hasPrevious()) 1f else 0.4f
+        next.alpha = if (VideoEngine.hasNext()) 1f else 0.4f
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (compact && (w >= dp(230f)) != (oldw >= dp(230f))) refreshSkip() // the popup was resized
     }
 
     private fun scheduleHide() {

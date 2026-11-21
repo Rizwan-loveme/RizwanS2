@@ -134,7 +134,8 @@ class PlayerActivity : AppCompatActivity() {
         updateBackgroundChip()
         askNotificationPermissionOnce()
         // opened while the phone is already sideways: start in fullscreen
-        if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) setFullscreen(true, rotate = false)
+        if (intent?.getBooleanExtra(EXTRA_FULLSCREEN, false) == true) setFullscreen(true)
+        else if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) setFullscreen(true, rotate = false)
         if (!YtPlayer.isLoaded(url)) fetchAndPlay()
     }
 
@@ -153,6 +154,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_FULLSCREEN, false)) setFullscreen(true)
         val newUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
         if (newUrl.isBlank() || newUrl == url) return
         url = newUrl
@@ -524,6 +526,17 @@ class PlayerActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_URL = "com.srizwan.YouTube.player.URL"
+        /** true = open in fullscreen (the popup's expand button) */
+        const val EXTRA_FULLSCREEN = "com.srizwan.YouTube.player.FULLSCREEN"
+
+        /**
+         * Intent that brings the player screen back in fullscreen for the video that is loaded (the popup window's
+         * expand button). No url: the screen uses the loaded video, and its onStart takes the picture from the popup.
+         */
+        fun fullscreenIntent(context: Context): Intent =
+            Intent(context, PlayerActivity::class.java)
+                .putExtra(EXTRA_FULLSCREEN, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
         private const val RESUME_HINT_MS = 7_000L
 

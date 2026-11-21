@@ -183,7 +183,7 @@ Gradle module (`:video`, resources prefixed `vp_`, so nothing clashes with `:you
   ogv are opened (what ExoPlayer cannot decode shows the error icon). The old file-player PiP state in `MainActivity` and
   `supportsPictureInPicture` in the manifest were removed (the popup window replaces it).
 - `:youtube` is unchanged; the UI classes were copied (not shared) into `:video` so both modules stay independent.
-- Version 2.5.2 (code 119).
+- Version 2.5.3 (code 120).
 
 ### Video player — next / previous (part 6)
 
@@ -219,5 +219,33 @@ Gradle build was **not** run; build once on your side with `./gradlew :app:assem
 `:video:dataBindingMergeDependencyArtifactsRelease` failed with *Could not find org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1*
 (required by `androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1`, pulled in by appcompat 1.6.1). Fix: the root
 `build.gradle.kts` forces one coroutines version (1.8.1) for all modules, and `:video` declares
-`kotlinx-coroutines-android:1.8.1` explicitly. No source code changed. Version 2.5.2 (code 119).
+`kotlinx-coroutines-android:1.8.1` explicitly. No source code changed. Version 2.5.3 (code 120).
+
+### Popup controls, controller buttons, title overlap (v2.5.3) — `:video` and `:youtube`
+
+**Popup window (`FloatingPlayer`, both modules)**
+- **Volume and brightness by swipe.** Swipe up / down on the **right third** of the picture = volume (music stream), on the
+  **left third** = screen brightness. A small glass hint (icon + percent, glyph outlines) shows the value for a moment.
+  A swipe that starts in the **middle**, or goes mostly sideways, still drags the window, and pinch still resizes it.
+  A tap shows / hides the controls as before.
+- Brightness is set on the popup window itself (`WindowManager.LayoutParams.screenBrightness`), so no "write settings"
+  permission is needed. It lasts while the popup is on screen and starts from the system value every time the popup opens.
+- **Expand button** (top left, appears and fades with the controls, mirror of the cross): opens the player screen in
+  **fullscreen** for the loaded video (`VideoPlayerActivity.fullscreenIntent()` / `PlayerActivity.fullscreenIntent()`,
+  extra `EXTRA_FULLSCREEN`). The player screen's `onStart` takes the picture from the popup, nothing restarts. A wide video turns
+  the screen to landscape. Starting the screen from the popup is allowed because the app holds "Display over other apps".
+
+**Controller (`:video` `GlassControls`)**
+- Centre row is now **previous | -10 s | play / pause | +10 s | next**. The two skip buttons show only for a video that
+  belongs to a list (folder / Video app list), a button with nothing to go to is dimmed. In the popup they show only when
+  the window is at least 230 dp wide (they come and go when you pinch-resize it). Sizes were reduced a little so five
+  buttons fit a 360 dp screen.
+- The two previous / next chips were removed from the chip row of the player screen (`vp_activity_player.xml`).
+
+**Title overlap (player screen)**
+- The file name no longer has a fixed 220 dp end margin. `VideoPlayerActivity.placeTitleAboveOrBeside()` measures the chip
+  row: if at least 120 dp stay free beside it, the name sits beside the row, otherwise it moves to **its own line below the
+  row**. It is re-checked whenever the row or the screen changes size, so it never overlaps a chip (portrait or landscape).
+
+Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version 2.5.3 (code 120).
 

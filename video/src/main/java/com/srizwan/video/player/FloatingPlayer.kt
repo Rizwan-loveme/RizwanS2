@@ -7,6 +7,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Outline
 import android.graphics.PixelFormat
+import android.media.AudioManager
 import android.provider.Settings
 import android.view.ContextThemeWrapper
 import android.view.Gravity
@@ -27,6 +28,7 @@ import com.srizwan.video.ui.GlassDrawable
 import com.srizwan.video.ui.GlassToast
 import com.srizwan.video.ui.VectorLabelDrawable
 import kotlin.math.abs
+import kotlin.math.max
 
 /**
  * The floating popup player. It replaces picture-in-picture: the video of the shared [VideoEngine] appears in a
@@ -35,6 +37,9 @@ import kotlin.math.abs
  *
  *  - drag the window anywhere; pinch to resize it (the shape follows the video: wide, square or tall)
  *  - tap the picture to show / hide the controls
+ *  - swipe up / down on the right third of the picture: volume; on the left third: screen brightness
+ *    (a swipe that starts in the middle, or goes sideways, still drags the window)
+ *  - the expand button (top left, with the controls) opens the player screen in fullscreen
  *  - the cross stops the video and removes the window; it appears with the controls and fades out with them
  *
  * It needs "Display over other apps" ([canDraw]). The player screen calls [show]; opening the player screen
@@ -52,6 +57,8 @@ object FloatingPlayer {
     private var ratio = 16f / 9f
     private var slide: ValueAnimator? = null
     private var moved = false
+    /** brightness chosen with the swipe (0..1); -1 = the system value. Lives as long as the window. */
+    private var popupBrightness = -1f
 
     val isShowing: Boolean get() = binding != null
 
@@ -105,6 +112,11 @@ object FloatingPlayer {
         b.floatClose.background = GlassDrawable(ctx, 20f, strong = true)
         b.floatClose.setImageDrawable(VectorLabelDrawable(ctx, null, R.drawable.vp_ic_close, iconSizeDp = 18f))
         b.floatClose.setOnClickListener { close() }
+        b.floatExpand.background = GlassDrawable(ctx, 20f, strong = true)
+        b.floatExpand.setImageDrawable(VectorLabelDrawable(ctx, null, R.drawable.vp_ic_fullscreen, iconSizeDp = 18f))
+        b.floatExpand.setOnClickListener { expand() }
+        b.floatHint.background = GlassDrawable(ctx, 18f)
+        popupBrightness = -1f
         // the cross follows the controls: it fades in with a touch and fades out with them after a few seconds
         b.floatControls.onVisibilityChanged = { visible -> setCloseVisible(b, visible) }
 
@@ -167,6 +179,8 @@ object FloatingPlayer {
         if (b != null) {
             b.floatControls.onVisibilityChanged = null
             b.floatClose.animate().cancel()
+            b.floatExpand.animate().cancel()
+            b.floatHint.animate().cancel()
             b.floatControls.bind(null)
             b.floatPlayer.player = null
             runCatching { windowManager?.removeViewImmediate(b.root) }
@@ -183,37 +197,56 @@ object FloatingPlayer {
     }
 
     /**
-     * Shows / hides the cross together with the controls. While it is hidden it is INVISIBLE (not just
-     * transparent), so a touch on that spot reaches the window and brings the controls (and the cross) back.
+     * Shows / hides the cross and the expand button together with the controls. While they are hidden they are
+     * INVISIBLE (not just transparent), so a touch on that spot reaches the window and brings the controls back.
      */
     private fun setCloseVisible(b: VpFloatPlayerBinding, visible: Boolean, animate: Boolean = true) {
-        val v = b.floatClose
-        v.animate().cancel()
-        if (!animate) {
-            v.alpha = if (visible) 1f else 0f
-            v.visibility = if (visible) View.VISIBLE else View.INVISIBLE
-            return
+        for (v in listOf<View>(b.floatClose, b.floatExpand)) {
+            v.animate().cancel()
+            if (!animate) {
+                v.alpha = if (visible) 1f else 0f
+                v.visibility = if (visible) View.VISIBLE else View.INVISIBLE
+                continue
+            }
+            if (visible) {
+                v.visibility = View.VISIBLE
+                v.animate().alpha(1f).setDuration(140L).start()
+            } else {
+                v.animate().alpha(0f).setDuration(140L).withEndAction {
+                    if (b.floatControls.isOpen.not()) v.visibility = View.INVISIBLE
+                }.start()
+            }
         }
-        if (visible) {
-            v.visibility = View.VISIBLE
-            v.animate().alpha(1f).setDuration(140L).start()
-        } else {
-            v.animate().alpha(0f).setDuration(140L).withEndAction {
-                if (b.floatControls.isOpen.not()) v.visibility = View.INVISIBLE
-            }.start()
+    }
+
+    /** The expand button: the player screen opens in fullscreen and takes the picture over (its onStart hides this window). */
+    private fun expand() {
+        val app = themed?.applicationContext ?: return
+        try {
+            app.startActivity(VideoPlayerActivity.fullscreenIntent(app))
+        } catch (e: Throwable) {
+            android.util.Log.w("FloatingPlayer", "cannot open the player screen", e)
+            themed?.let { GlassToast.show(it, R.drawable.vp_ic_error) }
         }
     }
 
     // ---- touch: drag, pinch, tap ----
 
+    private enum class Touch { UNDECIDED, DRAG, VOLUME, BRIGHTNESS }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun attachTouch(b: VpFloatPlayerBinding, ctx: Context) {
         val slop = ViewConfiguration.get(ctx).scaledTouchSlop
+        val density = ctx.resources.displayMetrics.density
+        val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         var downRawX = 0f
         var downRawY = 0f
+        var downLocalX = 0f
         var startX = 0
         var startY = 0
         var pinched = false
+        var mode = Touch.UNDECIDED
+        var startFraction = 0f
         val scale = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
                 pinched = true
@@ -222,7 +255,7 @@ object FloatingPlayer {
                 return true
             }
         })
-        b.floatRoot.setOnTouchListener { _, e ->
+        b.floatRoot.setOnTouchListener { v, e ->
             scale.onTouchEvent(e)
             if (scale.isInProgress) return@setOnTouchListener true
             val lp = params ?: return@setOnTouchListener false
@@ -231,20 +264,46 @@ object FloatingPlayer {
                     slide?.cancel()
                     downRawX = e.rawX
                     downRawY = e.rawY
+                    downLocalX = e.x
                     startX = lp.x
                     startY = lp.y
                     moved = false
                     pinched = false
+                    mode = Touch.UNDECIDED
                 }
                 MotionEvent.ACTION_MOVE -> if (e.pointerCount == 1 && !pinched) {
                     val dx = e.rawX - downRawX
                     val dy = e.rawY - downRawY
-                    if (abs(dx) > slop || abs(dy) > slop) moved = true
-                    if (moved) {
-                        lp.x = startX + dx.toInt()
-                        lp.y = startY + dy.toInt()
-                        clampToScreen()
-                        updateLayout()
+                    if (mode == Touch.UNDECIDED && (abs(dx) > slop || abs(dy) > slop)) {
+                        moved = true
+                        // side thirds + a mostly vertical swipe = brightness (left) / volume (right); else the window moves
+                        val w = v.width.toFloat()
+                        val side = when {
+                            downLocalX < w * 0.3f -> Touch.BRIGHTNESS
+                            downLocalX > w * 0.7f -> Touch.VOLUME
+                            else -> Touch.DRAG
+                        }
+                        mode = if (side != Touch.DRAG && abs(dy) > abs(dx)) side else Touch.DRAG
+                        startFraction = when (mode) {
+                            Touch.VOLUME -> volumeFraction(audio)
+                            Touch.BRIGHTNESS -> brightnessFraction()
+                            else -> 0f
+                        }
+                    }
+                    when (mode) {
+                        Touch.DRAG -> {
+                            lp.x = startX + dx.toInt()
+                            lp.y = startY + dy.toInt()
+                            clampToScreen()
+                            updateLayout()
+                        }
+                        Touch.VOLUME, Touch.BRIGHTNESS -> {
+                            // a swipe over 90% of the window height (at least 140 dp) = the whole range
+                            val range = max(v.height * 0.9f, 140f * density)
+                            val f = (startFraction + (downRawY - e.rawY) / range).coerceIn(0f, 1f)
+                            if (mode == Touch.VOLUME) setVolume(b, audio, f) else setBrightness(b, f)
+                        }
+                        Touch.UNDECIDED -> {}
                     }
                 }
                 MotionEvent.ACTION_UP -> {
@@ -253,6 +312,51 @@ object FloatingPlayer {
             }
             true
         }
+    }
+
+    // ---- volume / brightness (swipes) ----
+
+    private fun volumeFraction(audio: AudioManager): Float {
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        return audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()
+    }
+
+    private fun setVolume(b: VpFloatPlayerBinding, audio: AudioManager, fraction: Float) {
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val index = Math.round(fraction * max)
+        runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0) }
+        flashHint(b, R.drawable.vp_ic_volume, Math.round(index * 100f / max))
+    }
+
+    private fun brightnessFraction(): Float {
+        if (popupBrightness >= 0f) return popupBrightness
+        val ctx = themed ?: return 0.5f
+        val system = runCatching {
+            Settings.System.getInt(ctx.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }.getOrDefault(128)
+        return (system / 255f).coerceIn(0f, 1f)
+    }
+
+    /** The brightness belongs to the popup window (WindowManager.LayoutParams.screenBrightness): no "write settings" needed. */
+    private fun setBrightness(b: VpFloatPlayerBinding, fraction: Float) {
+        val value = fraction.coerceIn(0.02f, 1f) // 0 would switch the screen off on some phones
+        popupBrightness = value
+        params?.let {
+            it.screenBrightness = value
+            updateLayout()
+        }
+        flashHint(b, R.drawable.vp_ic_brightness, Math.round(value * 100f))
+    }
+
+    /** Icon + percent (glyph outlines) for a moment at the top of the window. */
+    private fun flashHint(b: VpFloatPlayerBinding, icon: Int, percent: Int) {
+        val ctx = themed ?: return
+        val v = b.floatHint
+        v.setImageDrawable(VectorLabelDrawable(ctx, "$percent%", icon, textSizeDp = 13f, iconSizeDp = 18f))
+        v.animate().cancel()
+        v.alpha = 1f
+        v.visibility = View.VISIBLE
+        v.animate().alpha(0f).setStartDelay(600L).setDuration(200L).withEndAction { v.visibility = View.GONE }
     }
 
     // ---- size ----
