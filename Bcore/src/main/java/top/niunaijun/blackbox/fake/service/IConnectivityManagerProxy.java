@@ -596,6 +596,35 @@ public class IConnectivityManagerProxy extends BinderInvocationStub {
     }
 
     
+    /**
+     * getNetworkInfoForUid(Network, int uid, boolean ignoreBlocked): the system lets an app ask only about its OWN uid (anything else needs
+     * ACCESS_DOWNLOAD_MANAGER / NETWORK_STACK and throws SecurityException). Inside the sandbox ConnectivityManager.getNetworkInfo(Network)
+     * passes the virtual uid, so the call was refused; Cronet (HttpEngine, used by Play Store / Play Services) treats the exception as fatal
+     * (SIGTRAP in CronetInit) and the process died a few seconds after start. The uid is replaced by the real (host) uid, and if the system
+     * still refuses a connected fallback NetworkInfo is returned instead of the exception.
+     */
+    @ProxyMethod("getNetworkInfoForUid")
+    public static class GetNetworkInfoForUid extends MethodHook {
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            try {
+                if (args != null) {
+                    for (int i = 0; i < args.length; i++) {
+                        if (args[i] instanceof Integer) {
+                            args[i] = top.niunaijun.blackbox.BlackBoxCore.getHostUid();
+                            break;
+                        }
+                    }
+                }
+                Object result = method.invoke(who, args);
+                if (result != null) return result;
+            } catch (Throwable e) {
+                Slog.w(TAG, "getNetworkInfoForUid refused, using a fallback: " + e);
+            }
+            return createNetworkInfo(ConnectivityManager.TYPE_WIFI, 0, "WIFI", "");
+        }
+    }
+
     @ProxyMethod("getActiveNetworkInfoForUid")
     public static class GetActiveNetworkInfoForUid extends MethodHook {
         @Override

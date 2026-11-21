@@ -1,6 +1,8 @@
 package com.srizwan.win11
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.media.RingtoneManager
 import android.content.res.ColorStateList
@@ -831,10 +833,35 @@ class NotificationSettingsActivity : AppCompatActivity() {
                 else -> Uri.parse(saved)
             }
             i.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existing)
+            // Chooser: start ONE explicit picker so the phone's own resolver (TranResolver / ResolverActivity) never shows up.
+            // The :chooser sheets only replace Open with / Share / file picking; an implicit RINGTONE_PICKER intent still went to the system resolver.
+            val handler = findRingtonePicker(i)
+            if (handler != null) i.component = handler
             @Suppress("DEPRECATION")
             startActivityForResult(i, REQ_SOUND_BASE + index)
         } catch (e: Exception) {
             Toast.makeText(this, "Can't open the sound picker", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * The activity that should show the sound list, or null (then the implicit intent is used as before).
+     * One handler: it. Several: the AOSP one (com.android.providers.media / RingtonePickerActivity) first, then any system app, then the
+     * default the system itself would pick unless that is a resolver / chooser.
+     */
+    private fun findRingtonePicker(intent: Intent): ComponentName? {
+        return try {
+            val list = packageManager.queryIntentActivities(intent, 0).filter { it.activityInfo?.exported == true }
+            if (list.isEmpty()) return null
+            if (list.size == 1) return ComponentName(list[0].activityInfo.packageName, list[0].activityInfo.name)
+            fun isResolver(n: String) = n.contains("Resolver", true) || n.contains("Chooser", true)
+            val real = list.filter { !isResolver(it.activityInfo.name) }.ifEmpty { list }
+            val pick = real.firstOrNull { it.activityInfo.name.contains("RingtonePicker", true) && it.activityInfo.packageName.startsWith("com.android") }
+                ?: real.firstOrNull { (it.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 }
+                ?: real.first()
+            ComponentName(pick.activityInfo.packageName, pick.activityInfo.name)
+        } catch (e: Exception) {
+            null
         }
     }
 

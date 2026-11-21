@@ -93,8 +93,53 @@ object AppFinder {
     /** Like [querySend], but throws [QueryFailedException] when the package manager fails. */
     fun querySendStrict(context: Context, mime: String?, count: Int = 1, includeSelf: Boolean = true): List<Target> {
         val m = mime ?: MimeTypes.ANY
-        return sorted(context, query(context, sendIntent(m, count), includeSelf), ChooserKind.SEND, m)
+        val base = query(context, sendIntent(m, count), includeSelf)
+        return sorted(context, withBluetooth(context, base, count), ChooserKind.SEND, m)
     }
+
+    /**
+     * Bluetooth in the Share sheet. The matching by intent filter (`queryIntentActivities`) did not return the system Bluetooth sender on
+     * some phones even for pictures, videos and audio, so the sheet had no Bluetooth entry. When the normal query has none, the sender is
+     * looked up directly: every installed package with "bluetooth" in its name (com.android.bluetooth, com.google.android.bluetooth ...)
+     * is asked for its `BluetoothOppLauncherActivity` (the "Share via Bluetooth" screen), whatever its filters say. The entry is only added when
+     * that activity is exported, not switched off, and the same package manager call can start it; it takes any file handed to it as a
+     * stream. The outcome is written to the log (tag AppFinder) so a phone without it can be diagnosed.
+     */
+    @Suppress("DEPRECATION")
+    private fun withBluetooth(context: Context, base: List<Target>, count: Int): List<Target> {
+        if (base.any { isBluetooth(it.packageName) }) return base
+        val pm = context.packageManager
+        val found = ArrayList<Target>()
+        try {
+            val pkgs = LinkedHashSet<String>()
+            pkgs.add("com.android.bluetooth")
+            pkgs.add("com.google.android.bluetooth")
+            for (pi in pm.getInstalledPackages(0)) if (isBluetooth(pi.packageName)) pkgs.add(pi.packageName)
+            for (pkg in pkgs) {
+                val info = try { pm.getPackageInfo(pkg, PackageManager.GET_ACTIVITIES) } catch (e: Exception) { null } ?: continue
+                for (a in info.activities.orEmpty()) {
+                    if (!a.name.endsWith("BluetoothOppLauncherActivity") && !a.name.endsWith("OppLauncherActivity")) continue
+                    val component = ComponentName(pkg, a.name)
+                    val ai = try { pm.getActivityInfo(component, 0) } catch (e: Exception) { null }
+                    if (ai == null || !ai.enabled || !ai.exported || ai.permission != null) {
+                        Log.i(TAG, "Bluetooth sender $component skipped (enabled=${ai?.enabled}, exported=${ai?.exported}, permission=${ai?.permission})")
+                        continue
+                    }
+                    val loaded: CharSequence? = try { ai.loadLabel(pm) } catch (e: Exception) { null }
+                    val label = loaded?.toString()?.trim().orEmpty().ifEmpty { "Bluetooth" }
+                    val icon = try { ai.loadIcon(pm) } catch (e: Exception) { pm.defaultActivityIcon }
+                    found.add(Target(label, component, icon, false))
+                    Log.i(TAG, "Bluetooth sender added: $component")
+                }
+            }
+            if (found.isEmpty()) Log.i(TAG, "no Bluetooth sender found in: $pkgs")
+        } catch (e: Exception) {
+            Log.w(TAG, "Bluetooth lookup failed", e)
+        }
+        return if (found.isEmpty()) base else base + found.first()
+    }
+
+    private fun isBluetooth(pkg: String): Boolean = pkg.contains("bluetooth", ignoreCase = true)
 
     /**
      * Is [component] still an app that can be started with an explicit `ACTION_VIEW` (installed, enabled, exported or ours, not a system
