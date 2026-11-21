@@ -146,7 +146,7 @@ class ChooserSettingsActivity : AppCompatActivity() {
             addView(scroll, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
         }
-        bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updatePadding() }
+        bar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updatePadding() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             navBottom = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).bottom
             updatePadding()
