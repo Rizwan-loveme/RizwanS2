@@ -25,6 +25,9 @@ public interface ApplicationInfoL {
     String secondaryNativeLibraryDir();
 
     @BField
+    String[] splitNames();
+
+    @BField
     String[] splitPublicSourceDirs();
 
     @BField

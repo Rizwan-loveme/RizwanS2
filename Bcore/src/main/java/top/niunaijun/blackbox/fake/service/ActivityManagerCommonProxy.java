@@ -41,6 +41,10 @@ public class ActivityManagerCommonProxy {
             if (intent.getParcelableExtra("_B_|_target_") != null) {
                 return method.invoke(who, args);
             }
+            // part 17: runtime permission request of the clone -> our own Ask dialog
+            if (PermissionRequestRedirect.redirect(intent)) {
+                return method.invoke(who, args);
+            }
             if (ComponentUtils.isRequestInstall(intent)) {
                 File file = FileProviderHandler.convertFile(BActivityThread.getApplication(), intent.getData());
                 
@@ -64,6 +68,10 @@ public class ActivityManagerCommonProxy {
                 
                 if (BlackBoxCore.get().requestInstallPackage(file, BActivityThread.getUserId())) {
                     return 0;
+                }
+                // part 31: install into the box (same space as this clone) instead of the phone
+                if (InstallRequestRedirect.redirect(intent, file)) {
+                    return method.invoke(who, args);
                 }
                 intent.setData(FileProviderHandler.convertFileUri(BActivityThread.getApplication(), intent.getData()));
                 return method.invoke(who, args);

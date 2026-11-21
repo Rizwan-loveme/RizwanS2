@@ -81,7 +81,12 @@ public class ILocationManagerProxy extends BinderInvocationStub {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             if (BLocationManager.isFakeLocationEnable()) {
-                return BLocationManager.get().getLocation(BActivityThread.getUserId(), BActivityThread.getAppPackageName()).convert2SystemLocation();
+                // no saved coordinates (null) = nothing to fake: fall through to the real location
+                top.niunaijun.blackbox.entity.location.BLocation fake = BLocationManager.get()
+                        .getLocation(BActivityThread.getUserId(), BActivityThread.getAppPackageName());
+                if (fake != null) {
+                    return fake.convert2SystemLocation();
+                }
             }
             
             
@@ -103,7 +108,12 @@ public class ILocationManagerProxy extends BinderInvocationStub {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             if (BLocationManager.isFakeLocationEnable()) {
-                return BLocationManager.get().getLocation(BActivityThread.getUserId(), BActivityThread.getAppPackageName()).convert2SystemLocation();
+                // no saved coordinates (null) = nothing to fake: fall through to the real location
+                top.niunaijun.blackbox.entity.location.BLocation fake = BLocationManager.get()
+                        .getLocation(BActivityThread.getUserId(), BActivityThread.getAppPackageName());
+                if (fake != null) {
+                    return fake.convert2SystemLocation();
+                }
             }
             
             

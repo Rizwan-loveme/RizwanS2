@@ -394,6 +394,17 @@ public class BProcessManagerService implements ISystemService {
         }
     }
 
+    /** Part 26: true when the clone has a process that is still alive (dead records are ignored). */
+    public boolean isPackageRunningAsUser(String packageName, int userId) {
+        try {
+            for (ProcessRecord r : getPackageProcessAsUser(packageName, userId)) {
+                if (r != null && r.pid > 0 && new java.io.File("/proc/" + r.pid).exists()) return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     public List<ProcessRecord> getPackageProcessAsUser(String packageName, int userId) {
         synchronized (mProcessMap) {
             int buid = BUserHandle.getUid(userId, BPackageManagerService.get().getAppId(packageName));

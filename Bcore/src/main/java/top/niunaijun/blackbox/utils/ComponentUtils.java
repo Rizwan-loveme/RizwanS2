@@ -15,8 +15,26 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_INSTANCE;
 
 public class ComponentUtils {
 
+    /**
+     * True for an intent that asks the system to install a package: the APK mime type, the
+     * INSTALL_PACKAGE action (part 31), or a VIEW of a file/content uri named *.apk / *.xapk / *.apks / *.apkm.
+     */
     public static boolean isRequestInstall(Intent intent) {
-        return "application/vnd.android.package-archive".equals(intent.getType());
+        if (intent == null) return false;
+        if ("application/vnd.android.package-archive".equals(intent.getType())) return true;
+        String action = intent.getAction();
+        if ("android.intent.action.INSTALL_PACKAGE".equals(action)) return true;
+        if (Intent.ACTION_VIEW.equals(action) && intent.getComponent() == null) {
+            android.net.Uri data = intent.getData();
+            if (data == null) return false;
+            String scheme = data.getScheme();
+            if (!"file".equals(scheme) && !"content".equals(scheme)) return false;
+            String name = data.getLastPathSegment();
+            if (name == null) return false;
+            name = name.toLowerCase(java.util.Locale.ROOT);
+            return name.endsWith(".apk") || name.endsWith(".xapk") || name.endsWith(".apks") || name.endsWith(".apkm");
+        }
+        return false;
     }
 
     public static boolean isSelf(Intent intent) {

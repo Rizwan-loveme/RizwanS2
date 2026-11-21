@@ -51,6 +51,7 @@ import black.android.app.BRActivityThreadNMR1;
 import black.android.app.BRActivityThreadQ;
 import black.android.app.BRContextImpl;
 import black.android.app.BRLoadedApk;
+import black.android.content.pm.BRApplicationInfoL;
 import black.android.app.BRService;
 import black.android.app.LoadedApk;
 import black.android.content.BRBroadcastReceiver;
@@ -82,6 +83,8 @@ import top.niunaijun.blackbox.utils.GlobalContextWrapper;
 import top.niunaijun.blackbox.utils.BlackScreenWatchdog;
 import top.niunaijun.blackbox.utils.Slog;
 import top.niunaijun.blackbox.utils.compat.ActivityManagerCompat;
+import top.niunaijun.blackbox.utils.bundle.CodePaths;
+import top.niunaijun.blackbox.utils.bundle.NativeLibPaths;
 import top.niunaijun.blackbox.utils.compat.BuildCompat;
 import top.niunaijun.blackbox.utils.compat.ContextCompat;
 import top.niunaijun.blackbox.utils.compat.StrictModeCompat;
@@ -378,6 +381,7 @@ public class BActivityThread extends IBActivityThread.Stub {
         BRLoadedApk.get(loadedApk)._set_mSecurityViolation(false);
         
         BRLoadedApk.get(loadedApk)._set_mApplicationInfo(applicationInfo);
+        syncLoadedApkSplits(loadedApk, applicationInfo);
 
         int targetSdkVersion = applicationInfo.targetSdkVersion;
         if (targetSdkVersion < Build.VERSION_CODES.GINGERBREAD) {
@@ -650,6 +654,54 @@ public class BActivityThread extends IBActivityThread.Stub {
     }
     
     
+    /**
+     * The LoadedApk copies the library folder and the split paths from the ApplicationInfo when it
+     * is created, and keeps them. If it was created from an older ApplicationInfo (for example
+     * cached before the app was updated to a bundle) the class loader and the resources would miss
+     * the splits. As long as the class loader has not been built yet the fields are brought up to
+     * date here. Every field is optional (it differs between Android versions), so each step is
+     * guarded and a failure never stops the app from starting.
+     */
+    private static void syncLoadedApkSplits(Object loadedApk, ApplicationInfo ai) {
+        try {
+            if (ai.splitSourceDirs == null || ai.splitSourceDirs.length == 0) {
+                return;
+            }
+            if (BRLoadedApk.get(loadedApk)._check_mClassLoader() != null
+                    && BRLoadedApk.get(loadedApk).mClassLoader() != null) {
+                return; // already built, too late to change
+            }
+            if (BRLoadedApk.get(loadedApk)._check_mSplitAppDirs() != null) {
+                BRLoadedApk.get(loadedApk)._set_mSplitAppDirs(ai.splitSourceDirs.clone());
+            }
+            if (BRLoadedApk.get(loadedApk)._check_mSplitResDirs() != null) {
+                BRLoadedApk.get(loadedApk)._set_mSplitResDirs(ai.splitSourceDirs.clone());
+            }
+            if (ai.nativeLibraryDir != null) {
+                BRLoadedApk.get(loadedApk)._set_mLibDir(ai.nativeLibraryDir);
+            }
+        } catch (Throwable t) {
+            Slog.w(TAG, "could not sync split paths of the LoadedApk: " + t.getMessage());
+        }
+    }
+
+    /** ABI chosen when the app was installed (part 6); null when the app has no native code. */
+    private static String installedAbi(android.content.pm.ApplicationInfo appInfo) {
+        try {
+            if (Build.VERSION.SDK_INT >= 21) {
+                return BRApplicationInfoL.get(appInfo).primaryCpuAbi();
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    /** {@code android:extractNativeLibs} of the app; true when unknown (older than API 23). */
+    private static boolean extractsNativeLibs(android.content.pm.ApplicationInfo appInfo) {
+        // ApplicationInfo.FLAG_EXTRACT_NATIVE_LIBS (hidden, API 23+)
+        return Build.VERSION.SDK_INT < 23 || (appInfo.flags & (1 << 28)) != 0;
+    }
+
     private ClassLoader getClassLoader(android.content.pm.ApplicationInfo appInfo) {
         try {
 
@@ -660,15 +712,19 @@ public class BActivityThread extends IBActivityThread.Stub {
                 // (common for apps installed from Play Store as Android App Bundles),
                 // which previously caused ClassNotFoundException / NoClassDefFoundError
                 // for classes that only exist in a split (see CrashMonitor logs).
-                StringBuilder dexPath = new StringBuilder(sourceDir);
-                if (appInfo.splitSourceDirs != null) {
-                    for (String split : appInfo.splitSourceDirs) {
-                        if (split != null) {
-                            dexPath.append(File.pathSeparator).append(split);
-                        }
-                    }
-                }
-                return new dalvik.system.PathClassLoader(dexPath.toString(), ClassLoader.getSystemClassLoader());
+                String dexPath = CodePaths.dexPath(sourceDir, appInfo.splitSourceDirs);
+                // Native libraries: the extracted lib folder and, for apps with
+                // extractNativeLibs="false", <apk>!/lib/<abi> of the base APK and every split
+                // (part 6). Without this an app with native code in a split fails with
+                // UnsatisfiedLinkError.
+                String libraryPath = NativeLibPaths.join(NativeLibPaths.build(
+                        appInfo.nativeLibraryDir,
+                        CodePaths.all(sourceDir, appInfo.splitSourceDirs),
+                        installedAbi(appInfo),
+                        extractsNativeLibs(appInfo)));
+                Slog.d(TAG, "class loader of " + appInfo.packageName + ": dex=" + dexPath + " lib=" + libraryPath);
+                return new dalvik.system.PathClassLoader(dexPath,
+                        libraryPath.isEmpty() ? null : libraryPath, ClassLoader.getSystemClassLoader());
             }
 
 

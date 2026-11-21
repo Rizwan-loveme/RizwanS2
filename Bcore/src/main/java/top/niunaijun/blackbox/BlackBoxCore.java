@@ -238,7 +238,8 @@ public class BlackBoxCore extends ClientConfiguration {
 
                     ServiceManager.ACCOUNT_MANAGER,
                     ServiceManager.LOCATION_MANAGER,
-                    ServiceManager.NOTIFICATION_MANAGER
+                    ServiceManager.NOTIFICATION_MANAGER,
+                    ServiceManager.PERMISSION_MANAGER
                 };
                 
                 for (String serviceName : serviceNames) {
@@ -269,7 +270,8 @@ public class BlackBoxCore extends ClientConfiguration {
 
                 ServiceManager.ACCOUNT_MANAGER,
                 ServiceManager.LOCATION_MANAGER,
-                ServiceManager.NOTIFICATION_MANAGER
+                ServiceManager.NOTIFICATION_MANAGER,
+                ServiceManager.PERMISSION_MANAGER
             };
             
             for (String serviceName : serviceNames) {
@@ -302,7 +304,8 @@ public class BlackBoxCore extends ClientConfiguration {
 
                     ServiceManager.ACCOUNT_MANAGER,
                     ServiceManager.LOCATION_MANAGER,
-                    ServiceManager.NOTIFICATION_MANAGER
+                    ServiceManager.NOTIFICATION_MANAGER,
+                    ServiceManager.PERMISSION_MANAGER
                 };
                 
                 for (String serviceName : serviceNames) {
@@ -1161,6 +1164,49 @@ public class BlackBoxCore extends ClientConfiguration {
         }
     }
 
+    /**
+     * Clones an app that is installed on the phone. With {@code independent} the base APK, the splits and
+     * the native libraries are copied into the box (FLAG_STORAGE) and the phone is not looked at
+     * again, so the clone keeps working when the original is updated or removed. Without it the
+     * clone points at the phone's files (small, follows updates).
+     */
+    public InstallResult installPackageAsUser(String packageName, int userId, boolean independent) {
+        if (!independent) {
+            return installPackageAsUser(packageName, userId);
+        }
+        try {
+            if (packageName.equals(getHostPkg())) {
+                return new InstallResult().installError("Cannot clone BlackBox app from within BlackBox. This would create infinite recursion and is not allowed for security reasons.");
+            }
+            PackageInfo packageInfo = getPackageManager().getPackageInfo(packageName, 0);
+            top.niunaijun.blackbox.utils.bundle.IndependentCopy.Plan plan =
+                    top.niunaijun.blackbox.utils.bundle.IndependentCopy.plan(packageName, packageInfo.applicationInfo);
+            return getBPackageManager().installPackageAsUser(plan.base.getAbsolutePath(),
+                    InstallOption.installByStorageWithSplits(plan.splits), userId);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+            return new InstallResult().installError(e.getMessage());
+        } catch (top.niunaijun.blackbox.utils.bundle.BundleException e) {
+            return new InstallResult().installError(packageName, e.getMessage());
+        }
+    }
+
+    /** True when the clone in {@code userId} is an independent copy (its APK files live in the box). */
+    public boolean isIndependentCopy(String packageName, int userId) {
+        try {
+            List<ApplicationInfo> apps = getInstalledApplications(0, userId);
+            if (apps != null) {
+                for (ApplicationInfo ai : apps) {
+                    if (packageName.equals(ai.packageName)) {
+                        return top.niunaijun.blackbox.utils.bundle.IndependentCopy.isIndependent(ai.sourceDir);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     public InstallResult installPackageAsUser(File apk, int userId) {
         
         try {
@@ -1184,6 +1230,24 @@ public class BlackBoxCore extends ClientConfiguration {
         return getBPackageManager().installPackageAsUser(apk.toString(), InstallOption.installByStorage().makeUriFile(), userId);
     }
 
+    /**
+     * Installs an app that comes as a base APK plus split APKs (an unpacked .apks / .xapk / .apkm).
+     * The files must already be on storage, see {@link top.niunaijun.blackbox.utils.bundle.BundleInstaller}.
+     * An empty split list installs a plain APK.
+     */
+    public InstallResult installBundleAsUser(File baseApk, List<String> splitPaths, int userId) {
+        try {
+            PackageInfo packageInfo = getPackageManager().getPackageArchiveInfo(baseApk.getAbsolutePath(), 0);
+            if (packageInfo != null && packageInfo.packageName.equals(getHostPkg())) {
+                return new InstallResult().installError("Cannot clone BlackBox app from within BlackBox. This would create infinite recursion and is not allowed for security reasons.");
+            }
+        } catch (Exception e) {
+            Slog.w(TAG, "Could not verify package info for APK: " + baseApk.getAbsolutePath());
+        }
+        return getBPackageManager().installPackageAsUser(baseApk.getAbsolutePath(),
+                InstallOption.installByStorageWithSplits(splitPaths), userId);
+    }
+
 
 
 
@@ -1202,6 +1266,11 @@ public class BlackBoxCore extends ClientConfiguration {
 
     public void stopPackage(String packageName, int userId) {
         BPackageManager.get().stopPackage(packageName, userId);
+    }
+
+    /** Part 26: true while the clone has a live process (works for background apps too). */
+    public boolean isPackageRunning(String packageName, int userId) {
+        return BPackageManager.get().isPackageRunning(packageName, userId);
     }
 
     public List<BUserInfo> getUsers() {
@@ -1270,6 +1339,12 @@ public class BlackBoxCore extends ClientConfiguration {
     @Override
     public boolean isHideRoot() {
         return mClientConfiguration.isHideRoot();
+    }
+
+    /** Part 31: see {@link ClientConfiguration#isInstallInsideBox()}. */
+    @Override
+    public boolean isInstallInsideBox() {
+        return mClientConfiguration != null && mClientConfiguration.isInstallInsideBox();
     }
 
     @Override

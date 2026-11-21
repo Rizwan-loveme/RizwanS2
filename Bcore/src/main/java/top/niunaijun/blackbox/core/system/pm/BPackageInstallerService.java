@@ -9,6 +9,7 @@ import top.niunaijun.blackbox.core.system.pm.installer.CreatePackageExecutor;
 import top.niunaijun.blackbox.core.system.pm.installer.CreateUserExecutor;
 import top.niunaijun.blackbox.core.system.pm.installer.Executor;
 import top.niunaijun.blackbox.core.system.pm.installer.RemoveAppExecutor;
+import top.niunaijun.blackbox.core.system.pm.installer.RemoveObbExecutor;
 import top.niunaijun.blackbox.core.system.pm.installer.RemoveUserExecutor;
 import top.niunaijun.blackbox.entity.pm.InstallOption;
 import top.niunaijun.blackbox.utils.Slog;
@@ -52,6 +53,8 @@ public class BPackageInstallerService extends IBPackageInstallerService.Stub imp
         }
         
         executors.add(new RemoveUserExecutor());
+        // the OBB files are big: remove them with the app (but not on "clear data")
+        executors.add(new RemoveObbExecutor());
         InstallOption option = ps.installOption;
         for (Executor executor : executors) {
             int exec = executor.exec(ps, option, userId);

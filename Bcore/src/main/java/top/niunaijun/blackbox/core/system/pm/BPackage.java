@@ -45,6 +45,10 @@ public class BPackage implements Parcelable {
     public ApplicationInfo applicationInfo;
     public String mVersionName;
     public String baseCodePath;
+    /** Split names of the app, null / empty when it has no splits. Saved only when FLAG_SPLIT is set. */
+    public String[] splitNames;
+    /** Paths of the split APKs, same order as {@link #splitNames}. */
+    public String[] splitCodePaths;
 
     public int mSharedUserLabel;
     
@@ -134,6 +138,8 @@ public class BPackage implements Parcelable {
         this.applicationInfo = aPackage.applicationInfo;
         this.mVersionName = aPackage.mVersionName;
         this.baseCodePath = aPackage.baseCodePath;
+        this.splitNames = aPackage.splitNames;
+        this.splitCodePaths = aPackage.splitCodePaths;
         this.mSharedUserLabel = aPackage.mSharedUserLabel;
         this.configPreferences = aPackage.configPreferences;
         this.reqFeatures = aPackage.reqFeatures;
@@ -228,6 +234,12 @@ public class BPackage implements Parcelable {
         this.configPreferences = in.createTypedArrayList(ConfigurationInfo.CREATOR);
         this.reqFeatures = in.createTypedArrayList(FeatureInfo.CREATOR);
         this.installOption = in.readParcelable(InstallOption.class.getClassLoader());
+        // Written after installOption and only for split installs, so package.conf files of
+        // apps installed before splits existed are still read correctly.
+        if (this.installOption != null && this.installOption.hasSplits()) {
+            this.splitNames = in.createStringArray();
+            this.splitCodePaths = in.createStringArray();
+        }
     }
 
     public final static class Activity extends Component<ActivityIntentInfo> {
@@ -718,6 +730,10 @@ public class BPackage implements Parcelable {
         dest.writeTypedList(this.configPreferences);
         dest.writeTypedList(this.reqFeatures);
         dest.writeParcelable(this.installOption, flags);
+        if (this.installOption != null && this.installOption.hasSplits()) {
+            dest.writeStringArray(this.splitNames);
+            dest.writeStringArray(this.splitCodePaths);
+        }
     }
 
     public static final Parcelable.Creator<BPackage> CREATOR = new Parcelable.Creator<BPackage>() {

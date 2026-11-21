@@ -21,6 +21,7 @@ object Palette {
     val GREEN = Color.parseColor("#E3F7EA")
     val AMBER = Color.parseColor("#FFF1D6")
     val RED = Color.parseColor("#FDE4E4")
+    val LILAC = Color.parseColor("#E8E6FF")
 }
 
 fun Context.dp(v: Int): Int = (v * resources.displayMetrics.density + 0.5f).toInt()

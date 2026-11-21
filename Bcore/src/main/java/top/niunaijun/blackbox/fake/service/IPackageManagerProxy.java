@@ -142,8 +142,14 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             if (packageInfo != null) {
                 
                 if (packageInfo.requestedPermissions != null && packageInfo.requestedPermissionsFlags != null) {
+                    boolean own = PermissionPolicy.isOwnPackage(packageName);
                     for (int i = 0; i < packageInfo.requestedPermissions.length; i++) {
                         String perm = packageInfo.requestedPermissions[i];
+                        if (own && perm != null && !PermissionPolicy.isAllowed(perm)) {
+                            // store says Ask / Deny: the app must not see this permission as granted
+                            packageInfo.requestedPermissionsFlags[i] &= ~PackageInfo.REQUESTED_PERMISSION_GRANTED;
+                            continue;
+                        }
                         if (perm != null && (perm.equals(android.Manifest.permission.RECORD_AUDIO)
                                 || perm.equals("android.permission.FOREGROUND_SERVICE_MICROPHONE")
                                 || perm.equals(android.Manifest.permission.MODIFY_AUDIO_SETTINGS)
@@ -345,6 +351,10 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             MethodParameterUtils.replaceFirstAppPkg(args);
+            // part 31: installs go into the box, so the phone's "unknown apps" switch does not matter
+            if (BlackBoxCore.get().isInstallInsideBox()) {
+                return true;
+            }
             return method.invoke(who, args);
         }
     }
@@ -414,26 +424,48 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             String permission = (String) args[0];
             String packageName = (String) args[1];
-            
-            
-            if (isAudioPermission(permission)) {
-                Slog.d(TAG, "SimpleAudioPermissionHook: Granting audio permission: " + permission + " to " + packageName);
-                return PackageManager.PERMISSION_GRANTED;
-            }
 
-            
-            if (isStorageOrMediaPermission(permission)) {
-                Slog.d(TAG, "SimpleAudioPermissionHook: Granting storage/media permission: " + permission + " to " + packageName);
-                return PackageManager.PERMISSION_GRANTED;
+            // permission store first (Deny / Ask), then the old forced grants
+            int decision = PermissionPolicy.decideForPackage(permission, packageName, PermissionPolicy.LEGACY_ALL);
+            if (decision != PermissionPolicy.NO_OPINION) {
+                Slog.d(TAG, "checkPermission " + permission + " for " + packageName + " -> " + decision);
+                return decision;
             }
-            
-            
-            if (isNotificationOrXiaomiPermission(permission)) {
-                Slog.d(TAG, "SimpleAudioPermissionHook: Granting notification/Xiaomi permission: " + permission + " to " + packageName);
-                return PackageManager.PERMISSION_GRANTED;
+            return method.invoke(who, args);
+        }
+    }
+
+    @ProxyMethod("checkUidPermission")
+    public static class CheckUidPermission extends MethodHook {
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            // Android 10 and older: (permission, uid). Own uid only, other uids are untouched.
+            String permission = null;
+            int uid = -1;
+            for (Object a : args) {
+                if (permission == null && a instanceof String) {
+                    permission = (String) a;
+                } else if (uid == -1 && a instanceof Integer) {
+                    uid = (Integer) a;
+                }
             }
-            
-            
+            if (permission != null && uid != -1 && PermissionPolicy.isOwnUid(uid)
+                    && !PermissionPolicy.isAllowed(permission)) {
+                return PackageManager.PERMISSION_DENIED;
+            }
+            return method.invoke(who, args);
+        }
+    }
+
+    @ProxyMethod("isPermissionRevokedByPolicy")
+    public static class IsPermissionRevokedByPolicy extends MethodHook {
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            String permission = (String) args[0];
+            String packageName = (String) args[1];
+            if (PermissionPolicy.isOwnPackage(packageName) && PermissionPolicy.isDenied(permission)) {
+                return true;
+            }
             return method.invoke(who, args);
         }
     }
@@ -444,26 +476,11 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             String permission = (String) args[0];
             String packageName = (String) args[1];
-            
-            
-            if (isAudioPermission(permission)) {
-                Slog.d(TAG, "CheckSelfPermission: Granting audio permission: " + permission + " to " + packageName);
-                return PackageManager.PERMISSION_GRANTED;
-            }
 
-            
-            if (isStorageOrMediaPermission(permission)) {
-                Slog.d(TAG, "CheckSelfPermission: Granting storage/media permission: " + permission + " to " + packageName);
-                return PackageManager.PERMISSION_GRANTED;
+            int decision = PermissionPolicy.decideForPackage(permission, packageName, PermissionPolicy.LEGACY_ALL);
+            if (decision != PermissionPolicy.NO_OPINION) {
+                return decision;
             }
-            
-            
-            if (isNotificationOrXiaomiPermission(permission)) {
-                Slog.d(TAG, "CheckSelfPermission: Granting notification/Xiaomi permission: " + permission + " to " + packageName);
-                return PackageManager.PERMISSION_GRANTED;
-            }
-            
-            
             return method.invoke(who, args);
         }
     }
@@ -474,26 +491,12 @@ public class IPackageManagerProxy extends BinderInvocationStub {
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             String permission = (String) args[0];
             String packageName = (String) args[1];
-            
-            
-            if (isAudioPermission(permission)) {
-                Slog.d(TAG, "ShouldShowRequestPermissionRationale: Not showing rationale for audio permission: " + permission);
-                return false;
-            }
 
-            
-            if (isStorageOrMediaPermission(permission)) {
-                Slog.d(TAG, "ShouldShowRequestPermissionRationale: Not showing rationale for storage/media permission: " + permission);
+            // Ask / Deny from the store, and the old forced-grant groups: never show a rationale
+            if ((PermissionPolicy.isOwnPackage(packageName) && !PermissionPolicy.isAllowed(permission))
+                    || PermissionPolicy.isLegacyGranted(permission, PermissionPolicy.LEGACY_ALL)) {
                 return false;
             }
-            
-            
-            if (isNotificationOrXiaomiPermission(permission)) {
-                Slog.d(TAG, "ShouldShowRequestPermissionRationale: Not showing rationale for notification/Xiaomi permission: " + permission);
-                return false;
-            }
-            
-            
             return method.invoke(who, args);
         }
     }
@@ -526,75 +529,9 @@ public class IPackageManagerProxy extends BinderInvocationStub {
     }
 
     
-    private static boolean isStorageOrMediaPermission(String permission) {
-        if (permission == null) return false;
-        
-        if (permission.equals(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                || permission.equals(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            return true;
-        }
-        
-        if (permission.equals(android.Manifest.permission.READ_MEDIA_AUDIO)
-                || permission.equals(android.Manifest.permission.READ_MEDIA_VIDEO)
-                || permission.equals(android.Manifest.permission.READ_MEDIA_IMAGES)
-                || permission.equals("android.permission.READ_MEDIA_VISUAL")
-                || permission.equals("android.permission.READ_MEDIA_AURAL")
-                || permission.equals(android.Manifest.permission.ACCESS_MEDIA_LOCATION)) {
-            return true;
-        }
-        
-        if (permission.equals("android.permission.READ_MEDIA_AUDIO_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_VIDEO_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_IMAGES_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_VISUAL_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_AURAL_USER_SELECTED")) {
-            return true;
-        }
-        return false;
-    }
-
-    
-    private static boolean isAudioPermission(String permission) {
-        if (permission == null) return false;
-        return permission.equals(android.Manifest.permission.RECORD_AUDIO)
-                || permission.equals(android.Manifest.permission.CAPTURE_AUDIO_OUTPUT)
-                || permission.equals(android.Manifest.permission.MODIFY_AUDIO_SETTINGS)
-                || permission.equals("android.permission.FOREGROUND_SERVICE_MICROPHONE")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_CAMERA")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_LOCATION")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_HEALTH")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_DATA_SYNC")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_SPECIAL_USE")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_PHONE_CALL")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE");
-    }
     
     
-    private static boolean isNotificationOrXiaomiPermission(String permission) {
-        if (permission == null) return false;
-        
-        
-        if (permission.equals("android.permission.POST_NOTIFICATIONS")) {
-            return true;
-        }
-        
-        
-        if (permission.equals("miui.permission.USE_INTERNAL_GENERAL_API") ||
-            permission.equals("miui.permission.OPTIMIZE_POWER") ||
-            permission.equals("miui.permission.RUN_IN_BACKGROUND") ||
-            permission.equals("miui.permission.POST_NOTIFICATIONS") ||
-            permission.equals("miui.permission.AUTO_START") ||
-            permission.equals("miui.permission.BACKGROUND_POPUP_WINDOW") ||
-            permission.equals("miui.permission.SHOW_WHEN_LOCKED") ||
-            permission.equals("miui.permission.TURN_SCREEN_ON")) {
-            return true;
-        }
-        
-        return false;
-    }
-
+    
     @ProxyMethod("setSplashScreenTheme")
     public static class SetSplashScreenTheme extends MethodHook {
         @Override

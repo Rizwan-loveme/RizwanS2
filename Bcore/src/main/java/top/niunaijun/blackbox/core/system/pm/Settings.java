@@ -1,5 +1,6 @@
 package top.niunaijun.blackbox.core.system.pm;
 
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageParser;
@@ -10,6 +11,7 @@ import android.util.AtomicFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.List;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -22,6 +24,8 @@ import top.niunaijun.blackbox.core.system.user.BUserHandle;
 import top.niunaijun.blackbox.entity.pm.InstallOption;
 import top.niunaijun.blackbox.utils.FileUtils;
 import top.niunaijun.blackbox.utils.Slog;
+import top.niunaijun.blackbox.utils.bundle.PhoneSplits;
+import top.niunaijun.blackbox.utils.bundle.SplitPackageParser;
 import top.niunaijun.blackbox.utils.compat.PackageParserCompat;
 
 
@@ -207,8 +211,12 @@ import top.niunaijun.blackbox.utils.compat.PackageParserCompat;
             bPackageSettings.pkg.mExtras = bPackageSettings;
             if (bPackageSettings.installOption.isFlag(InstallOption.FLAG_SYSTEM)) {
                 PackageInfo packageInfo = BlackBoxCore.getPackageManager().getPackageInfo(packageName, PackageManager.GET_META_DATA);
-                String currPackageSourcePath = packageInfo.applicationInfo.sourceDir;
-                if (!currPackageSourcePath.equals(bPackageSettings.pkg.baseCodePath)) {
+                // The phone changes the paths when the original app is updated: a new base APK path or a
+                // different set of split files. An app cloned before split support (no splits stored)
+                // whose original has splits is read again here too.
+                ApplicationInfo phone = packageInfo.applicationInfo;
+                if (PhoneSplits.changed(bPackageSettings.pkg.baseCodePath, bPackageSettings.pkg.splitCodePaths,
+                        phone.sourceDir, phone.splitSourceDirs)) {
                     
                     BProcessManagerService.get().killAllByPackageName(bPackageSettings.pkg.packageName);
                     BPackageSettings newPkg = reInstallBySystem(packageInfo, bPackageSettings.installOption);
@@ -235,7 +243,13 @@ import top.niunaijun.blackbox.utils.compat.PackageParserCompat;
 
     private BPackageSettings reInstallBySystem(PackageInfo systemPackageInfo, InstallOption option) throws Exception {
         Slog.d(TAG, "reInstallBySystem: " + systemPackageInfo.packageName);
-        PackageParser.Package aPackage = parserApk(systemPackageInfo.applicationInfo.sourceDir);
+        ApplicationInfo phone = systemPackageInfo.applicationInfo;
+        // the real split files of the phone's copy (empty for an app with a single APK)
+        List<String> splits = PhoneSplits.read(systemPackageInfo.packageName, phone.sourceDir, phone.splitSourceDirs);
+        option.withSplits(splits);
+        PackageParser.Package aPackage = splits.isEmpty()
+                ? parserApk(phone.sourceDir)
+                : SplitPackageParser.parse(new File(phone.sourceDir), splits);
         if (aPackage == null) {
             throw new RuntimeException("parser apk error.");
         }

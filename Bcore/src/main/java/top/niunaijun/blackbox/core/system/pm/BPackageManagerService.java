@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import black.android.content.pm.BRApplicationInfoL;
 import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.core.GmsCore;
 import top.niunaijun.blackbox.core.env.BEnvironment;
@@ -41,8 +42,14 @@ import top.niunaijun.blackbox.entity.pm.InstallOption;
 import top.niunaijun.blackbox.entity.pm.InstallResult;
 import top.niunaijun.blackbox.entity.pm.InstalledPackage;
 import top.niunaijun.blackbox.utils.AbiUtils;
+import top.niunaijun.blackbox.utils.bundle.AbiCheck;
+import top.niunaijun.blackbox.utils.bundle.BundleException;
+import top.niunaijun.blackbox.utils.bundle.DeviceProfile;
+import top.niunaijun.blackbox.utils.bundle.PhoneSplits;
 import top.niunaijun.blackbox.utils.FileUtils;
+import top.niunaijun.blackbox.utils.bundle.SplitPackageParser;
 import top.niunaijun.blackbox.utils.Slog;
+import top.niunaijun.blackbox.utils.compat.BuildCompat;
 import top.niunaijun.blackbox.utils.compat.PackageParserCompat;
 
 
@@ -588,6 +595,11 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
     }
 
     @Override
+    public boolean isPackageRunning(String packageName, int userId) {
+        return BProcessManagerService.get().isPackageRunningAsUser(packageName, userId);
+    }
+
+    @Override
     public void deleteUser(int userId) throws RemoteException {
         synchronized (mPackages) {
             for (BPackageSettings ps : mPackages.values()) {
@@ -656,7 +668,13 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
             if (option.isFlag(InstallOption.FLAG_URI_FILE)) {
                 apkFile = new File(BEnvironment.getCacheDir(), UUID.randomUUID().toString() + ".apk");
                 InputStream inputStream = BlackBoxCore.getContext().getContentResolver().openInputStream(Uri.parse(file));
-                FileUtils.copyFile(inputStream, apkFile);
+                if (inputStream == null) {
+                    return result.installError("Cannot read the chosen file.");
+                }
+                FileUtils.copyFile(inputStream, apkFile); // closes the stream, never throws
+                if (!apkFile.isFile() || apkFile.length() == 0) {
+                    return result.installError("Cannot read the chosen file.");
+                }
             } else {
                 apkFile = new File(file);
             }
@@ -682,15 +700,29 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
                 Slog.w(TAG, "Installing potentially BlackBox-related app: " + packageName + ". Proceed with caution.");
             }
 
-            boolean support = AbiUtils.isSupport(apkFile);
-            if (!support) {
-                String msg = packageArchiveInfo.applicationInfo.loadLabel(BlackBoxCore.getPackageManager()) + "[" + packageArchiveInfo.packageName + "]";
-                return result.installError(packageArchiveInfo.packageName,
-                        msg + "\n" + (BlackBoxCore.is64Bit() ? "The box does not support 32-bit Application" : "The box does not support 64-bit Application"));
+            // "Clone from phone": an app installed on the phone from the Play Store is a base APK plus
+            // split APKs. Read the real split files from the phone's ApplicationInfo and keep them in
+            // the install option, so the parse, the package settings and the ApplicationInfo of the
+            // clone all know the splits. The clone keeps pointing at the phone's own files.
+            if (option.isFlag(InstallOption.FLAG_SYSTEM) && !option.hasSplits()) {
+                try {
+                    applyPhoneSplits(packageName, apkFile, option);
+                } catch (BundleException e) {
+                    return result.installError(packageName, e.getMessage());
+                }
             }
-            PackageParser.Package aPackage = parserApk(apkFile.getAbsolutePath());
+
+            // Look at the base APK and all splits, with the same rule as the app list and the native
+            // library installer.
+            String[] abiSplits = option.hasSplits() ? option.splitPaths.toArray(new String[0]) : null;
+            AbiCheck.Result abiResult = AbiUtils.check(apkFile, abiSplits);
+            if (!abiResult.supported) {
+                String msg = packageArchiveInfo.applicationInfo.loadLabel(BlackBoxCore.getPackageManager()) + "[" + packageArchiveInfo.packageName + "]";
+                return result.installError(packageArchiveInfo.packageName, msg + "\n" + abiResult.message());
+            }
+            PackageParser.Package aPackage = parserApk(apkFile.getAbsolutePath(), option);
             if (aPackage == null) {
-                return result.installError("parser apk error.");
+                return result.installError(mParseError != null ? mParseError : "parser apk error.");
             }
             result.packageName = aPackage.packageName;
 
@@ -717,13 +749,69 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
             return result;
         } catch (Throwable t) {
             t.printStackTrace();
+            // InstallResult starts as "success", so a crash here used to be reported as a good install.
+            String m = t.getMessage();
+            return result.installError(t.getClass().getSimpleName() + (m == null ? "" : ": " + m));
         } finally {
             if (apkFile != null && option.isFlag(InstallOption.FLAG_URI_FILE)) {
                 FileUtils.deleteDir(apkFile);
             }
             Slog.d(TAG, "install finish: " + (System.currentTimeMillis() - l) + "ms");
         }
-        return result;
+    }
+
+    /**
+     * Puts the real split files of the phone's copy of {@code packageName} into {@code option}
+     * (FLAG_SPLIT + splitPaths). Does nothing for an app with a single APK, or when {@code apkFile}
+     * is not the phone's base APK of that package (then the phone's splits do not belong to it).
+     */
+    private static void applyPhoneSplits(String packageName, File apkFile, InstallOption option) throws BundleException {
+        ApplicationInfo phone;
+        try {
+            phone = BlackBoxCore.getPackageManager().getApplicationInfo(packageName, 0);
+        } catch (Throwable t) {
+            return; // not on the phone any more: the parse of the base APK reports the problem
+        }
+        if (phone == null || phone.sourceDir == null || phone.splitSourceDirs == null
+                || !new File(phone.sourceDir).getAbsolutePath().equals(apkFile.getAbsolutePath())) {
+            return;
+        }
+        List<String> splits = PhoneSplits.read(packageName, phone.sourceDir, phone.splitSourceDirs);
+        if (!splits.isEmpty() && BuildCompat.isL()) {
+            // The clone loads the libraries the phone extracted for its own ABI.
+            String phoneAbi = BRApplicationInfoL.get(phone).primaryCpuAbi();
+            List<String> boxAbis = DeviceProfile.fromSystem().abis;
+            if (!PhoneSplits.runsInBox(phoneAbi, boxAbis)) {
+                throw new BundleException("This app does not run in the box: the phone runs it as " + phoneAbi
+                        + ", but the box needs " + TextUtils.join(", ", boxAbis)
+                        + ". Install the app from its file (.apk / .xapk) instead.");
+            }
+        }
+        option.withSplits(splits);
+    }
+
+    /** Message of the last failed {@link #parserApk(String, InstallOption)} (only used while installing). */
+    private String mParseError;
+
+    /**
+     * Parses the app. With splits (FLAG_SPLIT) the base APK and all splits are parsed together as
+     * one folder, so splitNames / splitCodePaths are filled. Without splits it is the plain
+     * single-APK parse.
+     */
+    private PackageParser.Package parserApk(String file, InstallOption option) {
+        mParseError = null;
+        if (option != null && option.hasSplits()) {
+            try {
+                return SplitPackageParser.parse(new File(file), option.splitPaths);
+            } catch (Throwable t) {
+                t.printStackTrace();
+                String msg = t.getMessage();
+                mParseError = "Cannot read the split files of this app: "
+                        + (msg != null ? msg : t.getClass().getSimpleName());
+                return null;
+            }
+        }
+        return parserApk(file);
     }
 
     private PackageParser.Package parserApk(String file) {
@@ -783,6 +871,11 @@ public class BPackageManagerService extends IBPackageManagerService.Stub impleme
             packageMonitor.onPackageUninstalled(packageName, isRemove, userId);
         }
         Slog.d(TAG, "onPackageUninstalled: " + packageName + ", userId: " + userId);
+        try {
+            top.niunaijun.blackbox.core.system.permission.BPermissionService.get().onPackageRemoved(userId, packageName);
+        } catch (Throwable t) {
+            Slog.w(TAG, "permission cleanup failed: " + t);
+        }
     }
 
     void onPackageInstalled(String packageName, int userId) {

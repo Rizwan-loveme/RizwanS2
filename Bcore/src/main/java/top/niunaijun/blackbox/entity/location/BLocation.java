@@ -56,9 +56,10 @@ public class BLocation implements Parcelable {
         this.mLatitude = in.readDouble();
         this.mLongitude = in.readDouble();
         this.mAltitude = in.readDouble();
-        this.mAccuracy = in.readFloat();
+        // same order as writeToParcel (speed, bearing, accuracy)
         this.mSpeed = in.readFloat();
         this.mBearing = in.readFloat();
+        this.mAccuracy = in.readFloat();
     }
 
     public boolean isEmpty() {

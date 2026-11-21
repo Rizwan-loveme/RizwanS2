@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.srizwan.win11.parallel.DaemonSetting
+import com.srizwan.win11.parallel.InstallInBoxSetting
 import top.niunaijun.blackbox.BlackBoxCore
 import top.niunaijun.blackbox.app.configuration.ClientConfiguration
 import java.io.File
@@ -22,7 +24,10 @@ class App : Application() {
         try {
             BlackBoxCore.get().doAttachBaseContext(base, object : ClientConfiguration() {
                 override fun getHostPackageName(): String = base.packageName
-                override fun isEnableDaemonService(): Boolean = false
+                // the "background service" switch on the Parallel screen (read again on every call)
+                override fun isEnableDaemonService(): Boolean = DaemonSetting.isEnabled(base)
+                // part 31: the "install inside the box" switch on the Parallel screen (read in the cloned app's process)
+                override fun isInstallInsideBox(): Boolean = InstallInBoxSetting.isEnabled(base)
                 // Never upload logcat to any server.
                 override fun getLogSenderChatId(): String = ""
             })

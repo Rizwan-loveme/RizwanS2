@@ -556,6 +556,15 @@ public class BPackageManager extends BlackManager<IBPackageManagerService> {
         }
     }
 
+    public boolean isPackageRunning(String packageName, int userId) {
+        try {
+            return getService().isPackageRunning(packageName, userId);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public void uninstallPackageAsUser(String packageName, int userId) {
         try {
             getService().uninstallPackageAsUser(packageName, userId);
@@ -678,7 +687,6 @@ public class BPackageManager extends BlackManager<IBPackageManagerService> {
         info.dataDir = "/data/data/" + packageName;
         info.nativeLibraryDir = "/data/app-lib/" + packageName;
         info.metaData = new Bundle();
-        info.splitNames = new String[]{};
         
         
         info.flags |= ApplicationInfo.FLAG_ALLOW_BACKUP;
@@ -827,7 +835,6 @@ public class BPackageManager extends BlackManager<IBPackageManagerService> {
         info.lastUpdateTime = System.currentTimeMillis(); 
         info.installLocation = 0; 
         info.gids = new int[]{}; 
-        info.splitNames = new String[]{}; 
         info.signatures = new Signature[]{}; 
         return info;
     }

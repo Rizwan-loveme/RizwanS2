@@ -5,7 +5,9 @@ import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
@@ -23,11 +25,19 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
+import com.srizwan.chooser.picker.FilePicker
 import com.srizwan.win11.Toast
+import top.niunaijun.blackbox.utils.bundle.BundleInstaller
+import java.io.File
+import java.text.DateFormat
+import java.util.Date
 
 class ParallelActivity : Activity() {
 
@@ -35,6 +45,48 @@ class ParallelActivity : Activity() {
     private lateinit var list: LinearLayout
     private lateinit var subtitle: TextView
     private lateinit var status: TextView
+    private lateinit var progressBar: ProgressBar
+    /** True while a file install runs, so a second one cannot be started. */
+    private var installing = false
+
+    /** Part 26: per-clone views whose "running" look is refreshed by [pollRunning]. */
+    private class RunViews(val item: CloneItem, val dot: TextView, val stop: TextView)
+    private val runViews = ArrayList<RunViews>()
+    private var polling = false
+    private val pollTask = object : Runnable {
+        override fun run() {
+            if (!polling) return
+            pollRunning()
+            ui.postDelayed(this, 2000L)
+        }
+    }
+
+    /** Checks every listed clone off the main thread and updates the dots and stop buttons. */
+    private fun pollRunning() {
+        val views = ArrayList(runViews)
+        if (views.isEmpty()) return
+        Engine.io.execute {
+            val states = views.map { Engine.isRunning(it.item.packageName, it.item.userId) }
+            ui.post { views.forEachIndexed { i, v -> applyRunning(v, states[i]) } }
+        }
+    }
+
+    private fun applyRunning(v: RunViews, running: Boolean) {
+        v.dot.visibility = if (running) View.VISIBLE else View.GONE
+        v.stop.alpha = if (running) 1f else 0.35f
+        v.stop.isEnabled = running
+    }
+
+    private fun startPolling() {
+        if (polling) return
+        polling = true
+        ui.post(pollTask)
+    }
+
+    private fun stopPolling() {
+        polling = false
+        ui.removeCallbacks(pollTask)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +94,7 @@ class ParallelActivity : Activity() {
         setContentView(buildUi())
         Engine.onReady { ui.post { refresh() } }
         refresh()
+        Engine.io.execute { Engine.cleanTemp() }
         permStep = 0
         nextPermissionStep()
     }
@@ -147,11 +200,13 @@ class ParallelActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
+        stopPolling()
         if (permStep in 3..5) pausedForSettings = true
     }
 
     override fun onResume() {
         super.onResume()
+        startPolling()
         if (pausedForSettings) {
             pausedForSettings = false
             nextPermissionStep()
@@ -189,22 +244,63 @@ class ParallelActivity : Activity() {
             setMargins(dp(16), dp(12), dp(16), 0)
         })
 
+        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 1000
+            isIndeterminate = true
+            progressTintList = ColorStateList.valueOf(Palette.PRIMARY)
+            indeterminateTintList = ColorStateList.valueOf(Palette.PRIMARY)
+            visibility = View.GONE
+        }
+        column.addView(progressBar, LinearLayout.LayoutParams(MATCH_PARENT, dp(6)).apply {
+            setMargins(dp(16), dp(6), dp(16), 0)
+        })
+
+        // The option cards scroll together with the clone list, so a growing number of them
+        // never pushes the list off a small screen.
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(independentCopyRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            setMargins(dp(16), dp(12), dp(16), 0)
+        })
+        content.addView(backgroundServiceRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            setMargins(dp(16), dp(8), dp(16), 0)
+        })
+        content.addView(installInBoxRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            setMargins(dp(16), dp(8), dp(16), 0)
+        })
+        content.addView(spaceLimitRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            setMargins(dp(16), dp(8), dp(16), 0)
+        })
+
         list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(12), dp(16), dp(110))
         }
-        column.addView(ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        content.addView(list, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        column.addView(ScrollView(this).apply { addView(content) }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
 
         root.addView(column, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
-        val add = tv("➕  অ্যাপ ক্লোন করুন", 16f, Color.WHITE, bold = true).apply {
+        val add = tv("➕  ক্লোন করুন", 16f, Color.WHITE, bold = true).apply {
             gravity = Gravity.CENTER
             background = roundBg(Palette.PRIMARY, 30)
-            setPadding(dp(28), dp(16), dp(28), dp(16))
+            setPadding(dp(22), dp(16), dp(22), dp(16))
             elevation = dp(6).toFloat()
-            setOnClickListener { showPicker() }
+            setOnClickListener { if (!installing) showPicker() else toast("⏳ ইনস্টল চলছে, একটু অপেক্ষা করুন") }
         }
-        root.addView(add, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+        val fromFile = tv("📂  ফাইল থেকে", 16f, Color.WHITE, bold = true).apply {
+            gravity = Gravity.CENTER
+            background = roundBg(Palette.PRIMARY_DARK, 30)
+            setPadding(dp(22), dp(16), dp(22), dp(16))
+            elevation = dp(6).toFloat()
+            setOnClickListener { pickInstallFile() }
+        }
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(add, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+            addView(fromFile, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { leftMargin = dp(10) })
+        }
+        root.addView(bar, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
             bottomMargin = dp(26)
         })
         root.setOnApplyWindowInsetsListener { _, ins ->
@@ -213,8 +309,8 @@ class ParallelActivity : Activity() {
             @Suppress("DEPRECATION")
             val bottom = ins.systemWindowInsetBottom
             header.setPadding(dp(22), dp(26) + top, dp(22), dp(22))
-            (add.layoutParams as FrameLayout.LayoutParams).bottomMargin = dp(26) + bottom
-            add.requestLayout()
+            (bar.layoutParams as FrameLayout.LayoutParams).bottomMargin = dp(26) + bottom
+            bar.requestLayout()
             ins
         }
         return root
@@ -232,6 +328,7 @@ class ParallelActivity : Activity() {
     private fun render(items: List<CloneItem>) {
         subtitle.text = if (items.isEmpty()) "কোনো ক্লোন নেই" else "📦 মোট ক্লোন: ${items.size}"
         list.removeAllViews()
+        runViews.clear()
         if (items.isEmpty()) {
             list.addView(tv("📭", 56f).apply { gravity = Gravity.CENTER; setPadding(0, dp(60), 0, dp(8)) })
             list.addView(tv("এখনো কোনো অ্যাপ ক্লোন করা হয়নি", 16f, Palette.TEXT, bold = true).apply { gravity = Gravity.CENTER })
@@ -242,6 +339,7 @@ class ParallelActivity : Activity() {
             return
         }
         for (item in items) list.addView(cloneRow(item))
+        pollRunning() // show the running state right away, then the poll keeps it fresh
     }
 
     private fun appIcon(icon: Drawable?, sizeDp: Int): View =
@@ -257,29 +355,155 @@ class ParallelActivity : Activity() {
             }
         }
 
-    private fun cloneRow(item: CloneItem): View {
+    /** A card with a title, a short explanation and a switch. */
+    private fun switchRow(title: String, note: String, checked: Boolean, onChange: (Boolean) -> Unit): View {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            background = roundBg(Palette.CARD, 18)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            elevation = dp(2).toFloat()
+        }
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+        }
+        texts.addView(tv(title, 15f, Palette.TEXT, bold = true))
+        texts.addView(tv(note, 11f, Palette.MUTED))
+        row.addView(texts)
+        row.addView(Switch(this).apply {
+            isChecked = checked
+            setOnCheckedChangeListener { _, on -> onChange(on) }
+        })
+        return row
+    }
+
+    /** A card with "−  N  +" to set how many spaces one app can be cloned into. */
+    private fun spaceLimitRow(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = roundBg(Palette.CARD, 18)
+            setPadding(dp(14), dp(10), dp(10), dp(10))
+            elevation = dp(2).toFloat()
+        }
+        val texts = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+        }
+        texts.addView(tv("🔢 সর্বোচ্চ স্পেস", 15f, Palette.TEXT, bold = true))
+        texts.addView(tv("একটি অ্যাপ সর্বোচ্চ কয়টি স্পেসে ক্লোন করা যাবে। কমালে আগের ক্লোন মুছে যায় না।", 11f, Palette.MUTED))
+        row.addView(texts)
+        val count = tv("${Engine.maxSpaces}", 18f, Palette.TEXT, bold = true).apply {
+            gravity = Gravity.CENTER
+            minWidth = dp(34)
+        }
+        fun change(delta: Int) {
+            Engine.maxSpaces = Engine.maxSpaces + delta
+            count.text = "${Engine.maxSpaces}"
+        }
+        row.addView(emojiButton("➖", Palette.AMBER) { change(-1) })
+        row.addView(count)
+        row.addView(emojiButton("➕", Palette.GREEN) { change(1) })
+        return row
+    }
+
+    /** Switch for the independent copy mode of new clones made from phone apps. */
+    private fun independentCopyRow(): View = switchRow(
+        "💾 স্বাধীন কপি",
+        "ফোনের মূল অ্যাপ আপডেট বা মুছে ফেললেও ক্লোন চলবে। বেশি স্টোরেজ লাগে।",
+        Engine.independentCopy
+    ) { on ->
+        Engine.independentCopy = on
+        toast(if (on) "💾 নতুন ক্লোনের APK ফাইল নিজস্ব জায়গায় কপি হবে" else "🔗 নতুন ক্লোন ফোনের মূল ফাইল ব্যবহার করবে")
+    }
+
+    /** Part 31: switch for installing APKs that a cloned app asks for into the box instead of the phone. */
+    private fun installInBoxRow(): View = switchRow(
+        "📥 বক্সের ভেতরে ইনস্টল",
+        "ক্লোন অ্যাপ (ব্রাউজার, ফাইল ম্যানেজার) কোনো APK ইনস্টল চাইলে সেটা ফোনে নয়, ওই ক্লোনের স্পেসেই ইনস্টল হবে।",
+        InstallInBoxSetting.isEnabled(applicationContext)
+    ) { on ->
+        InstallInBoxSetting.setEnabled(applicationContext, on)
+        toast(if (on) "📥 ক্লোনের ইনস্টল এখন বক্সের ভেতরে হবে" else "📱 ক্লোনের ইনস্টল ফোনের সিস্টেম ইনস্টলারে যাবে")
+    }
+
+    /** Switch for the engine's background service (isEnableDaemonService). */
+    private fun backgroundServiceRow(): View = switchRow(
+        "🔋 ব্যাকগ্রাউন্ড সার্ভিস",
+        "চালু থাকলে ক্লোন অ্যাপগুলো সহজে বন্ধ হয় না। একটি স্থায়ী নোটিফিকেশন দেখাবে, ব্যাটারি বেশি লাগতে পারে।",
+        DaemonSetting.isEnabled(applicationContext)
+    ) { on ->
+        DaemonSetting.setEnabled(applicationContext, on)
+        toast(if (on) "🔋 ব্যাকগ্রাউন্ড সার্ভিস চালু হয়েছে" else "🔋 ব্যাকগ্রাউন্ড সার্ভিস বন্ধ হয়েছে")
+    }
+
+    private fun cloneRow(item: CloneItem): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             background = roundBg(Palette.CARD, 18)
             setPadding(dp(14), dp(12), dp(10), dp(12))
             elevation = dp(2).toFloat()
             layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { bottomMargin = dp(10) }
         }
-        row.addView(appIcon(item.icon, 46))
+        // Part 26: six buttons no longer fit beside the name, so they sit in their own strip below it
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            setPadding(0, dp(8), 0, 0)
+        }
+        top.addView(appIcon(item.icon, 46))
 
         val info = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, dp(8), 0)
             layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
         }
-        info.addView(tv(item.label, 16f, Palette.TEXT, bold = true).apply { oneLine() })
-        info.addView(tv("স্পেস ${item.userId + 1} · ${item.packageName}", 11f, Palette.MUTED).apply { oneLine() })
-        row.addView(info)
+        val titleLine = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        titleLine.addView(tv(item.title, 16f, Palette.TEXT, bold = true).apply {
+            oneLine()
+            layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+        })
+        // Part 26: running indicator (a green pill), hidden until the poll says the clone runs
+        val dot = tv("● চলছে", 10f, Color.parseColor("#1E8E3E"), bold = true).apply {
+            background = roundBg(Palette.GREEN, 8)
+            setPadding(dp(7), dp(2), dp(7), dp(2))
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { leftMargin = dp(6) }
+        }
+        titleLine.addView(dot)
+        info.addView(titleLine)
+        info.addView(tv("স্পেস ${item.userId + 1} · ${if (item.independent) "💾 স্বাধীন" else "🔗 মূল অ্যাপের সাথে"} · ${item.packageName}", 11f, Palette.MUTED).apply { oneLine() })
+        top.addView(info)
+        row.addView(top)
+        // seven buttons can be wider than a small screen, so the strip scrolls sideways
+        row.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            isFillViewport = true
+            addView(actions, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        })
 
-        row.addView(emojiButton("▶️", Palette.GREEN) { openClone(item) })
-        row.addView(emojiButton("🧹", Palette.AMBER) { confirm("🧹 ডেটা মুছবেন?", "${item.label} (স্পেস ${item.userId + 1}) এর সব ডেটা মুছে যাবে।") { clearClone(item) } })
-        row.addView(emojiButton("🗑️", Palette.RED) { confirm("🗑️ ক্লোন মুছবেন?", "${item.label} (স্পেস ${item.userId + 1}) ক্লোনটি ডেটাসহ মুছে যাবে।") { removeClone(item) } })
+        actions.addView(emojiButton("▶️", Palette.GREEN) { openClone(item) })
+        // Part 26: force-stop; only active while the clone runs (see applyRunning)
+        val stop = emojiButton("⏹️", Palette.RED) { forceStop(item) }.apply {
+            alpha = 0.35f
+            isEnabled = false
+        }
+        actions.addView(stop)
+        runViews.add(RunViews(item, dot, stop))
+        actions.addView(emojiButton("📍", Palette.AMBER) { openFakeLocation(item) })
+        actions.addView(emojiButton("⚙️", Palette.LILAC) { openPermissions(item) })
+        actions.addView(emojiButton("💾", Palette.GREEN) { showBackupMenu(item) })
+        actions.addView(emojiButton("🧹", Palette.AMBER) { confirm("🧹 ডেটা মুছবেন?", "${item.label} (স্পেস ${item.userId + 1}) এর সব ডেটা মুছে যাবে।") { clearClone(item) } })
+        actions.addView(emojiButton("🗑️", Palette.RED) { confirm("🗑️ ক্লোন মুছবেন?", "${item.label} (স্পেস ${item.userId + 1}) ক্লোনটি ডেটাসহ মুছে যাবে।") { removeClone(item) } })
         return row
     }
 
@@ -290,6 +514,7 @@ class ParallelActivity : Activity() {
     private fun setStatus(msg: String?) {
         if (msg == null) {
             status.visibility = View.GONE
+            progressBar.visibility = View.GONE
         } else {
             status.text = msg
             status.visibility = View.VISIBLE
@@ -301,6 +526,150 @@ class ParallelActivity : Activity() {
             val ok = Engine.launch(item.packageName, item.userId)
             if (!ok) ui.post { toast("❌ অ্যাপটি খোলা যায়নি") }
         }
+    }
+
+    /** Part 26: kills every process of the clone after a confirmation; data stays. */
+    private fun forceStop(item: CloneItem) {
+        confirm("⏹️ জোর করে বন্ধ করবেন?", "${item.label} (স্পেস ${item.userId + 1}) এখনই বন্ধ হবে। সেভ না করা কাজ হারাতে পারে, ডেটা মুছবে না।") {
+            Engine.io.execute {
+                Engine.forceStop(item.packageName, item.userId)
+                val running = Engine.isRunning(item.packageName, item.userId)
+                ui.post {
+                    runViews.filter { it.item.packageName == item.packageName && it.item.userId == item.userId }
+                        .forEach { applyRunning(it, running) }
+                    toast(if (running) "⚠️ পুরোপুরি বন্ধ হয়নি, আবার চেষ্টা করুন" else "⏹️ ${item.label} বন্ধ হয়েছে")
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ Part 30: backup and restore
+
+    /** Menu of the 💾 button: new backup, restore, delete. */
+    private fun showBackupMenu(item: CloneItem) {
+        if (installing || backupBusy) { toast("⏳ আরেকটি কাজ চলছে, একটু অপেক্ষা করুন"); return }
+        val names = arrayOf("💾 নতুন ব্যাকআপ নিন", "♻️ ব্যাকআপ থেকে রিস্টোর", "🗑️ ব্যাকআপ মুছুন")
+        AlertDialog.Builder(this)
+            .setTitle("💾 ${item.label} (স্পেস ${item.userId + 1})")
+            .setItems(names) { _, which ->
+                when (which) {
+                    0 -> confirm("💾 ব্যাকআপ নেবেন?", "ব্যাকআপের আগে অ্যাপটি বন্ধ হবে, যাতে ডেটা ঠিকঠাক সেভ হয়। অ্যাপ নিজে (APK) সেভ হয় না, শুধু ডেটা।") { startBackup(item) }
+                    1 -> pickBackup(item, restore = true)
+                    2 -> pickBackup(item, restore = false)
+                }
+            }
+            .setNegativeButton("বন্ধ", null)
+            .show()
+    }
+
+    private var backupBusy = false
+
+    private fun beginBackupWork(text: String) {
+        backupBusy = true
+        setStatus(text)
+        progressBar.isIndeterminate = true
+        progressBar.visibility = View.VISIBLE
+    }
+
+    private fun backupProgress(text: String, done: Int, total: Int) {
+        ui.post {
+            if (isFinishing || !backupBusy) return@post
+            status.text = "$text  ($done/$total)"
+            progressBar.isIndeterminate = total <= 0
+            if (total > 0) progressBar.progress = ((done * 1000L) / total).toInt().coerceIn(0, 1000)
+        }
+    }
+
+    private fun endBackupWork() {
+        backupBusy = false
+        if (!isFinishing) setStatus(null)
+    }
+
+    private fun startBackup(item: CloneItem) {
+        beginBackupWork("⏳ ব্যাকআপ হচ্ছে…")
+        Engine.io.execute {
+            Engine.forceStop(item.packageName, item.userId)
+            var file: File? = null
+            var error: String? = null
+            try {
+                file = CloneBackup.backup(applicationContext, item.packageName, item.userId, item.label) { d, t ->
+                    backupProgress("⏳ ব্যাকআপ হচ্ছে…", d, t)
+                }
+            } catch (t: Throwable) {
+                error = t.message ?: t.javaClass.simpleName
+            }
+            val saved = file
+            ui.post {
+                endBackupWork()
+                if (isFinishing) return@post
+                if (saved != null) toast("✅ ব্যাকআপ হয়েছে (${sizeText(saved.length())})\n${saved.absolutePath}")
+                else toast("❌ ব্যাকআপ হয়নি: $error")
+                pollRunning()
+            }
+        }
+    }
+
+    private fun sizeText(bytes: Long): String =
+        if (bytes >= 1048576L) "${bytes / 1048576L} MB" else "${(bytes + 1023L) / 1024L} KB"
+
+    /** Lists the saved backups of the clone's app; picking one restores it or deletes it. */
+    private fun pickBackup(item: CloneItem, restore: Boolean) {
+        Engine.io.execute {
+            val all = CloneBackup.list(applicationContext, item.packageName)
+            ui.post {
+                if (isFinishing) return@post
+                if (all.isEmpty()) { toast("📭 এই অ্যাপের কোনো ব্যাকআপ নেই"); return@post }
+                val df = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                val rows = all.map { "${df.format(Date(it.createdAt))}\nস্পেস ${it.userId + 1} · v${it.versionName} · ${sizeText(it.size)}" }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle(if (restore) "♻️ কোনটি রিস্টোর করবেন?" else "🗑️ কোনটি মুছবেন?")
+                    .setItems(rows) { _, i ->
+                        val b = all[i]
+                        if (restore) confirm(
+                            "♻️ রিস্টোর করবেন?",
+                            "${item.label} (স্পেস ${item.userId + 1}) এর এখনকার ডেটা এই ব্যাকআপ দিয়ে বদলে যাবে। অ্যাপটি বন্ধ হবে।\nব্যাকআপ: ${df.format(Date(b.createdAt))} (v${b.versionName})"
+                        ) { startRestore(item, b) }
+                        else confirm("🗑️ ব্যাকআপ মুছবেন?", "${df.format(Date(b.createdAt))} এর ব্যাকআপ ফাইলটি মুছে যাবে।") {
+                            Engine.io.execute {
+                                val ok = CloneBackup.delete(b)
+                                ui.post { toast(if (ok) "🗑️ ব্যাকআপ মোছা হয়েছে" else "❌ ফাইল মোছা যায়নি") }
+                            }
+                        }
+                    }
+                    .setNegativeButton("বন্ধ", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun startRestore(item: CloneItem, b: CloneBackup.Info) {
+        beginBackupWork("⏳ রিস্টোর হচ্ছে…")
+        Engine.io.execute {
+            Engine.forceStop(item.packageName, item.userId)
+            val err = CloneBackup.restore(b, item.packageName, item.userId) { d, t ->
+                backupProgress("⏳ রিস্টোর হচ্ছে…", d, t)
+            }
+            ui.post {
+                endBackupWork()
+                if (isFinishing) return@post
+                toast(if (err == null) "✅ রিস্টোর হয়েছে, এখন অ্যাপটি খুলুন" else "❌ $err")
+                pollRunning()
+            }
+        }
+    }
+
+    private fun openFakeLocation(item: CloneItem) {
+        startActivity(Intent(this, FakeLocationActivity::class.java)
+            .putExtra(FakeLocationActivity.EXTRA_PACKAGE, item.packageName)
+            .putExtra(FakeLocationActivity.EXTRA_USER, item.userId)
+            .putExtra(FakeLocationActivity.EXTRA_LABEL, item.label))
+    }
+
+    private fun openPermissions(item: CloneItem) {
+        startActivity(Intent(this, PermissionsActivity::class.java)
+            .putExtra(PermissionsActivity.EXTRA_PACKAGE, item.packageName)
+            .putExtra(PermissionsActivity.EXTRA_USER, item.userId)
+            .putExtra(PermissionsActivity.EXTRA_LABEL, item.label))
     }
 
     private fun clearClone(item: CloneItem) {
@@ -337,6 +706,109 @@ class ParallelActivity : Activity() {
             .setMessage(message)
             .setPositiveButton("হ্যাঁ") { _, _ -> onYes() }
             .setNegativeButton("না", null)
+            .show()
+    }
+
+    // ------------------------------------------------------------------ install from file
+
+    private val requestPickFile = 200
+
+    private fun pickInstallFile() {
+        if (installing) {
+            toast("⏳ ইনস্টল চলছে, একটু অপেক্ষা করুন")
+            return
+        }
+        try {
+            startActivityForResult(
+                FilePicker.intent(this, multiple = false, mimeTypes = InstallText.PICKER_TYPES, title = "📂 APK / XAPK / APKS / APKM"),
+                requestPickFile
+            )
+        } catch (e: Throwable) {
+            toast("❌ ফাইল বাছাই খোলা যায়নি")
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != requestPickFile || resultCode != RESULT_OK) return
+        // This app's own picker also returns the plain path: no copy is needed then.
+        val path = FilePicker.paths(data).firstOrNull()
+        if (path != null) {
+            val f = File(path)
+            installChosen(f.name, f.length(), file = f, uri = null)
+            return
+        }
+        val uri = FilePicker.uris(data).firstOrNull() ?: return
+        var name = uri.lastPathSegment ?: "file"
+        var size = 0L
+        try {
+            contentResolver.query(uri, null, null, null, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    val n = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    val z = c.getColumnIndex(OpenableColumns.SIZE)
+                    if (n >= 0) name = c.getString(n) ?: name
+                    if (z >= 0 && !c.isNull(z)) size = c.getLong(z)
+                }
+            }
+        } catch (e: Throwable) {
+            // name and size are only for the progress text
+        }
+        installChosen(name, size, file = null, uri = uri)
+    }
+
+    private fun installChosen(name: String, size: Long, file: File?, uri: Uri?) {
+        if (installing) return
+        installing = true
+        setStatus("⏳ $name")
+        progressBar.isIndeterminate = true
+        progressBar.visibility = View.VISIBLE
+        val listener = BundleInstaller.Listener { stage, done, total ->
+            ui.post {
+                if (isFinishing) return@post
+                status.text = InstallText.stage(stage) + InstallText.amount(done, total) + "\n" + name
+                val determinate = total > 0L && (stage == BundleInstaller.Stage.COPYING || stage == BundleInstaller.Stage.UNPACKING || stage == BundleInstaller.Stage.COPYING_OBB)
+                progressBar.isIndeterminate = !determinate
+                if (determinate) progressBar.progress = ((done * 1000L) / total).toInt().coerceIn(0, 1000)
+            }
+        }
+        Engine.io.execute {
+            val r = if (file != null) Engine.installFile(file, listener) else Engine.installUri(applicationContext, uri!!, size, listener)
+            val label = if (r.success) Engine.labelOfInstalled(r.packageName ?: "", r.userId) else ""
+            ui.post {
+                installing = false
+                if (isFinishing) return@post
+                setStatus(null)
+                if (r.success) {
+                    var msg = "✅ $label ইনস্টল হয়েছে (স্পেস ${r.userId + 1})"
+                    if (r.obbCount > 0) msg += "\n🎮 OBB ফাইল কপি হয়েছে (${r.obbCount} টি)"
+                    toast(msg)
+                } else {
+                    showInstallError(name, r)
+                }
+                refresh()
+            }
+        }
+    }
+
+    private fun showInstallError(name: String, r: BundleInstaller.Result) {
+        val (title, text) = InstallText.error(r.kind)
+        val detail = tv(r.message ?: "", 11f, Palette.MUTED).apply {
+            setTextIsSelectable(true)
+            setPadding(0, dp(12), 0, 0)
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(8), dp(22), 0)
+            addView(tv(name, 12f, Palette.MUTED).apply { oneLine() })
+            addView(tv(text, 14f, Palette.TEXT).apply { setPadding(0, dp(8), 0, 0) })
+            if (!r.message.isNullOrBlank()) addView(detail)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("❌ $title")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("ঠিক আছে", null)
             .show()
     }
 

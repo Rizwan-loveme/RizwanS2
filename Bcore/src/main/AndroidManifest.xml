@@ -540,6 +540,24 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- part 17: "Ask" permission dialog of a clone (replaces the system permission controller) -->
+        <activity
+            android:name=".app.PermissionRequestActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode|locale|layoutDirection|fontScale"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- part 31: install dialog of the box (replaces the system package installer for clones) -->
+        <activity
+            android:name=".app.InstallRequestActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode|locale|layoutDirection|fontScale"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- notification tap / Exit => destroy the cloned app -->
         <receiver
             android:name=".proxy.AppKillReceiver"

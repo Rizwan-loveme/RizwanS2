@@ -46,4 +46,7 @@ interface IBPackageManagerService {
     boolean isInstalled(String packageName, int userId);
     List<InstalledPackage> getInstalledPackagesAsUser(int userId);
     String[] getPackagesForUid(int uid, int userId);
+
+    /** Part 26: true while at least one live process of this clone exists. */
+    boolean isPackageRunning(String packageName, int userId);
 }

@@ -83,6 +83,7 @@ public class BUserManagerService extends IBUserManagerService.Stub implements IS
         synchronized (mUserLock) {
             synchronized (mUsers) {
                 BPackageManagerService.get().deleteUser(userId);
+                top.niunaijun.blackbox.core.system.permission.BPermissionService.get().onUserRemoved(userId);
 
                 mUsers.remove(userId);
                 saveUserInfoLocked();

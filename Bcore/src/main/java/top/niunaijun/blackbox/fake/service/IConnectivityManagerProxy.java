@@ -605,21 +605,34 @@ public class IConnectivityManagerProxy extends BinderInvocationStub {
      */
     @ProxyMethod("getNetworkInfoForUid")
     public static class GetNetworkInfoForUid extends MethodHook {
+        /** Every outcome is logged with this marker, so a test on a real device can grep for it. */
+        static final String MARK = "PARALLEL_NETHOOK";
+
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
             try {
+                int from = -1;
+                int to = -1;
                 if (args != null) {
                     for (int i = 0; i < args.length; i++) {
                         if (args[i] instanceof Integer) {
-                            args[i] = top.niunaijun.blackbox.BlackBoxCore.getHostUid();
+                            from = (Integer) args[i];
+                            to = top.niunaijun.blackbox.BlackBoxCore.getHostUid();
+                            args[i] = to;
                             break;
                         }
                     }
                 }
                 Object result = method.invoke(who, args);
-                if (result != null) return result;
+                if (result != null) {
+                    Slog.d(TAG, MARK + " ok uid " + from + "->" + to + " result=" + result);
+                    return result;
+                }
+                Slog.w(TAG, MARK + " system returned null for uid " + to + ", using the fallback NetworkInfo");
             } catch (Throwable e) {
-                Slog.w(TAG, "getNetworkInfoForUid refused, using a fallback: " + e);
+                Throwable cause = e instanceof java.lang.reflect.InvocationTargetException && e.getCause() != null
+                        ? e.getCause() : e;
+                Slog.w(TAG, MARK + " refused (" + cause + "), using the fallback NetworkInfo");
             }
             return createNetworkInfo(ConnectivityManager.TYPE_WIFI, 0, "WIFI", "");
         }

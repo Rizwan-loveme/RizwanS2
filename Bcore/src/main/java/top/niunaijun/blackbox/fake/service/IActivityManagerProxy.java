@@ -777,45 +777,36 @@ public class IActivityManagerProxy extends ClassInvocationStub {
     public static class checkPermission extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            MethodParameterUtils.replaceLastUid(args);
+            // args = (permission, pid, uid). Read the uid BEFORE it is replaced by the host uid.
             String permission = (String) args[0];
-            if (permission.equals(Manifest.permission.ACCOUNT_MANAGER)
-                    || permission.equals(Manifest.permission.SEND_SMS)) {
-                return PackageManager.PERMISSION_GRANTED;
+            int uid = -1;
+            for (int i = args.length - 1; i >= 0; i--) {
+                if (args[i] instanceof Integer) {
+                    uid = (Integer) args[i];
+                    break;
+                }
             }
-            
-            
-            if (isAudioPermission(permission)) {
-                Slog.d(TAG, "ActivityManager checkPermission: Granting audio permission: " + permission);
+            MethodParameterUtils.replaceLastUid(args);
+            if (permission == null) {
+                return method.invoke(who, args);
+            }
+
+            // permission store first (Deny / Ask), then the old forced grants
+            int decision = PermissionPolicy.decideForUid(permission, uid, PermissionPolicy.LEGACY_MEDIA);
+            if (decision != PermissionPolicy.NO_OPINION) {
+                Slog.d(TAG, "ActivityManager checkPermission " + permission + " -> " + decision);
+                return decision;
+            }
+
+            // (not while the host bridge asks what the host really holds, part 18)
+            if (!HostPermissionCheck.isRealCheck()
+                    && (permission.equals(Manifest.permission.ACCOUNT_MANAGER)
+                    || permission.equals(Manifest.permission.SEND_SMS))) {
                 return PackageManager.PERMISSION_GRANTED;
             }
 
-            
-            if (isStorageOrMediaPermission(permission)) {
-                Slog.d(TAG, "ActivityManager checkPermission: Granting storage/media permission: " + permission);
-                return PackageManager.PERMISSION_GRANTED;
-            }
-            
             return method.invoke(who, args);
         }
-    }
-
-    
-    private static boolean isAudioPermission(String permission) {
-        if (permission == null) return false;
-        return permission.equals(Manifest.permission.RECORD_AUDIO)
-                || permission.equals(Manifest.permission.CAPTURE_AUDIO_OUTPUT)
-                || permission.equals(Manifest.permission.MODIFY_AUDIO_SETTINGS)
-                || permission.equals("android.permission.FOREGROUND_SERVICE_MICROPHONE")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_CAMERA")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_LOCATION")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_HEALTH")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_DATA_SYNC")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_SPECIAL_USE")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_PHONE_CALL")
-                || permission.equals("android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE");
     }
 
     @ProxyMethod("checkUriPermission")
@@ -827,30 +818,6 @@ public class IActivityManagerProxy extends ClassInvocationStub {
     }
 
     
-    private static boolean isStorageOrMediaPermission(String permission) {
-        if (permission == null) return false;
-        if (permission.equals(Manifest.permission.READ_EXTERNAL_STORAGE)
-                || permission.equals(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            return true;
-        }
-        if (permission.equals(Manifest.permission.READ_MEDIA_AUDIO)
-                || permission.equals(Manifest.permission.READ_MEDIA_VIDEO)
-                || permission.equals(Manifest.permission.READ_MEDIA_IMAGES)
-                || permission.equals("android.permission.READ_MEDIA_VISUAL")
-                || permission.equals("android.permission.READ_MEDIA_AURAL")
-                || permission.equals(Manifest.permission.ACCESS_MEDIA_LOCATION)) {
-            return true;
-        }
-        if (permission.equals("android.permission.READ_MEDIA_AUDIO_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_VIDEO_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_IMAGES_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_VISUAL_USER_SELECTED")
-                || permission.equals("android.permission.READ_MEDIA_AURAL_USER_SELECTED")) {
-                return true;
-        }
-        return false;
-    }
-
     
     @ProxyMethod("setTaskDescription")
     public static class SetTaskDescription extends MethodHook {

@@ -1,5 +1,6 @@
 package top.niunaijun.blackbox.fake.service;
 
+import android.content.pm.PackageManager;
 import android.os.Build;
 
 import java.lang.reflect.Method;
@@ -252,6 +253,10 @@ public class IMiuiSecurityManagerProxy extends BinderInvocationStub {
     public static class ActuallyCheckPermission extends MethodHook {
         @Override
         protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            if (PermissionPolicy.isMiuiCallDeniedByStore(args)) {
+                Slog.d(TAG, "ActuallyCheckPermission: store denies permission");
+                return PackageManager.PERMISSION_DENIED;
+            }
             Slog.d(TAG, "ActuallyCheckPermission: Granting permission");
             return 0; 
         }

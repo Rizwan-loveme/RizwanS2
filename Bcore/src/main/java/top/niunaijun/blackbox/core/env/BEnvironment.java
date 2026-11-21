@@ -67,6 +67,10 @@ public class BEnvironment {
         return new File(getSystemDir(), "fake-location.conf");
     }
 
+    public static File getPermissionConf() {
+        return new File(getSystemDir(), "permission.conf");
+    }
+
     public static File getPackageConf(String packageName) {
         return new File(getAppDir(packageName), "package.conf");
     }

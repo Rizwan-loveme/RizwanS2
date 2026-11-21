@@ -47,6 +47,12 @@ public class IAppOpsManagerProxy extends BinderInvocationStub {
         
         
         
+        // permission store: Deny / Ask makes the op "ignored" for this clone (camera, mic, location...)
+        if (isStoreCheckedOp(methodName) && PermissionPolicy.isOpDeniedByStore(args)) {
+            Slog.d(TAG, "AppOps invoke: store denies " + methodName);
+            return AppOpsManager.MODE_IGNORED;
+        }
+
         if (methodName.startsWith("check") || 
             methodName.startsWith("note") || 
             methodName.startsWith("start")) {
@@ -74,6 +80,11 @@ public class IAppOpsManagerProxy extends BinderInvocationStub {
             
             return AppOpsManager.MODE_ALLOWED;
         }
+    }
+
+    private static boolean isStoreCheckedOp(String name) {
+        if (name.startsWith("noteProxy")) return false;
+        return name.startsWith("checkOp") || name.startsWith("noteOp") || name.startsWith("startOp");
     }
 
     @Override

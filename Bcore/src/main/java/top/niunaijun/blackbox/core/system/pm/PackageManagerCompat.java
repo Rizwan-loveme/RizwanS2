@@ -31,6 +31,8 @@ import top.niunaijun.blackbox.core.env.BEnvironment;
 import top.niunaijun.blackbox.entity.pm.InstallOption;
 import top.niunaijun.blackbox.utils.ArrayUtils;
 import top.niunaijun.blackbox.utils.FileUtils;
+import top.niunaijun.blackbox.utils.bundle.CodePaths;
+import top.niunaijun.blackbox.utils.bundle.SplitFields;
 import top.niunaijun.blackbox.utils.compat.BuildCompat;
 
 
@@ -65,6 +67,9 @@ public class PackageManagerCompat {
         pi.sharedUserId = p.mSharedUserId;
         pi.sharedUserLabel = p.mSharedUserLabel;
         pi.applicationInfo = generateApplicationInfo(p, flags, state, userId);
+        if (SplitFields.usable(p.splitNames, p.splitCodePaths)) {
+            pi.splitNames = SplitFields.copy(p.splitNames);
+        }
 
         pi.firstInstallTime = firstInstallTime;
         pi.lastUpdateTime = lastUpdateTime;
@@ -304,11 +309,15 @@ public class PackageManagerCompat {
         ai.processName = BPackageManagerService.fixProcessName(p.packageName, ai.packageName);
         ai.publicSourceDir = sourceDir;
         ai.sourceDir = sourceDir;
+        applySplits(p, ai);
         ai.uid = p.mExtras.appId;
 
 
         if (BuildCompat.isL()) {
-            BRApplicationInfoL.get(ai)._set_primaryCpuAbi(Build.CPU_ABI);
+            // the ABI chosen at install time (apps with splits); older installs keep the phone's ABI
+            String installedAbi = BRApplicationInfoL.get(p.applicationInfo).primaryCpuAbi();
+            BRApplicationInfoL.get(ai)._set_primaryCpuAbi(
+                    p.installOption.hasSplits() && installedAbi != null ? installedAbi : Build.CPU_ABI);
             BRApplicationInfoL.get(ai)._set_scanPublicSourceDir(BRApplicationInfoL.get(baseApplication).scanPublicSourceDir());
             BRApplicationInfoL.get(ai)._set_scanSourceDir(BRApplicationInfoL.get(baseApplication).scanSourceDir());
         }
@@ -330,6 +339,24 @@ public class PackageManagerCompat {
         }
         fixJar(ai);
         return ai;
+    }
+
+    /**
+     * Gives an app that was installed from a bundle the paths of its split APKs, like the real
+     * package manager does: {@code splitSourceDirs}, {@code splitPublicSourceDirs} and
+     * {@code splitNames}, one entry per split in the same order. Without splits (or when the stored
+     * names and paths do not match) the fields stay as they are, which is null for a single APK.
+     * Arrays are copied, so an app can never change the stored package.
+     */
+    private static void applySplits(BPackage p, ApplicationInfo ai) {
+        if (!SplitFields.usable(p.splitNames, p.splitCodePaths)) {
+            return;
+        }
+        ai.splitSourceDirs = SplitFields.copy(p.splitCodePaths);
+        ai.splitPublicSourceDirs = SplitFields.copy(p.splitCodePaths);
+        if (BuildCompat.isL()) {
+            BRApplicationInfoL.get(ai)._set_splitNames(SplitFields.copy(p.splitNames));
+        }
     }
 
     private static boolean checkUseInstalledOrHidden(int flags, BPackageUserState state,
@@ -368,7 +395,10 @@ public class PackageManagerCompat {
         BPackageSettings ps = BPackageManagerService.get().getBPackageSetting(appInfo.packageName);
         if (ps != null) {
             AssetManager assets = BRAssetManager.get()._new();
-            BRAssetManager.get(assets).addAssetPath(ps.pkg.baseCodePath);
+            // base APK first, then every split (density / language / feature resources)
+            for (String path : CodePaths.resourcePaths(ps.pkg.baseCodePath, ps.pkg.splitCodePaths)) {
+                BRAssetManager.get(assets).addAssetPath(path);
+            }
             Resources hostRes = context.getResources();
             return new Resources(assets, hostRes.getDisplayMetrics(), hostRes.getConfiguration());
         }

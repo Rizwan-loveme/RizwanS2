@@ -35,6 +35,15 @@ public abstract class ClientConfiguration {
         return false;
     }
 
+    /**
+     * Part 31: when true (default), an app inside the box that asks to install an APK gets the box's own
+     * install dialog and the app is installed into the same space. When false the system installer runs
+     * (the app lands on the phone).
+     */
+    public boolean isInstallInsideBox() {
+        return true;
+    }
+
     
     public String getLogSenderChatId() {
         return ""; // log upload disabled in Parallel
