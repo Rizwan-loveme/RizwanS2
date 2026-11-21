@@ -140,7 +140,12 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             
             PackageInfo packageInfo = BlackBoxCore.getBPackageManager().getPackageInfo(packageName, flags, BlackBoxCore.getUserId());
             if (packageInfo != null) {
-                
+                if ((flags & PackageManager.GET_SIGNATURES) != 0 && packageInfo.signatures == null) {
+                    Slog.w(TAG, "getPackageInfo(" + packageName + ") had null signatures, using empty array");
+                    packageInfo.signatures = new android.content.pm.Signature[0];
+                }
+                Slog.d(TAG, "getPackageInfo " + packageName + " flags=0x" + Integer.toHexString(flags)
+                        + " sigs=" + (packageInfo.signatures == null ? "null" : packageInfo.signatures.length));
                 if (packageInfo.requestedPermissions != null && packageInfo.requestedPermissionsFlags != null) {
                     boolean own = PermissionPolicy.isOwnPackage(packageName);
                     for (int i = 0; i < packageInfo.requestedPermissions.length; i++) {

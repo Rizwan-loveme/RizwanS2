@@ -100,8 +100,31 @@ public abstract class ClassInvocationStub implements InvocationHandler, IInjectH
         mMethodHookMap.put(name, methodHook);
     }
 
+    /**
+     * Guest apps (e.g. Facebook Lite) often do `array.length` on the result of a system-service call without a
+     * null check. On a real device those calls never return null, but inside the sandbox a hook or a missing
+     * virtual service can. Log every such case (tag "NullArray") so the offending API can be identified, and
+     * hand the app an empty array instead of letting it crash.
+     */
+    private static final boolean SUBSTITUTE_NULL_ARRAYS = true;
+
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        Object ret = invokeInner(proxy, method, args);
+        if (ret == null) {
+            Class<?> rt = method.getReturnType();
+            if (rt.isArray()) {
+                Log.w("NullArray", "service call returned null array: " + getClass().getSimpleName() + "#" + method.getName()
+                        + " -> " + rt.getSimpleName() + (SUBSTITUTE_NULL_ARRAYS ? " (substituted empty array)" : ""));
+                if (SUBSTITUTE_NULL_ARRAYS) {
+                    return java.lang.reflect.Array.newInstance(rt.getComponentType(), 0);
+                }
+            }
+        }
+        return ret;
+    }
+
+    private Object invokeInner(Object proxy, Method method, Object[] args) throws Throwable {
 
 
 
