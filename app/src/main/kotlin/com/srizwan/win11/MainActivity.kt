@@ -87,6 +87,13 @@ class MainActivity : AppCompatActivity() {
     // ── File manager ─────────────────────────────────────────────
     internal lateinit var fileManagerView: LinearLayout
     internal lateinit var explorerUi: ExplorerUi
+
+    /**
+     * What the File Manager list shows right now (empty while the File Manager is not built yet). `::explorerUi.isInitialized`
+     * only compiles inside this class, so [openImageFile] (an extension function in FileManagerUi.kt) calls this instead.
+     */
+    internal fun shownExplorerFiles(): List<FileItem> =
+        if (::explorerUi.isInitialized) explorerUi.shownFiles() else emptyList()
     internal var currentPath: File = Environment.getExternalStorageDirectory()
 
     // ── Browser ──────────────────────────────────────────────────

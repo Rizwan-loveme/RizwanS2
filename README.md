@@ -692,3 +692,14 @@ Any app of the Start menu can be opened by its serial number.
   shortcut with a number should be checked after such a change; use the named links for the built-in apps if a fixed target is needed.
 - Version stays 2.5.3 (code 120). No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**.
 
+## Fix — release build error in `FileManagerUi.kt` (CI run, `:app:compileReleaseKotlin`)
+
+- **Error**: `FileManagerUi.kt:433: Backing field of 'var explorerUi: ExplorerUi' is not accessible at this point.` `openImageFile()` (step 10) is an
+  extension function of `MainActivity`, and `::explorerUi.isInitialized` on a `lateinit` property only compiles inside the class that declares it.
+- **Fix**: `MainActivity.shownExplorerFiles()` (new, next to `explorerUi`) does the `isInitialized` check and returns what the File Manager list shows
+  (empty while it is not built yet). `openImageFile()` calls it. Behaviour is the same as before: the viewer gets the folder's pictures in the order
+  the list shows them, or the folder's pictures in name order when the file is not in the list on screen.
+- That was the only error in the log (`:gallery` and every other module compiled; the log shows `:gallery:assembleRelease` succeeding). Other uses of
+  `::x.isInitialized` in `:app` were checked: they are all inside the class that owns the property.
+- Version stays 2.5.3 (code 120). No Android SDK here, so the build was not re-run locally: **rebuild with `./gradlew :app:assembleDebug`** (or push to CI).
+

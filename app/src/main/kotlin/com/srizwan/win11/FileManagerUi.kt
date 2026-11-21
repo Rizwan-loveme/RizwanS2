@@ -430,7 +430,7 @@ internal fun MainActivity.openImageFile(file: File) {
     try {
         // The pictures of this folder in the File Manager's own order (what the list on screen shows), so swiping moves
         // through them the same way playVideo() hands over the videos around the one that was tapped.
-        val shown = if (::explorerUi.isInitialized) explorerUi.shownFiles() else emptyList()
+        val shown = shownExplorerFiles()
         val path = file.absolutePath
         val around: List<String> =
             if (shown.any { it.path == path }) {
