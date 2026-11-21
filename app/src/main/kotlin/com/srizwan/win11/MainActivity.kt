@@ -1,5 +1,6 @@
 package com.srizwan.win11
 
+import com.srizwan.chooser.picker.FilePicker
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -166,9 +167,10 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val cb = fileUploadCallback ?: return@registerForActivityResult
             fileUploadCallback = null
+            // :chooser file picker (step 8): one or many content:// uris (clip data); the system screen gives just `data`
             val results =
-                if (result.resultCode == Activity.RESULT_OK && result.data?.data != null)
-                    arrayOf(result.data!!.data!!)
+                if (result.resultCode == Activity.RESULT_OK)
+                    FilePicker.uris(result.data).toTypedArray().takeIf { it.isNotEmpty() }
                 else null
             cb.onReceiveValue(results)
         }
@@ -839,7 +841,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files | browser | dialer | sms | winlator | youtube | video | gallery | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -852,6 +854,14 @@ class MainActivity : AppCompatActivity() {
                 "files", "browser", "dialer", "sms" -> {
                     shell.closeStart(animated = false)
                     switchToSection(uri.host!!.lowercase())
+                    // Chooser step 10: rizwans2://files?path=/storage/emulated/0/Download/Received opens that folder (only an existing folder on the shared storage)
+                    if (uri.host.equals("files", ignoreCase = true)) {
+                        uri.getQueryParameter("path")?.let { p ->
+                            val dir = File(p)
+                            val root = Environment.getExternalStorageDirectory().canonicalPath
+                            if (dir.isDirectory && dir.canonicalPath.startsWith(root)) loadFiles(dir)
+                        }
+                    }
                 }
                 "start" -> { switchToSection("desktop"); shell.openStart() }
                 "quick" -> shell.onQuick?.invoke()
@@ -861,6 +871,8 @@ class MainActivity : AppCompatActivity() {
                 "youtube" -> startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java))
                 "video" -> startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java))
                 "gallery" -> startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java))
+                // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
+                "chooser" -> com.srizwan.chooser.settings.ChooserSettings.open(this)
                 else -> { // "open" and anything unknown
                     if (shell.isStartOpen()) shell.closeStart()
                     switchToSection("desktop")

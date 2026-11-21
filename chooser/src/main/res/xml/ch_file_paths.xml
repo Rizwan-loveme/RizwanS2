@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 4 (Open with): the Chooser opens a file in another app through ChooserFileProvider. A file can be anywhere on the shared storage
+     or on an SD card, so the whole file system is allowed (root-path); the provider is not exported and only files the user chose to
+     open (or share) are ever handed out, one grant per start. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <root-path name="ch_root" path="" />
+</paths>

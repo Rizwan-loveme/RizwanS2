@@ -32,7 +32,7 @@
         android:layout_marginTop="22dp"
         android:layout_marginEnd="16dp" />
 
-    <!-- chip row, top right: floating window, background playback on / off, video quality (hidden when the
+    <!-- chip row, top right: share (Chooser's own Share sheet), floating window, background playback on / off, video quality (hidden when the
          video has one quality) and playback speed. It follows the visibility of the controls. -->
     <LinearLayout
         android:id="@+id/chip_row"
@@ -42,6 +42,16 @@
         android:layout_margin="12dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/share_button"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@string/vp_cd_share"
+            android:minWidth="40dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp" />
 
         <ImageView
             android:id="@+id/float_button"

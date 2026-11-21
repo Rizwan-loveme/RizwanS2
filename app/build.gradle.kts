@@ -74,6 +74,8 @@ dependencies {
     implementation(project(":video"))
     // Glass Gallery + built-in Gallery app (package com.srizwan.gallery), used by the File Manager for images
     implementation(project(":gallery"))
+    // Own Open with / Share sheets and file picker (package com.srizwan.chooser)
+    implementation(project(":chooser"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

@@ -26,12 +26,14 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import com.srizwan.chooser.share.Share
 import com.srizwan.video.R
 import com.srizwan.video.databinding.VpActivityPlayerBinding
 import com.srizwan.video.ui.GlassDrawable
 import com.srizwan.video.ui.GlassSheet
 import com.srizwan.video.ui.GlassToast
 import com.srizwan.video.ui.VectorLabelDrawable
+import java.io.File
 import java.io.IOException
 
 /**
@@ -139,6 +141,8 @@ class VideoPlayerActivity : AppCompatActivity() {
         placeTitleAboveOrBeside()
         b.floatButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.vp_ic_float, iconSizeDp = 20f))
         b.floatButton.setOnClickListener { startFloating(auto = false) }
+        b.shareButton.setImageDrawable(VectorLabelDrawable(this, null, R.drawable.vp_ic_share, iconSizeDp = 20f))
+        b.shareButton.setOnClickListener { shareVideo() }
         updateSpeedChip(VideoPrefs.speed(this))
         updateQualityChip()
         updateBackgroundChip()
@@ -156,7 +160,7 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     /** Glass background for every chip and hint (the look is code, so there is no shape xml). */
     private fun styleGlass() {
-        listOf(b.floatButton, b.backgroundButton, b.qualityButton, b.speedButton).forEach {
+        listOf(b.shareButton, b.floatButton, b.backgroundButton, b.qualityButton, b.speedButton).forEach {
             it.background = GlassDrawable(this, 20f)
         }
         listOf(b.seekHintLeft, b.seekHintRight, b.gestureHint).forEach {
@@ -417,6 +421,21 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
         b.chipRow.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> update() }
         b.root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> update() }
+    }
+
+    /**
+     * Share (Chooser step 7): the Chooser's own Share sheet. A local file is shared as a file (through the Chooser's FileProvider), a
+     * `content://` video as a uri, and an online video (http / https) as its link, so a stream can be shared too.
+     */
+    private fun shareVideo() {
+        val s = source
+        val name = VideoEngine.title?.takeIf { it.isNotBlank() }
+        when {
+            s.startsWith("http://") || s.startsWith("https://") -> Share.text(this, s, subject = name)
+            s.startsWith("content://") ->
+                Share.uris(this, listOf(Uri.parse(s)), listOfNotNull(name), mime = "video/*")
+            else -> Share.file(this, File(s))
+        }
     }
 
     private fun updateTitle() {

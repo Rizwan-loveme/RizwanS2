@@ -6,6 +6,7 @@
     <string name="vp_cd_forward">Forward 10 seconds</string>
     <string name="vp_cd_fullscreen">Fullscreen</string>
     <string name="vp_cd_float">Floating window</string>
+    <string name="vp_cd_share">Share</string>
     <string name="vp_cd_close">Close</string>
     <string name="vp_cd_background">Background playback</string>
     <string name="vp_cd_quality">Video resolution</string>

@@ -48,6 +48,8 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     // Photo viewer: swipe between images (step 7).
     implementation("androidx.viewpager2:viewpager2:1.0.0")
+    // Own Share sheet (step 7 of the Chooser plan replaces Intent.createChooser in ImageActions).
+    implementation(project(":chooser"))
     // Same coroutines pin as :video (see the root build.gradle.kts): appcompat 1.6.1 -> lifecycle 2.5.1 asks for
     // coroutines 1.6.1, which CI could not resolve (build #12). Declared here so :gallery is explicit.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

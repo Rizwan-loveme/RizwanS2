@@ -1,0 +1,121 @@
+<resources>
+    <!-- Content descriptions (read by screen readers). -->
+    <string name="ch_cd_back">Back</string>
+    <string name="ch_cd_close">Close</string>
+    <string name="ch_cd_confirm">Confirm</string>
+
+    <!-- Open with sheet (step 3). Visible labels are drawn as vector outlines by VectorText / VectorLabelDrawable. -->
+    <string name="ch_open_with">Open with</string>
+    <string name="ch_just_once">Just once</string>
+    <string name="ch_always">Always</string>
+    <string name="ch_open_hint">Press and hold an app to see its details</string>
+    <string name="ch_open_empty_title">No app can open this</string>
+    <string name="ch_open_empty_text">None of your installed apps can open %1$s files.</string>
+    <string name="ch_find_in_store">Find in store</string>
+    <string name="ch_toast_no_store">No store app is available</string>
+
+    <!-- Open with launcher (step 4) -->
+    <string name="ch_toast_open_failed">This app could not open the file</string>
+    <string name="ch_toast_file_missing">The file is not available</string>
+
+    <!-- Share sheet (step 6) -->
+    <string name="ch_share">Share</string>
+    <string name="ch_share_recent">Recent</string>
+    <string name="ch_share_all">All apps</string>
+    <string name="ch_share_count">%d files</string>
+    <string name="ch_copy">Copy</string>
+    <string name="ch_toast_copied">Copied</string>
+    <string name="ch_share_empty_title">No app can receive this</string>
+    <string name="ch_share_empty_text">None of your installed apps can receive what you are sharing.</string>
+    <string name="ch_toast_share_failed">This app could not receive it</string>
+
+    <!-- File picker (step 8) -->
+    <string name="ch_picker_title_file">Choose a file</string>
+    <string name="ch_picker_title_files">Choose files</string>
+    <string name="ch_picker_title_folder">Choose a folder</string>
+    <string name="ch_picker_selected">%d selected</string>
+    <string name="ch_picker_select">Select</string>
+    <string name="ch_picker_use_folder">Use this folder</string>
+    <string name="ch_picker_home">Storage</string>
+    <string name="ch_picker_internal">Internal storage</string>
+    <string name="ch_picker_sd">SD card</string>
+    <string name="ch_picker_sd_n">SD card %d</string>
+    <string name="ch_picker_downloads">Downloads</string>
+    <string name="ch_picker_free">%1$s free</string>
+    <string name="ch_picker_search_hint">Search in this folder</string>
+    <string name="ch_picker_sort_name">Name</string>
+    <string name="ch_picker_sort_date">Date, newest first</string>
+    <string name="ch_picker_sort_size">Size, largest first</string>
+    <string name="ch_picker_sort_type">Type</string>
+    <string name="ch_picker_show_hidden">Show hidden files</string>
+    <string name="ch_picker_only_matching">Only files the app asked for</string>
+    <string name="ch_picker_empty_title">This folder is empty</string>
+    <string name="ch_picker_empty_text">There are no files or folders here.</string>
+    <string name="ch_picker_nomatch_title">Nothing found</string>
+    <string name="ch_picker_nomatch_text">No file or folder matches your search.</string>
+    <string name="ch_picker_filtered_title">No matching files</string>
+    <string name="ch_picker_filtered_text">This folder has no files of the kind that was asked for. Open the menu to show all files.</string>
+    <string name="ch_picker_unreadable_title">This folder cannot be opened</string>
+    <string name="ch_picker_unreadable_text">Android did not let this app read it.</string>
+    <string name="ch_picker_perm_title">Storage access needed</string>
+    <string name="ch_picker_perm_text">Allow access to your files so you can choose them here.</string>
+    <string name="ch_picker_allow">Allow</string>
+    <string name="ch_picker_toast_gone">That file is no longer available</string>
+    <string name="ch_cd_search">Search</string>
+    <string name="ch_cd_view_grid">Show as grid</string>
+    <string name="ch_cd_view_list">Show as list</string>
+    <string name="ch_cd_options">Sort and filter</string>
+    <string name="ch_cd_selected">Selected</string>
+
+    <!-- Receive screen (step 10): this app as an Open with / Share target for other apps -->
+    <string name="ch_label_open_alias">Win11 Open with</string>
+    <string name="ch_label_send_alias">Save to Win11 Files</string>
+    <string name="ch_recv_title">Received</string>
+    <string name="ch_recv_open_title">Open</string>
+    <string name="ch_recv_open_with">Open with</string>
+    <string name="ch_recv_save">Save to Files</string>
+    <string name="ch_recv_save_text">Save as text file</string>
+    <string name="ch_recv_saved">Saved</string>
+    <string name="ch_recv_saved_some">Saved %1$d of %2$d</string>
+    <string name="ch_recv_saved_to">Saved to %1$s</string>
+    <string name="ch_recv_show">Show in Files</string>
+    <string name="ch_recv_done">Done</string>
+    <string name="ch_recv_skipped">%d items were left out</string>
+    <string name="ch_recv_failed_title">Could not save</string>
+    <string name="ch_recv_failed_text">The file could not be read, or the storage is full.</string>
+    <string name="ch_recv_empty_title">Nothing to receive</string>
+    <string name="ch_recv_empty_text">The other app did not send a file or text that can be used here.</string>
+
+    <!-- Settings and polish (step 11) -->
+    <string name="ch_cd_settings">Chooser settings</string>
+    <string name="ch_cd_remove">Remove</string>
+    <string name="ch_set_title">Chooser settings</string>
+    <string name="ch_set_sheets">Open with and Share</string>
+    <string name="ch_set_style">Style</string>
+    <string name="ch_set_style_grid">Grid</string>
+    <string name="ch_set_style_list">List</string>
+    <string name="ch_set_columns">Apps per row</string>
+    <string name="ch_set_columns_auto">Auto</string>
+    <string name="ch_set_columns_hint">Never more than fit the screen</string>
+    <string name="ch_set_recent">Remember recent apps</string>
+    <string name="ch_set_recent_hint">Apps you used last come first</string>
+    <string name="ch_set_always">Saved apps</string>
+    <string name="ch_set_always_hint">Apps that open a kind of file without asking</string>
+    <string name="ch_set_always_empty">Nothing saved yet. Press Always in the Open with sheet to save an app for a kind of file.</string>
+    <string name="ch_set_always_gone">This app is not installed any more</string>
+    <string name="ch_set_clear_always">Clear all saved apps</string>
+    <string name="ch_set_recent_section">Recent apps</string>
+    <string name="ch_set_recent_count">%d remembered</string>
+    <string name="ch_set_recent_none">None remembered</string>
+    <string name="ch_set_clear_recent">Clear recent apps</string>
+    <string name="ch_set_picker">File picker</string>
+    <string name="ch_set_picker_hint">Forget the last folder, sort order, hidden files and list or grid choice</string>
+    <string name="ch_set_reset_picker">Reset file picker</string>
+    <string name="ch_set_cancel">Cancel</string>
+    <string name="ch_toast_cleared">Cleared</string>
+    <string name="ch_toast_removed">Removed</string>
+    <string name="ch_toast_reset">Reset</string>
+    <string name="ch_kind_view">Open</string>
+    <string name="ch_kind_send">Share</string>
+    <string name="ch_set_any_file">any file</string>
+</resources>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- No permission lines on purpose: the Chooser reads files through the uris its callers hand over (and, for the picker,
+         through the storage permission :app already holds). The picker activity is step 8, the intent filters come in steps 9 and 10, the settings screen is step 11. -->
+    <application>
+
+        <!-- Step 4 (Open with): hands a file to the chosen app as a content:// uri. Own subclass + authority, like GalleryFileProvider and
+             WinlatorFileProvider, so it never clashes with another FileProvider in the merged manifest. -->
+        <provider
+            android:name="com.srizwan.chooser.data.ChooserFileProvider"
+            android:authorities="${applicationId}.chooser.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/ch_file_paths" />
+        </provider>
+
+        <!-- Steps 8 + 9: the own file picker (folders, breadcrumb, list / grid, search). Exported since step 9: other apps list it when they ask for a
+             file (GET_CONTENT, OPEN_DOCUMENT, PICK). A foreign caller gets content:// uris with a read grant and nothing else (no paths, no start
+             folder, no folder mode: see PickerOptions.fromIntent). OPEN_DOCUMENT_TREE is not offered: it needs a DocumentsProvider. -->
+        <activity
+            android:name="com.srizwan.chooser.picker.FilePickerActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Chooser"
+            android:label="Files"
+            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode|layoutDirection">
+            <intent-filter>
+                <action android:name="android.intent.action.GET_CONTENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.OPENABLE" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.OPEN_DOCUMENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.OPENABLE" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- PICK on the media store (a gallery-style "choose a picture / video / song") carries a directory type -->
+            <intent-filter>
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/image" />
+                <data android:mimeType="vnd.android.cursor.dir/video" />
+                <data android:mimeType="vnd.android.cursor.dir/audio" />
+            </intent-filter>
+        </activity>
+
+        <!-- Step 11: the settings screen (grid / list, apps per row, recent apps, saved "Always" apps, picker reset). Not exported: it is opened
+             by the gear of the sheets and by the rizwans2://chooser deep link of :app. Rotation is handled in the activity. -->
+        <activity
+            android:name="com.srizwan.chooser.settings.ChooserSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Chooser"
+            android:label="@string/ch_set_title"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode|layoutDirection" />
+
+        <!-- Step 10: this app in other apps' "Open with" and Share lists, as a glass sheet. The activity itself is not exported: only the two
+             aliases are, so other apps see two clear names. Only content:// is declared for VIEW (a file:// uri from a stranger is never accepted). -->
+        <activity
+            android:name="com.srizwan.chooser.receive.ReceiveActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Chooser.Receive"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode|layoutDirection" />
+
+        <activity-alias
+            android:name="com.srizwan.chooser.receive.ReceiveActivity.Open"
+            android:targetActivity="com.srizwan.chooser.receive.ReceiveActivity"
+            android:exported="true"
+            android:label="@string/ch_label_open_alias">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.srizwan.chooser.receive.ReceiveActivity.Send"
+            android:targetActivity="com.srizwan.chooser.receive.ReceiveActivity"
+            android:exported="true"
+            android:label="@string/ch_label_send_alias">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+</manifest>

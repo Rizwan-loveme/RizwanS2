@@ -259,7 +259,7 @@ class QuickControlsActivity : AppCompatActivity() {
         t("rec", R.drawable.ic_qs_recorder, "Screen recorder") { onRecorderTap() }
         t("shot", R.drawable.ic_qs_screenshot, "Capture screenshot") { onScreenshotTap() }
         t("power", R.drawable.ic_qs_power, "Power menu") { onPowerTap() }
-        t("log", R.drawable.ic_qs_notifications, "Debug log") { startActivity(Intent(this, DebugLogActivity::class.java)) }
+        t("log", R.drawable.ic_qs_log, "Debug log") { startActivity(Intent(this, DebugLogActivity::class.java)) }
     }
 
     private fun addTile(parent: GridLayout, key: String, iconRes: Int, description: String, action: () -> Unit): QTile {

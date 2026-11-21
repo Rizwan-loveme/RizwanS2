@@ -57,4 +57,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
     implementation("androidx.media3:media3-ui:1.8.0")
     implementation("androidx.media3:media3-session:1.8.0")
+    // Own Share sheet (Chooser plan, step 7).
+    implementation(project(":chooser"))
 }

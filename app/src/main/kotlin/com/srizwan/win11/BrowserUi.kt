@@ -1,5 +1,7 @@
 package com.srizwan.win11
 
+import com.srizwan.chooser.openwith.OpenWith
+import com.srizwan.chooser.picker.FilePicker
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -494,9 +496,8 @@ internal fun MainActivity.openDownloaded(t: DlTask) {
             return
         }
         val mime = t.mime.ifBlank { DlEngine.guessMime(t.fileName) }
-        val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(Intent.createChooser(view, "Open with"))
+        // Chooser step 5: our own glass "Open with" sheet instead of Intent.createChooser (the system chooser / TranResolver)
+        OpenWith.show(this, uri, fileName = t.fileName, mime = mime)
     } catch (e: Exception) {
         Toast.makeText(this, "No app can open this file", Toast.LENGTH_SHORT).show()
     }
@@ -692,11 +693,27 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
             ): Boolean {
                 fileUploadCallback?.onReceiveValue(null)
                 fileUploadCallback = filePathCallback
-                fileChooserLauncher.launch(
-                    Intent(Intent.ACTION_GET_CONTENT).apply {
-                        addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+                // Own glass file picker (:chooser, step 8) instead of the system's GET_CONTENT screen. The page's accept types and its
+                // "multiple" flag are passed on; the result is content:// uris from ChooserFileProvider, which the WebView reads.
+                val accept = fileChooserParams?.acceptTypes
+                    ?.flatMap { it.split(',') }?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+                val multiple = fileChooserParams?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
+                try {
+                    fileChooserLauncher.launch(FilePicker.intent(this@addNewTab, multiple = multiple, mimeTypes = accept))
+                } catch (e: Exception) {
+                    // the picker could not start: the system screen as before
+                    try {
+                        fileChooserLauncher.launch(
+                            Intent(Intent.ACTION_GET_CONTENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+                            }
+                        )
+                    } catch (e2: Exception) {
+                        fileUploadCallback = null
+                        filePathCallback?.onReceiveValue(null)
+                        return false
                     }
-                )
+                }
                 return true
             }
         }

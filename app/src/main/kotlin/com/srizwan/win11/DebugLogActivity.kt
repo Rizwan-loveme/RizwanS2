@@ -1,5 +1,6 @@
 package com.srizwan.win11
 
+import com.srizwan.chooser.share.Share
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -116,12 +117,8 @@ class DebugLogActivity : AppCompatActivity() {
     }
 
     private fun share() {
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Win11 debug log")
-            putExtra(Intent.EXTRA_TEXT, fullText().takeLast(100_000))
-        }
-        startActivity(Intent.createChooser(send, "Share log"))
+        // Chooser step 7: own glass Share sheet (text + subject, with a Copy button) instead of Intent.createChooser
+        Share.text(this, fullText().takeLast(100_000), subject = "Win11 debug log")
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()

@@ -32,3 +32,6 @@ include(":video")
 // Glass Gallery (photos + albums + full-screen viewer), package com.srizwan.gallery.
 // Used by the File Manager (image files), the Start menu and the Home screen.
 include(":gallery")
+// Own "Open with" / Share sheets and file picker (replaces the system chooser for this app's own calls), package com.srizwan.chooser.
+// Own module, resources prefixed "ch_", glass UI, no text of its own. Used by :app, :gallery and :video. Built step by step, see README.md.
+include(":chooser")

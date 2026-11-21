@@ -1,0 +1,19 @@
+<resources>
+    <!-- Dark theme of the Chooser screens (the file picker, step 8), same look as Theme.Gallery / Theme.Video. -->
+    <style name="Theme.Chooser" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/ch_bg</item>
+        <item name="android:statusBarColor">@color/ch_bg</item>
+        <item name="android:navigationBarColor">@color/ch_bg</item>
+        <item name="colorAccent">@color/ch_accent</item>
+    </style>
+
+    <!-- Step 10: the see-through screen behind the receive sheet -->
+    <style name="Theme.Chooser.Receive" parent="Theme.Chooser">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>

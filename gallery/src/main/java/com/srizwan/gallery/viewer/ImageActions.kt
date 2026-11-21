@@ -2,17 +2,15 @@ package com.srizwan.gallery.viewer
 
 import android.app.Activity
 import android.app.WallpaperManager
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.net.Uri
 import android.media.ExifInterface
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.util.Log
+import com.srizwan.chooser.share.Share
 import com.srizwan.gallery.data.GalleryFileProvider
 import com.srizwan.gallery.data.GalleryImage
 import com.srizwan.gallery.data.GalleryPrefs
@@ -55,20 +53,16 @@ internal object ImageActions {
 
     // ── share ────────────────────────────────────────────────────────────────
 
-    /** Opens the system share sheet for [image] (a `content://` uri from [GalleryFileProvider]). False when it cannot. */
+    /**
+     * Opens the Chooser's own Share sheet for [image] (the file goes out as a `content://` uri from [GalleryFileProvider]; the apps are
+     * started with an explicit intent, no system chooser). False when the file is gone. Errors after the sheet opened are reported by the
+     * sheet's own glass toast. Same signature as before the Chooser module (step 7).
+     */
     fun share(activity: Activity, image: GalleryImage): Boolean {
         val file = File(image.path)
         if (!file.isFile) return false
         return try {
-            val uri = GalleryFileProvider.uriFor(activity, file)
-            val send = Intent(Intent.ACTION_SEND).apply {
-                type = image.mime
-                putExtra(Intent.EXTRA_STREAM, uri)
-                clipData = ClipData.newRawUri(image.name, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            val chooser = Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            activity.startActivity(chooser)
+            Share.file(activity, file, image.mime, authority = GalleryFileProvider.authority(activity))
             true
         } catch (e: Exception) {
             Log.w(TAG, "share failed: ${image.path}", e)
@@ -77,26 +71,20 @@ internal object ImageActions {
     }
 
     /**
-     * Shares several pictures at once (multi-select, step 9) with `ACTION_SEND_MULTIPLE`. One usable picture is shared
-     * like [share]. False when nothing can be shared or more than [MAX_SHARE] pictures were picked.
+     * Shares several pictures at once (multi-select, step 9) with the Chooser's Share sheet (`ACTION_SEND_MULTIPLE`). One usable picture is
+     * shared like [share]. False when nothing can be shared or more than [MAX_SHARE] pictures were picked.
      */
     fun shareMany(activity: Activity, images: List<GalleryImage>): Boolean {
         val usable = images.filter { File(it.path).isFile }
         if (usable.isEmpty() || usable.size > MAX_SHARE) return false
         if (usable.size == 1) return share(activity, usable[0])
         return try {
-            val uris = ArrayList<Uri>(usable.size)
-            for (img in usable) uris.add(GalleryFileProvider.uriFor(activity, File(img.path)))
             val mimes = usable.map { it.mime }.toSet()
-            val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                type = if (mimes.size == 1) mimes.first() else "image/*"
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-                val clip = ClipData.newRawUri(usable[0].name, uris[0])
-                for (i in 1 until uris.size) clip.addItem(ClipData.Item(uris[i]))
-                clipData = clip
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            activity.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+            Share.files(
+                activity, usable.map { File(it.path) },
+                mime = if (mimes.size == 1) mimes.first() else "image/*",
+                authority = GalleryFileProvider.authority(activity)
+            )
             true
         } catch (e: Exception) {
             Log.w(TAG, "share many failed (${usable.size} pictures)", e)

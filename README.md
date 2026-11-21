@@ -703,3 +703,298 @@ Any app of the Start menu can be opened by its serial number.
   `::x.isInitialized` in `:app` were checked: they are all inside the class that owns the property.
 - Version stays 2.5.3 (code 120). No Android SDK here, so the build was not re-run locally: **rebuild with `./gradlew :app:assembleDebug`** (or push to CI).
 
+## Chooser — `:chooser` module (package `com.srizwan.chooser`)
+
+Own "Open with" and Share sheets, and an own file picker, for this app's own calls. Why: `Intent.createChooser(...)` starts the **system** chooser
+(on Tecno / Infinix / itel phones that is the Transsion `TranResolver`, which showed "App is not available" when it was disabled), and Android does not
+let an app replace it for other apps. When our own code opens or shares something it can skip it instead: ask `PackageManager` which apps can handle the
+intent, show a glass sheet, and start the chosen app directly. The module also becomes a file picker and an Open-with / Share target for other apps.
+Same pattern as `:gallery` and `:video`: own module, resources prefixed `ch_`, glass UI, no text of its own (content descriptions only).
+
+### Chooser plan (13 steps)
+
+| # | Step | Status |
+|---|------|--------|
+| 1 | Module setup (`:chooser`, manifest, theme, glass UI kit, dependencies) | done |
+| 2 | App finder (`AppFinder`: `queryIntentActivities` for view / send) | done |
+| 3 | Own "Open with" sheet (grid of apps, just once / always) | done |
+| 4 | Open-with launcher (explicit intent, FileProvider grant, failure handling) | done |
+| 5 | File Manager hook (`openFile()` unsupported branch, "Open with" menu item, `BrowserUi`) | done |
+| 6 | Own Share sheet (files, many files, text) | done |
+| 7 | Replace the old share calls (`:gallery`, `:video`, `DebugLogActivity`, File Manager) | done |
+| 8 | Own file picker (`FilePickerActivity`, used for the browser's file upload) | done |
+| 9 | Be the system picker for other apps (`GET_CONTENT`, `OPEN_DOCUMENT`, `PICK`) | done |
+| 10 | Be an Open-with / Share target for other apps (`VIEW`, `SEND`, `SEND_MULTIPLE`), glass UI | done |
+| 11 | Prefs and polish (saved "always" choices, recent targets, list / grid style, columns, rotation) | done |
+| 12 | Fallback to the system chooser when our sheet cannot be built | done |
+| 13 | Final review, README, flat zip | done |
+
+### Step 1 — module setup (`chooser/`, `settings.gradle.kts`, `app`, `gallery`, `video`)
+
+- `chooser/build.gradle.kts`: Android library, `namespace = "com.srizwan.chooser"`, minSdk 26, compileSdk 37, Java / Kotlin 21, view binding, same coroutines
+  1.8.1 pin as `:video` / `:gallery` (CI build #12 fix). Dependencies: core-ktx, appcompat, recyclerview (the app grid of step 3, the file list of step 8).
+- `settings.gradle.kts`: `include(":chooser")`. `implementation(project(":chooser"))` in `app/build.gradle.kts`, `gallery/build.gradle.kts` and
+  `video/build.gradle.kts` (`:gallery` and `:video` cannot depend on `:app`, which is why this is a module of its own).
+- Manifest: empty on purpose (no permissions, no activities yet). The picker activity comes in step 8, the intent filters in steps 9 and 10.
+- Resources: `ch_bg`, `ch_text`, `ch_text_dim`, `ch_accent` colours (same values as `gl_*`), `Theme.Chooser` (dark, like `Theme.Gallery`), `ch_cd_*`
+  content descriptions (`back`, `close`, `confirm`), and the vector icons `ch_ic_back`, `ch_ic_close`, `ch_ic_check`. More icons and strings are added by the
+  step that uses them.
+- **Glass UI kit** (`chooser/ui`): an independent copy of the `:gallery` classes, renamed to `com.srizwan.chooser.ui` and to the `ch_` resources:
+  `GlassDrawable`, `GlassSheet` (list picker), `GlassToast`, `GlassControls` (`GlassUi`, `GlassBar`, `GlassToolbar`, `GlassTabs`, `GlassConfirm`),
+  `VectorText` and `VectorLabelDrawable` (text drawn as vector outlines, so there is no `TextView`), `GlassEmptyState`, `GlassPrompt` and
+  `GlassShimmerView`. Not copied: `GlassInfoSheet` (it shows gallery's `ImageInfo`). The class names equal the `:gallery` ones but live in another
+  package, so nothing clashes in `:app`.
+- Checked (static): every `R.*` reference resolves, packages match folders, braces balance, no `gl_` / gallery leftovers in code, no `ch_` name used by
+  another module.
+- `:app` code, `:gallery` code, `:video` code and `:youtube` are unchanged apart from the one dependency line in each build file. Version stays 2.5.3 (code 120).
+- No Android SDK / network in this environment: a Gradle build was **not** run. Build once with `./gradlew :app:assembleDebug`.
+
+### Step 2 — app finder (`chooser/data`)
+
+The list the system chooser would build, built by us. No UI yet: the sheets of steps 3 and 6 show it, step 4 starts the chosen app.
+
+- **`Target`** (+ `ChooserKind { VIEW, SEND }`): one app / activity that can handle an intent: `label`, `component` (`ComponentName`), `icon`, `isSelf` (an activity of
+  this app, for example the Gallery viewer), `packageName`, and `key` (`package/class`, the key used for the saved choices).
+- **`AppFinder`** (`object`):
+  - `queryView(context, uri, mime)` / `queryViewName(context, fileName)`: apps that can open a file (`ACTION_VIEW`). With no uri a stand-in
+    `content://com.srizwan.chooser.probe/file` is used: matching a `VIEW` filter only looks at the scheme (`content`, what step 4 opens files with) and the type,
+    so the list is built without touching any file.
+  - `querySend(context, mime, count)`: apps that can receive one file / text (`ACTION_SEND`) or several files (`ACTION_SEND_MULTIPLE` for `count > 1`).
+  - `findView`, `findViewName`, `findSend`: the same as `suspend` functions on `Dispatchers.IO`. The `query*` functions block (package manager + icon loading), so
+    they belong on a background thread.
+  - `viewIntent()` / `sendIntent()` build the intents used for matching (step 4 reuses them).
+  - **What is filtered**: only activities with `CATEGORY_DEFAULT` (`MATCH_DEFAULT_ONLY`, what an implicit intent needs); disabled activities (the package manager does not return
+    them); not-exported activities unless they are ours; the system choosers themselves (`android`, `com.android.intentresolver`, `com.google.android.intentresolver`,
+    `com.transsion.resolver` = TranResolver); duplicates (the same component, or the same package with the same label).
+  - `includeSelf = false` hides this app's own activities (for a Share sheet that should not offer the launcher to itself; for Open with it stays `true`).
+  - **Order**: the apps chosen before for this kind and MIME family first (most recent first), then the rest by name (case-insensitive).
+  - A `PackageManager` failure is logged (`AppFinder`) and gives an empty list, never an exception.
+- **`MimeTypes`**: `forName(name)` (platform table, then a small table for `apk`, `mkv`, `heic`, `exe`, `lnk`, `md` ... , else `*/*`), `forNames(list)` (the one type for several files:
+  the same type, else `family/*`, else `*/*`; this is the type `ACTION_SEND_MULTIPLE` needs), `family(mime)`.
+- **`ChooserPrefs`** (file `chooser_prefs`): the recent choices per kind and MIME family, at most 12 each: `recent()`, `recordChoice()` (step 4 calls it after a pick), `forget()` (for an app
+  that can no longer be started). Step 3 added the saved "always" choices (see below); step 11 adds the settings here.
+- **Package visibility**: `targetSdk = 28`, so every app is visible without `<queries>`. If targetSdk is raised to 30 or more, `:app` needs `<queries>` for `VIEW` and `SEND`,
+  or the list comes back (nearly) empty. Noted in the `AppFinder` KDoc.
+- Not done on purpose: no "default app" marker yet (step 3 / 11), no UI, no manifest change. `:app`, `:gallery`, `:video`, `:youtube` are unchanged. Version stays 2.5.3 (code 120).
+- Checked (static): packages match folders, braces balance, no unused imports, no `gl_` leftovers. No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**.
+
+### Step 3 — own "Open with" sheet (`chooser/openwith`, `chooser/ui`, `chooser/data`)
+
+A glass bottom sheet with the apps that can open a file, instead of the system chooser. It only **chooses**: starting the app is step 4. Nothing in `:app`, `:gallery`,
+`:video` calls it yet (step 5 hooks it into the File Manager and the browser), so this step changes no behaviour of the existing apps.
+
+- **`OpenWithSheet.show(activity, fileName, mime = null, includeSelf = true, onCancel = null) { target, always -> ... }`** (package `com.srizwan.chooser.openwith`):
+  - Opens at once with a loading skeleton, then fills the grid from `AppFinder.findView` (on `Dispatchers.IO`; the work is cancelled when the sheet closes).
+  - The type is `mime`, else the one of `fileName`'s extension, else `*/*`. The file name is shown under the title.
+  - **Grid**: app icon + name (two lines at most, vector outlines). Columns fit the screen (76 dp per tile, 3 to 6). The last row keeps the same tile width.
+  - **Choosing**: tap an app to select it (accent outline); **Just once** and **Always** are greyed out until one is selected. Tapping the selected app again = Just once.
+    The result goes to `onChoose(target, always)` and the sheet closes. Tap outside / Back calls `onCancel` instead.
+  - **Long-press** an app: haptic tick + the system "App info" screen of that app (`ACTION_APPLICATION_DETAILS_SETTINGS`). A failure is only logged.
+  - **Empty state** (nothing can open the file): "No app can open this", "None of your installed apps can open PDF files." and **Find in store**. The store search is the Play Store
+    with an explicit package (`market://search?q=pdf viewer`, so no chooser can appear), else the web page of the same search, else a glass toast "No store app is available".
+  - Not done here on purpose: the sheet does not start the app and does not save "Always" or the recent list. The launcher of step 4 does both, and only after the app really started,
+    so an app that fails is never remembered.
+- **`ChooserPrefs`**: new "always" API, one app per kind and exact MIME type (`always_<kind>_<mime>`): `always()`, `setAlways()`, `clearAlways()`, `allAlways()`, `clearAllAlways()`.
+  Step 4 checks that the saved component still exists before using it and clears it when it does not; step 11 shows the list in the settings.
+- **New UI pieces** (`chooser/ui`): `GlassButtons` (`pill()` accent / glass text button with an optional icon, `setEnabled()`), `GlassShimmerView.Style.APPS` (icon grid skeleton),
+  `GlassToast.showOn(activity, ...)` (shows a toast on a screen that never set the toast host, which is every screen the sheets run on).
+- **Resources**: icons `ch_ic_open_with`, `ch_ic_info`, `ch_ic_error`, `ch_ic_apps`, `ch_ic_store`; strings `ch_open_with`, `ch_just_once`, `ch_always`, `ch_open_hint`, `ch_open_empty_title`,
+  `ch_open_empty_text`, `ch_find_in_store`, `ch_toast_no_store`.
+- **Bug fixed from step 2**: the KDoc of `MimeTypes.forNames()` contained two `/*` sequences. Kotlin comments nest, so the comment never closed and `chooser` would not have compiled.
+  Reworded; the string literals `"*/*"` and `"/*"` in code are fine. A scan of all `chooser` sources now finds no `/*` inside a comment.
+- Known limits, handled later: the sheet is a dialog, so a rotation closes it (step 11 sets the `configChanges` / re-opens it); the grid is built from all apps at once (no recycling),
+  fine for the usual few dozen apps; the Play Store web fallback uses a normal `startActivity` (only reached when the Play Store is missing).
+- Checked (static): packages match folders, braces balance, comments balance, every `R.*` resolves, no unused imports in the new files. No Android SDK here, so no Gradle build was run:
+  **build once with `./gradlew :app:assembleDebug`**. Version stays 2.5.3 (code 120).
+
+### Step 4 — open-with launcher (`chooser/openwith`, `chooser/data`, manifest)
+
+The call the rest of the app will use: it finds the app (saved "Always" app or the sheet of step 3), starts it with an explicit intent and looks after failures.
+Still not called from `:app`, `:gallery`, `:video` (step 5), so existing behaviour is unchanged.
+
+- **`OpenWith.show(activity, file, mime = null, includeSelf = true, forceSheet = false, authority = null, onResult = null)`** and
+  **`OpenWith.show(activity, uri, fileName = null, mime = null, ...)`** (package `com.srizwan.chooser.openwith`). Main thread.
+  1. **Saved "Always" app** for the MIME type: checked with `AppFinder.canStartView` (installed, enabled, exported or ours, not a system chooser) and started at once, no sheet.
+     If it is gone, the saved choice is deleted and the sheet opens. `forceSheet = true` skips this (the "Open with" menu item of step 5).
+  2. Otherwise the glass `OpenWithSheet` opens and the chosen app is started with an **explicit intent** (`ACTION_VIEW` + `setComponent`): no resolver, no chooser, so TranResolver is never involved.
+  3. **File access**: a `File` goes out as `content://` through `ChooserFileProvider` (or the caller's own provider when `authority` is given); a `content://` uri is passed on unchanged;
+     a `file://` uri is turned into a `File` first. The intent carries `FLAG_GRANT_READ_URI_PERMISSION` and a `ClipData` with the uri.
+  4. **After a successful start**: the app goes to the front of the recent list, and when **Always** was pressed it is saved as the default for that MIME type. Nothing is saved before the start works.
+  5. **Failures** (never an exception to the caller): the app cannot be started (`ActivityNotFoundException`, `SecurityException`, a crash while starting) -> glass toast "This app could not open the file",
+     the app leaves the recent list, and if it was the saved default the default is deleted (when it was a saved default the sheet then opens so the user can pick another app). A missing file ->
+     toast "The file is not available"; the saved choices are not touched (the app is not to blame).
+  - `onResult(OpenWith.Result)`: `Outcome.STARTED` (+ the component), `CANCELLED` (sheet closed without a choice) or `FAILED` (the toast was already shown).
+- **`ChooserFileProvider`** (`chooser/data`): own `FileProvider` subclass, authority `${applicationId}.chooser.fileprovider`, `res/xml/ch_file_paths.xml` (`root-path`, like the Gallery's).
+  Declared in the **`:chooser` manifest** (not exported, `grantUriPermissions`), so every module gets it through the manifest merge. Own class name, so it cannot clash with
+  `GalleryFileProvider` / `WinlatorFileProvider` / the plain `androidx` one.
+- **`AppFinder.canStartView(context, component, mime)`**: one `resolveActivity` call, no icons.
+- **`ChooserPrefs`**: `recordChoice` and `setAlways` also take a component key (a saved app is started without a `Target`).
+- **Strings**: `ch_toast_open_failed`, `ch_toast_file_missing`.
+- Known limits: an app that only accepts `file://` paths (very old apps) fails with a toast, since Android 7+ forbids handing out `file://` uris; an app that starts and then
+  closes by itself cannot be detected. The Share launcher (step 6) will reuse `ChooserFileProvider`.
+- Checked (static): packages match folders, braces balance, every `R.*` resolves, no unused imports, no nested `/*` in comments. No Android SDK here, so no Gradle build was run:
+  **build once with `./gradlew :app:assembleDebug`**. Version stays 2.5.3 (code 120).
+
+### Step 5 — File Manager and browser hooks (`:app`)
+
+First step that changes what the app does: `:app` now calls `OpenWith` (step 4). Three small edits, nothing else in `:app` changed.
+
+- **`FileManagerUi.openFile()`**: the last branch (a file with no built-in viewer, which showed the toast "Unsupported file") is now `OpenWith.show(this, file)`. The order of the other
+  branches is unchanged (folders, video, `.txt`, `.pdf`, `.zip`, images, Windows programs run in Winlator), so those still open in the built-in apps. For everything else a saved
+  "Always" app opens at once; otherwise the glass sheet appears.
+- **`FileManagerUi.showFileOptions()`** (long-press menu): new first item **"Open with..."** for files (not folders), `OpenWith.show(this, file, forceSheet = true)`: it always shows the
+  sheet, also for types the app opens itself, and ignores a saved "Always" app (this is how a saved choice can be bypassed). Winlator items and the rest of the menu are as before.
+- **`BrowserUi.openDownloaded()`** (the old `BrowserUi.kt:499`, opening a finished download): `Intent.createChooser(view, "Open with")` is replaced by
+  `OpenWith.show(this, uri, fileName = t.fileName, mime = mime)`. "File not available" for a download without a saved uri is unchanged.
+  The `uri` may be `content://` (passed on as it is) or `file://` (turned into a `File` and served through `ChooserFileProvider`).
+- Imports: `com.srizwan.chooser.openwith.OpenWith` in both files. No manifest change in `:app` (the provider comes from the `:chooser` manifest).
+- Still using the system chooser (on purpose, steps 6 and 7): `DebugLogActivity.share()` and the Gallery's share calls.
+- Behaviour to know: the Open with list includes this app's own activities (`includeSelf` stays true), so for example a picture can also be sent to the Gallery viewer from there.
+- Checked (static): the three anchors matched exactly once, imports resolve, no `createChooser` left in `BrowserUi`. No Android SDK here, so no Gradle build was run:
+  **build once with `./gradlew :app:assembleDebug`**. Version stays 2.5.3 (code 120).
+
+### Step 6 — own Share sheet and launcher (`chooser/share`, `chooser/ui`)
+
+The Share twin of steps 3 and 4. Not called from `:app`, `:gallery`, `:video` yet (step 7 does that), so existing behaviour is unchanged.
+
+- **`Share`** (launcher, package `com.srizwan.chooser.share`, main thread):
+  - `Share.file(activity, file, mime = null, includeSelf = false, authority = null, onResult = null)`, `Share.files(activity, files, ...)`,
+    `Share.uris(activity, uris, names, mime, ...)`, `Share.text(activity, text, subject = null, ...)`.
+  - One file / uri = `ACTION_SEND`; several = `ACTION_SEND_MULTIPLE` with the common type (`MimeTypes.forNames`, or `mime` when given); text = `ACTION_SEND` `text/plain` (+ `EXTRA_SUBJECT`).
+  - Files go out as `content://` through `ChooserFileProvider` or the caller's own provider (`authority`, for example the Gallery's); a `file://` uri is turned into a `File` first;
+    the intent has `FLAG_GRANT_READ_URI_PERMISSION` plus a `ClipData` holding every uri. Files that do not exist are left out; none left = toast "The file is not available".
+  - The chosen app is started with an **explicit intent** (`setComponent`), no system chooser. After a successful start it goes to the front of the recent list (kind `SEND`, per MIME family).
+    A failure (`ActivityNotFoundException`, `SecurityException`, too-large text, a crash while starting) = glass toast "This app could not receive it" and the app leaves the recent list.
+    Nothing throws to the caller. No "Always" for sharing.
+  - Result: the same `OpenWith.Result` as the open-with launcher (`STARTED` + component, `CANCELLED`, `FAILED`).
+  - This app's own activities are hidden by default (`includeSelf = false`); step 10 makes the File Manager a share target for other apps.
+- **`ShareSheet`**: the glass sheet. **Header**: thumbnail (the first picture, decoded off the main thread into a rounded square, else a file / text icon), "Share", and one line: the file name,
+  "3 files", or the first line of the text (120 characters). **Recent first**: the apps used for earlier shares of this kind (one row at most) under "Recent", the rest under "All apps"
+  (no headings when nothing was shared before). **One tap sends**; press and hold shows the App info. **Copy** button for text (clipboard + toast "Copied"). Nothing can receive it:
+  message "No app can receive this" (with Copy for text).
+- **`AppGrid`** (`chooser/ui`, new): the grid (tile, rows, columns, App info on long-press), section label, selected / ripple backgrounds and the empty state, moved out of `OpenWithSheet` so both
+  sheets share them. The Open with sheet looks and behaves exactly as in step 3.
+- Resources: icons `ch_ic_share`, `ch_ic_file`, `ch_ic_text`, `ch_ic_copy`; strings `ch_share`, `ch_share_recent`, `ch_share_all`, `ch_share_count`, `ch_copy`, `ch_toast_copied`,
+  `ch_share_empty_title`, `ch_share_empty_text`, `ch_toast_share_failed`. Also removed an unused import in `GlassToast`.
+- Not done on purpose: the "Save to device" action of the plan (a share target that is a folder). It is better placed with the picker (step 8), where a folder choice exists. Thumbnails are
+  only made for picture **files** (`Share.file(s)`), not for `Share.uris`.
+- Checked (static): packages match folders, braces and comments balance (string literals ignored), every `R.*` resolves, no unused imports. No Android SDK here, so no Gradle build was run:
+  **build once with `./gradlew :app:assembleDebug`**. Version stays 2.5.3 (code 120).
+
+### Step 7 — all share calls use the own Share sheet (`:gallery`, `:video`, `:app`)
+
+Every `Intent.createChooser` of the project is gone (a search of `:app`, `:gallery`, `:video`, `:youtube`, `:winlator` finds none; only `ACTION_SENDTO` links for `mailto:` / `sms:` in the browser remain, which are not choosers).
+
+- **`:gallery` `ImageActions.share()` / `shareMany()`**: same signatures and the same checks (file exists, at most `MAX_SHARE` = 300 pictures, one usable picture = `share()`), but they now call
+  `Share.file(...)` / `Share.files(...)` with `authority = GalleryFileProvider.authority(activity)`: the Gallery keeps its own FileProvider, as planned. The mixed-type rule is unchanged (one type, else `image/*`).
+  The viewer and the selection bar call them as before. The Boolean means "the sheet was started"; errors after that (an app that cannot receive) are shown by the Share sheet's own glass toast.
+  Unused imports (`ClipData`, `Intent`, `Uri`) removed.
+- **`:video` `VideoPlayerActivity`**: new **Share chip** (icon `vp_ic_share`, description `vp_cd_share`) first in the chip row at the top right, glass like the others, hidden with the controls. A local
+  file is shared as a file (through `ChooserFileProvider`, the video module has no provider of its own), a `content://` video as a uri (`video/*`), an online video (`http` / `https`) as its
+  **link** (text, with the Copy button), so a stream can be shared too. The title / chip placement code measures the row, so the extra chip needs no other change.
+- **`:app` `DebugLogActivity.share()`**: `Share.text(this, log.takeLast(100_000), subject = "Win11 debug log")`. The old "Share log" chooser title is gone (the sheet's title is "Share"); the Copy button is new.
+- **`:app` File Manager**: it had no share action. The long-press menu of a file now starts with **"Open with..."** and **"Share"** (`Share.file(this, file)`); the rest of the menu is unchanged.
+- The Share sheets hide this app's own activities (`includeSelf = false`), so the launcher does not offer itself yet (step 10 changes that on purpose).
+- Needs `:gallery` and `:video` to depend on `:chooser`: both do since step 1.
+- Known limits: the Video app's list screen (`VideoHomeActivity`) has no share action (it never had one); a very large text still can overflow the binder limit, in which case the app is reported with the failure toast.
+- Checked (static): braces and parentheses balance in every edited file, imports resolve, no `createChooser` left. No Android SDK here, so no Gradle build was run:
+  **build once with `./gradlew :app:assembleDebug`**. Version stays 2.5.3 (code 120).
+
+### Step 8 — own file picker (`chooser/picker`, `:app` browser upload)
+
+A glass file picker that replaces the system `ACTION_GET_CONTENT` screen for this app's own calls. Package `com.srizwan.chooser.picker`. Not exported yet: other apps get it in step 9.
+
+- **`FilePicker`** (public API): `FilePicker.intent(context, multiple, mimeTypes, foldersOnly, startDir, title)` builds the explicit intent (no resolver, no chooser); start it with any `StartActivityForResult` launcher.
+  `FilePicker.uris(data)` reads the result (clip first, else `data`), `FilePicker.paths(data)` the plain paths. `mimeTypes` may hold MIME types, families (`image/` + star) or extensions (`.pdf`), the way a web page's `accept` attribute gives them.
+- **Result**: `content://` uris from `ChooserFileProvider` with `FLAG_GRANT_READ_URI_PERMISSION` and a `ClipData` (the grant covers every uri when several files are chosen); `data` is the first one.
+  Only when the caller is **this app** the result also carries the paths (`EXTRA_RESULT_PATHS`), and only then are `startDir` and the folder mode honoured (`PickerOptions.fromIntent(intent, trusted)`). A foreign caller can set `multiple` and the types, nothing else.
+- **`FilePickerActivity`** (theme `Theme.Chooser`, `configChanges` like the Gallery's, so rotation keeps the screen):
+  - **Storage screen** (house icon in the breadcrumb): internal storage (free space shown), removable cards / USB drives the app can see, and the usual folders (Downloads, DCIM, Pictures, Movies, Music, Documents) when they exist.
+  - **Breadcrumb** under the bar: tap a part to jump there. **List or grid** (icon in the bar; pictures and videos show thumbnails). **Search** (icon in the bar): recursive name search below the folder on screen, parent folder shown under each hit.
+  - **Options sheet** (sort icon): sort by name (numbers in natural order), date, size or type (folders always first), show hidden files, and "only the files the app asked for" (shown only when the caller gave types; on by default, so the user can still reach any file).
+  - **One file**: a tap returns it. **Many files**: a tap (or press and hold) ticks, the bottom bar shows "n selected" and **Select**. **Folder mode** (own callers only): bottom bar shows the folder name and **Use this folder**; the result is a path.
+  - **Back** closes the search, then clears ticks, then goes up a folder, then to the storage screen, then closes (the top-left icon is a cross on the storage screen).
+  - **Storage access**: lists with `java.io.File`, so it needs the access `:app` already holds. Without it a glass card with an **Allow** button opens the all-files access screen (Android 11+) or asks for the read permission, and the list reloads when the user comes back. No permission line was added to the `:chooser` manifest.
+  - Remembers the last folder, the list / grid choice, the sort order and the hidden-files switch in `ChooserPrefs` (`picker_*` keys; step 11 puts them in the settings).
+- **Supporting classes**: `PickerOptions`, `PickerEntry` / `PickerSort`, `PickerLister` (listing, filter, natural sort, search with limits: 400 hits, 8 levels, 20 000 folders, symbolic links not followed), `PickerRoots`, `PickerThumbs` (3 background threads, memory cache, EXIF rotation, first frame of a video; a file that cannot be decoded keeps its icon), `PickerAdapter` (list and tile rows, all vector drawing like the rest of the kit).
+- **Resources**: 13 new `ch_ic_*` icons (folder, search, grid, list, sort, filter, image, video, audio, storage, lock, chevron, home) and the `ch_picker_*` strings; the manifest gets the `FilePickerActivity` entry.
+- **`:app`**: `BrowserUi` `onShowFileChooser` (the old `BrowserUi.kt:696`) starts the picker with the page's accept types and its "multiple" flag; if the picker cannot start it falls back to the old system screen (so an upload never silently dies).
+  `MainActivity.fileChooserLauncher` now passes on every returned uri (several files when the page allows it), not only the first.
+- Known limits: the picker lists real files only (no cloud or "Recent" sources); `OPEN_DOCUMENT_TREE` (a folder for other apps) needs a `DocumentsProvider` and comes with step 9; video thumbnails are the first frame, so a black first frame gives a black tile.
+- Checked (static): braces / parentheses balance in every new file, every `R.string`, `R.drawable` and `R.color` used exists, the three `:app` anchors matched exactly once. No Android SDK here, so no Gradle build was run:
+  **build once with `./gradlew :app:assembleDebug`**. Version stays 2.5.3 (code 120).
+
+### Step 9 — be the file picker for other apps (`chooser` manifest, `picker`)
+
+Other apps that ask Android for a file now list this picker next to the system ones. The screen is the one from step 8; this step exports it and makes it safe for strangers.
+
+- **Manifest**: `FilePickerActivity` is `exported="true"` with filters for `GET_CONTENT` and `OPEN_DOCUMENT` (category `OPENABLE`, type `*/*`), `PICK` (type `*/*`) and `PICK` on the media store (`vnd.android.cursor.dir/image`, `/video`, `/audio`, the gallery-style "choose a picture").
+- **What a foreign app can ask for**: `EXTRA_ALLOW_MULTIPLE`, and the types (`EXTRA_MIME_TYPES`, else the intent's type). Every type is checked (a MIME type, a family or `.ext`, at most 60 + 60 characters, 256 entries read, 64 kept); anything else is dropped. The media-store directory types become `image/*`, `video/*`, `audio/*`.
+  The picker applies them as the "only the files the app asked for" filter, which the user can switch off in the options sheet.
+- **What a foreign app never gets** (unchanged rule from step 8, now live): plain file paths, a start folder, the folder mode, a custom title. It gets `content://` uris from `ChooserFileProvider` with `FLAG_GRANT_READ_URI_PERMISSION` and a `ClipData`, for the files the user ticked. A caller is "this app" only when `callingActivity` is our own package.
+  A foreign caller can have at most **200** files ticked at once.
+- **Not offered**: `OPEN_DOCUMENT_TREE` (a folder for another app) needs a `DocumentsProvider`; the optional `DocumentsProvider` (so the storage also shows in the system "Files" screen) is left for later.
+- **Known limit**: the uris are FileProvider uris, not document uris. An app that calls `takePersistableUriPermission` on an `OPEN_DOCUMENT` result gets a `SecurityException` from Android and keeps only the one-time grant; apps that just read the file (uploads, attachments, editors) work.
+- Checked (static): braces / parentheses / comments balance in every `:chooser` source, the manifest parses. No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**. Test: in another app (for example WhatsApp attach, or Chrome upload) choose "Files" in the system picker list. Version stays 2.5.3 (code 120).
+
+### Step 10 — be an Open-with / Share target for other apps (`chooser/receive`, manifest, `:app`)
+
+This app now appears in other apps' "Open with" and Share lists. What opens is a glass sheet over a see-through screen, not a plain screen.
+
+- **Manifest** (`:chooser`): `ReceiveActivity` is **not exported**; two exported `activity-alias` entries give other apps two clear names: **"Win11 Open with"** (`VIEW`, scheme `content`, type any) and **"Save to Win11 Files"** (`SEND` and `SEND_MULTIPLE`, type any). Own theme `Theme.Chooser.Receive` (translucent, no animation), `taskAffinity=""`, `excludeFromRecents`.
+- **`ReceiveActivity`** (glass sheet: header with thumbnail or icon, title, name and size, then pill buttons):
+  - one file: **Open with** (our own glass app sheet), **Save to Files**, **Share**; many files: **Save to Files**, **Share**; text or a link: **Copy**, **Save as text file**, **Share**.
+  - a `VIEW` for which an "Always" app is saved opens in that app at once (the sheet shows busy while the private copy is made, and the app list only if that app fails).
+  - **Save to Files**: streams into `Download/Received` (checked with a real write; else the app's own `Received` folder), never overwrites (`name (1).ext`), rescans public files for the gallery, then shows "Saved to ..." with **Show in Files** (opens the File Manager in that folder) and **Done**. "Saved 2 of 3" when some failed.
+  - Open with and Share work on a private copy in `cache/received/` (the sender's access ends with this screen); copies older than 24 hours are removed at the next start.
+  - Tapping outside or Back cancels a running copy and deletes the partial file.
+- **Safety** (`ReceiveParser`, `ReceiveSaver`): only `content://` uris are accepted (`file://` never); uris of this app's own providers are dropped (`ChooserFileProvider` serves any path, so a stranger could otherwise make us copy private files to a public folder); at most 200 files and 200,000 characters of text; MIME types must look like `type/subtype`; file names are cleaned (no path, control characters or leading dot, at most 120 characters) and checked to stay inside the folder.
+- **No loops**: `AppFinder` hides the receive screen and its aliases from this app's own lists (also a saved "Always" for it is refused), so our own sheets never offer it.
+- **`:app`**: deep link `rizwans2://files?path=<folder>` opens the File Manager in that folder (only an existing folder on the shared storage). `QuickControlsActivity`: the "Debug log" tile now has its own vector icon `ic_qs_log` (a document with lines) instead of the bell.
+- Strings: `ch_recv_*`, `ch_label_*_alias`. New icon `ch_ic_save`.
+- Not done yet (steps 11 to 13): settings screen, rotation re-layout of the app grid, system-chooser fallback, final review.
+- Checked (static): braces, parentheses and comments balance in every `:chooser` source, all XML parses. No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**. Test: in Chrome or Files share a file, choose "Save to Win11 Files"; or open a PDF from another app and choose "Win11 Open with". Version stays 2.5.3 (code 120).
+
+### Step 11 — settings and polish (`chooser/settings`, `chooser/data`, `chooser/ui`, `chooser/openwith`, `chooser/share`, manifest, `:app`)
+
+Only this step was done in this round (steps 12 and 13 followed in the next round).
+
+- **Settings screen** `ChooserSettingsActivity` (glass screen like the picker: floating bar, cards under it, at most 640 dp wide on a tablet; not exported; rotation handled with `configChanges`). Opened by the **gear** in the header of the Open with and Share sheets, by `ChooserSettings.open(context)`, and by the deep link **`rizwans2://chooser`** (`:app` `MainActivity.handleDeepLink`; the Start menu list is not changed, so the numbers of `rizwans2://N` stay as they were).
+  - **Open with and Share**: *Style* = Grid / List; *Apps per row* = Auto, 3, 4, 5, 6 (grid only; never more than fit the screen, tiles stay at least 56 dp wide).
+  - **Recent apps**: switch *Remember recent apps* (off: nothing new is remembered, and the Recent row and the ordering by last choice are hidden; the stored lists are kept), how many are remembered, **Clear recent apps**.
+  - **Saved apps**: every "Always" choice with the app's icon and name, the kind (Open / Share) and the file type, a remove button each, and **Clear all saved apps** (asks first). An app that is no longer installed shows as "This app is not installed any more" so it can be removed.
+  - **File picker**: **Reset file picker** forgets the last folder, sort order, hidden-files switch and list / grid choice.
+- **`ChooserPrefs`** (keys of the new settings start with `opt_`, so they never clash with `recent_`, `always_`, `picker_`): `recentEnabled`, `sheetList`, `sheetColumns`, `recentCount`, `clearAllRecent`, `alwaysEntries` (+ `AlwaysEntry`), `resetPicker`. `forget` still drops a dead app from the stored list when remembering is off.
+- **Sheets** (`AppGrid`, `OpenWithSheet`, `ShareSheet`, `GlassSheet`):
+  - the list style (`AppGrid.isList`) shows one app per row; `AppGrid.columnsFor` reads the saved column count; the Share sheet shows up to three recent apps in the list style (one row of them in the grid).
+  - **very long app list**: the apps sit in their own scroll area (`AppGrid.scroller`, as tall as the screen allows minus the rest of the sheet, 72 % of the height in portrait, 92 % in landscape), so **Just once / Always** and **Copy** never scroll out of reach. A short list does not scroll.
+  - **rotation**: `AppListHost` rebuilds the list with the new number of columns, keeps the selected app, and `GlassSheet.showContent(maxFraction = ...)` reads its height limit again on every measure.
+  - **apps that disappear while the sheet is open**: `PackageWatcher` (a receiver for package added / removed / replaced / changed, one call 400 ms after the last broadcast) makes the sheet ask `AppFinder` again; the selected app is dropped from the selection when it is gone. The sheet also asks again when its window gets the focus back (after the settings or an App info screen). The receiver is stopped when the window goes away, however that happens.
+- New: `ui/GlassSwitch.kt` (the on / off switch), `ui/AppListHost.kt`, `data/PackageWatcher.kt`, `settings/ChooserSettings.kt`, `settings/ChooserSettingsActivity.kt`; vector icons `ch_ic_settings`, `ch_ic_delete`, `ch_ic_history` (vector drawables only, no emoji); strings `ch_set_*`, `ch_kind_*`, `ch_toast_cleared / removed / reset`, `ch_cd_settings`, `ch_cd_remove`.
+- Not done yet (steps 12 and 13): fallback to the system chooser when our sheet cannot be built, final review.
+- Checked (static): braces, parentheses and comments balance in every `:chooser` source and in `MainActivity.kt`, all XML parses, every `R.string.ch_*` and `R.drawable.ch_*` that is used exists. No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**. Test: open `rizwans2://chooser`, choose List and 4 columns, then open a PDF from the File Manager; press Always for an app, see it under Saved apps and remove it; rotate the phone while the Open with sheet is open; uninstall an app while a sheet is open. Version stays 2.5.3 (code 120).
+
+### Step 12 — fallback to the system chooser (`chooser/data`, `chooser/openwith`, `chooser/share`)
+
+The own sheets never depend on the system chooser, but when one of them cannot be built at all, the action is not lost: the same intent goes to `Intent.createChooser`, inside a try / catch, as the last resort.
+
+- **When it triggers** (both Open with and Share, text included):
+  - building the sheet throws (for example a window error): `OpenWith.run` / `Share.run` catch it;
+  - the package manager cannot give the **first** app list: `AppFinder` has new strict twins (`queryViewStrict`, `querySendStrict`, `findViewStrict`, `findSendStrict`) that throw `AppFinder.QueryFailedException`; the plain `query*` / `find*` still return an empty list, as before. The sheets use the strict ones, so "no app can open this" now means really none, and a failed query is told apart from it. The sheet closes itself (without the cancel callback) and calls its new `onFailure` parameter (`OpenWithSheet.show`, `ShareSheet.show`; when it is null the sheet shows the "no app" state instead).
+  - a failed **refresh** (an app was installed or removed while the sheet is open) never triggers it: the list on screen stays.
+- **What it does**: `OpenWith.systemChooser` builds the `ACTION_VIEW` (content uri, read grant, clip data) and `Share.systemChooser` the send intent without a component (`makeIntent` now takes a `ComponentName?`; `null` = no component), and starts `Intent.createChooser(intent, null)`. The result is `STARTED` without a component and nothing is remembered (the system picks the app). When even that fails a glass toast says so and the result is `FAILED`. A missing file is still reported as a missing file. Both write a line to the log.
+- **Not changed on purpose**: the saved "Always" app still starts at once without any sheet; the file picker already had its own fallback (`BrowserUi`: `FilePicker` first, then `ACTION_GET_CONTENT`, then the page gets `null`).
+- Note: the system chooser that is used here is the one this module exists to avoid (on Tecno / Infinix / itel it can be the "TranResolver"). It is only reached when our own sheet is broken, which should be very rare.
+
+### Step 13 — final review and delivery
+
+- **Review** (static, no Android SDK here): braces, parentheses and brackets balance in all 37 checked Kotlin sources (`:chooser` and `MainActivity.kt`); all XML parses (resources, `:chooser` manifest, `:app` manifest); every `R.string.ch_*` and `R.drawable.ch_*` that the code uses exists; every call of the form `Object.function(...)` on a `:chooser` object points at a function that exists; the only callers of the sheets are the two launchers; `:app`, `:gallery` and `:video` use only the launchers (`OpenWith`, `Share`, `FilePicker`, `ChooserSettings`), whose public signatures did not change (new parameters have defaults).
+- **Module map** (`:chooser`, package `com.srizwan.chooser`): `data` (`AppFinder`, `ChooserPrefs`, `MimeTypes`, `Target`, `PackageWatcher`, `ChooserFileProvider`), `openwith` (`OpenWith`, `OpenWithSheet`), `share` (`Share`, `ShareSheet`), `picker` (`FilePicker`, `FilePickerActivity`, adapter, lister, roots, thumbs, options), `receive` (`ReceiveActivity`, `ReceiveSaver`, `ReceivedContent`), `settings` (`ChooserSettings`, `ChooserSettingsActivity`), `ui` (the glass kit: sheet, bar, toolbar, tabs, switch, buttons, toast, text, app grid, app list host, empty state, shimmer, prompt).
+- **How the pieces are used**: File Manager, Browser, Debug log, Gallery and Video call `OpenWith` / `Share`; the browser's file upload calls `FilePicker`; other apps reach this app through the picker filters (`GET_CONTENT`, `OPEN_DOCUMENT`, `PICK`) and the two `ReceiveActivity` aliases ("Win11 Open with", "Save to Win11 Files"); the settings open from the gear of the sheets or `rizwans2://chooser`.
+- **Known limits**:
+  - `targetSdk` is 28, so `queryIntentActivities` sees every app. If it is raised to 30 or more, `:app` needs `<queries>` entries for `VIEW` and `SEND`, or the app lists come back (nearly) empty (and the strict queries will not report that as a failure).
+  - Android cannot make other apps use our chooser when they call the system one; only this app's own calls are covered.
+  - `OPEN_DOCUMENT_TREE` is not offered (it needs a `DocumentsProvider`); not done.
+  - The `ReceiveActivity` sheet (step 10) is not covered by the settings of step 11 (it has its own fixed buttons).
+- **Version** stays 2.5.3 (code 120).
+- **Build once** with `./gradlew :app:assembleDebug` (no Android SDK here). Test list: open a PDF, a picture and an unknown file type from the File Manager (sheet, Just once, Always, then remove it in `rizwans2://chooser`); share one picture, many pictures and a link from the Gallery and the Debug log; upload a file in the browser; from Chrome share a file to "Save to Win11 Files"; switch List / 4 columns and rotate while a sheet is open; uninstall an app while a sheet is open. To see the Step 12 fallback, temporarily make `AppFinder.query` throw.

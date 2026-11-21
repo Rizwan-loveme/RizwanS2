@@ -54,6 +54,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.srizwan.chooser.openwith.OpenWith
+import com.srizwan.chooser.share.Share
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -95,7 +97,8 @@ internal fun MainActivity.openFile(file: File) {
         isImageFile(file.name) -> openImageFile(file)
         // .exe .msi .bat .lnk: PC software runs in the built-in Winlator (Wine + Box64)
         WinlatorLauncher.isWindowsProgram(file.name) -> WinlatorLauncher.runFile(this, file)
-        else -> Toast.makeText(this, "Unsupported file", Toast.LENGTH_SHORT).show()
+        // Chooser step 5: no built-in viewer -> our own glass "Open with" sheet (saved "Always" app first), never the system chooser
+        else -> OpenWith.show(this, file)
     }
 }
 
@@ -158,9 +161,18 @@ internal fun MainActivity.showFileOptions(file: File) {
     }
     if (file.name.endsWith(".pdf", true)) options.add(1, "PDF to JPG")
     if (file.name.endsWith(".zip", true)) options.add(1, "Extract ZIP to DCIM")
+    // Chooser steps 5 and 7: "Open with..." always shows the sheet, even for types the app opens itself (ignores a saved "Always" app);
+    // "Share" opens the own Share sheet. Both are the first items, for files only.
+    if (file.isFile) {
+        options.add(0, "Share")
+        options.add(0, "Open with...")
+    }
     W11Dialog.Builder(this).setTitle(file.name)
         .setItems(options.toTypedArray()) { _, which ->
             when (options[which]) {
+                "Open with..." -> OpenWith.show(this, file, forceSheet = true)
+                // Chooser step 7: own glass Share sheet (the File Manager had no share action before)
+                "Share" -> Share.file(this, file)
                 "Run with Winlator", "Open with Winlator" -> WinlatorLauncher.runFile(this, file)
                 "Run in container..." -> WinlatorLauncher.runFile(this, file, pickContainer = true)
                 "Delete" -> deleteFile(file)
