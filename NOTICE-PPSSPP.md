@@ -23,3 +23,4 @@ Changes made for Win11 (the GPL "state changes" rule), also listed in `ppsspp/RE
 - resources renamed with the `pp_` prefix; `LAUNCHER` filters and `<application>` attributes removed from the manifest (`android.max_aspect` moved to the activity);
 - `ShortcutActivity` uses `R.mipmap.pp_ic_launcher`; `PpssppActivity.isVR()` returns `false`;
 - PPSSPP is started from Win11's Start menu, Home screen, `rizwans2://ppsspp` and File Manager (`app/.../PpssppLauncher.kt`); the C++ source is not modified.
+- `PpssppActivity` storage permission: all-files access (`MANAGE_EXTERNAL_STORAGE`) counts as storage access, and asking for storage opens the system "All files access" page on Android 11+ (upstream only checked `WRITE_EXTERNAL_STORAGE`); the C++ source is still not modified.

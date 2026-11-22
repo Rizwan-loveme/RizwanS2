@@ -934,8 +934,7 @@ Other apps that ask Android for a file now list this picker next to the system o
 - **What a foreign app never gets** (unchanged rule from step 8, now live): plain file paths, a start folder, the folder mode, a custom title. It gets `content://` uris from `ChooserFileProvider` with `FLAG_GRANT_READ_URI_PERMISSION` and a `ClipData`, for the files the user ticked. A caller is "this app" only when `callingActivity` is our own package.
   A foreign caller can have at most **200** files ticked at once.
 - **Not offered**: `OPEN_DOCUMENT_TREE` (a folder for another app) needs a `DocumentsProvider`; the optional `DocumentsProvider` (so the storage also shows in the system "Files" screen) is left for later.
-- **Known limit**: the uris are FileProvider uris, not document uris. An app that calls `takePersistableUriPermission` on an `OPEN_DOCUMENT` result gets a `SecurityException` from Android and keeps only the one-time grant; apps that just read the file (uploads, attachments, editors) work.
-- Checked (static): braces / parentheses / comments balance in every `:chooser` source, the manifest parses. No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**. Test: in another app (for example WhatsApp attach, or Chrome upload) choose "Files" in the system picker list. Version stays 2.5.3 (code 120).
+- **Known limit** (replaced by the overlay step below): the minimized pop-up used to float only inside this app.
 
 ### Step 10 — be an Open-with / Share target for other apps (`chooser/receive`, manifest, `:app`)
 
@@ -1397,6 +1396,54 @@ Known limits (kept small on purpose): no filters / HDR / timer / grid / QR mode;
 uploads ignores the page's front / back hint (`capture="user"`), because WebView does not pass it on; the torch of the Quick controls and the
 Camera's flash use the same hardware, so use one at a time.
 
+## Downloads — step 4: multi-select, Select all, batch delete (`:app`: `DownloadsUi.kt`, `DlEngine.kt`, `MainActivity.kt`)
+
+- **Start**: long-press a download row. The title bar is replaced by a selection bar (X, "N selected", Select all, Delete, more). Rows get a checkbox and a soft accent tint; tapping a row toggles it, and the pause / cancel buttons are hidden so no tap does something else.
+- **Select all** selects every row of the current filter (All / Downloading / Completed); tapped again, when everything is selected, it clears the selection. The more menu also has **Invert selection**.
+- **Delete** (trash icon): deletes the finished files from the phone **and** the list entries; unfinished downloads are stopped and their partial data removed. **Remove from list** (more menu) keeps the files. Both ask first, with the counts in the message.
+- **`DlEngine.deleteMany(ids, deleteFiles, onDone)`**: stops the running ones, removes all entries, saves the list **once** for the whole batch (not once per item), then deletes the files on a background thread (MediaStore / SAF `savedUri`, then the plain `savedPath`). `onDone` runs on the main thread.
+- **Back** leaves selection mode first (`DownloadsUi.handleBack()`, called from `MainActivity.onBackPressed`); changing the filter chip, hiding the screen, or deselecting the last row also leaves it. Rows that disappear during a storage refresh drop out of the selection. Pull-to-refresh is off while selecting.
+- The old per-item menu is still there: with exactly one row selected, the more menu has **This item…**.
+- New icons: `ic_w_delete.xml`, `ic_w_select_all.xml`. Not built or run here (no Android SDK / Gradle in this environment): build once and test long-press, Select all, Delete with a mix of finished / running items, and Back.
+
+## Downloads — step 5: rename, share, file info, re-download, search, sort (`:app`: `DownloadsUi.kt`, `DlEngine.kt`, `BrowserUi.kt`, `MainActivity.kt`)
+
+- **Menu of a finished download** (long-press a row, then "This item…" when it is the only one selected, see step 4): Open, **Rename**, **Share**, **File info**, Show in Downloads folder, **Re-download**, Delete file, Remove from list, Copy link. Unfinished / failed rows get **File info** too. "Open" is still the own "Open with" sheet of `:chooser` (unchanged), so there is no second "Open with" item.
+- **`DlEngine.rename(id, newName, onDone)`**: background thread. With a MediaStore `savedUri` (Android 10+) it updates `DISPLAY_NAME` (`uniqueMediaName` first looks for a clash in the same `RELATIVE_PATH`: `name (1).ext`); with a plain path (Android 9 and older) it renames the `File`, rescans old and new path and takes the new `savedUri` from the scanner. `savedPath`, `fileName` and (if the extension changed) the MIME type are updated and saved. A name typed without an extension keeps the old one. `DlEngine.cleanFileName()` turns `\ / : * ? " < > |` and control characters into `_`, trims dots / spaces, max 200 characters with the extension kept.
+- **Share**: `MainActivity.shareDownloaded()` (`BrowserUi.kt`): `ACTION_SEND` with the file's content uri and `FLAG_GRANT_READ_URI_PERMISSION`; "File not available" / "File is no longer in storage" like Open.
+- **File info**: name, size, type, date added, status, location, link (with a "Copy link" button).
+- **Re-download** (`DlEngine.redownload`): a new queue entry with the same link, cookies, user agent and referer (the old file stays; the new one gets `(1)`). Not offered for blob / data downloads.
+- **Search**: magnifier in the title bar opens a search field (file name or link, as you type); X or Back closes it and clears the text. It works together with the All / Downloading / Completed chips and with selection (rows that no longer match leave the selection).
+- **Sort**: "Newest / Oldest / Name A–Z / Name Z–A / Largest / Smallest" chip at the right of the chip row; the choice is kept (`DlEngine.sortMode`).
+- Not built or run here (no Android SDK / Gradle): test rename of a file in Downloads (also to a name that already exists), Share to another app, search while selecting, and sort after a few downloads.
+
+## Downloads and browser pop-ups — step 6: integration check and change list
+
+**Checked by hand** (no Android SDK / Gradle in this environment, so no build and no device test):
+- All `.xml` files parse (layouts, drawables, values, manifest).
+- `DownloadsUi.kt`: every `R.drawable.*` it uses exists, brackets balance, imports cover `EditText`, `ImageView`, `TextWatcher`, `EditorInfo`, `InputMethodManager`, `DateFormat`, `Date`. `DlEngine.kt` already imports `Uri`, `OpenableColumns`, `MediaStore`, `ContentValues`, `MediaScannerConnection`. In `DlEngine.kt`, `BrowserUi.kt` and `MainActivity.kt` the bracket counts are identical to the files before steps 4 and 5 (nothing added or lost).
+- Manifest: `DownloadService` (`dataSync`) and `PopupPlaybackService` (`mediaPlayback`) are declared; `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `POST_NOTIFICATIONS`, `SYSTEM_ALERT_WINDOW` and the storage permissions are present. Nothing new was needed for steps 4 and 5.
+- Delete of finished files goes through the app's own MediaStore rows / its own files, so it needs no extra permission; share uses the file's content uri with a read grant.
+
+**Files changed in steps 4 and 5** (everything else is untouched):
+- `app/.../DownloadsUi.kt`: multi-select, Select all, Invert, batch Delete / Remove, search, sort chip, Rename / Share / File info / Re-download menu items.
+- `app/.../DlEngine.kt`: `deleteMany`, `rename` (+ `doRename`, `uniqueMediaName`, `applyRenamed`), `cleanFileName`, `redownload`, `sortMode` and the `SORT_*` constants.
+- `app/.../MainActivity.kt`: Back goes through `DownloadsUi.handleBack()` first; `onShare` passed to `DownloadsUi`.
+- `app/.../BrowserUi.kt`: `MainActivity.shareDownloaded()`.
+- `app/src/main/res/drawable/ic_w_delete.xml`, `ic_w_select_all.xml` (new).
+- `README.md`: the step 4, step 5 and this section.
+
+**Known limit**: the minimized pop-up window (`FLOAT`, `BrowserPopup.kt`) floats above every screen *of this app* and keeps playing through `PopupPlaybackService`; it is not a `TYPE_APPLICATION_OVERLAY` window, so it is not drawn over other apps. `SYSTEM_ALERT_WINDOW` is declared and the "Display over other apps" grant already exists in Notifications settings, so an overlay version is possible as a separate change.
+
+## Browser pop-ups — step 7: minimized pop-up floats over other apps (`BrowserPopup.kt`)
+
+- **Overlay window**: with "Display over other apps" granted, a minimized pop-up (FLOAT) is added with `WindowManager` as `TYPE_APPLICATION_OVERLAY` (`TYPE_PHONE` before Android 8, `FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCH_MODAL`, so touches outside the window go to the app below). It stays on screen over other apps and the home screen, and audio / video keeps playing (`PopupPlaybackService`, keep-alive JS, WebView not paused). Drag by the header and resize with the corner grip work the same in the overlay (screen coordinates; size and position are kept between app layer and overlay).
+- **No permission**: it floats inside the app as before. The first time a pop-up is minimized without the permission a dialog explains it once per run ("Allow" opens the system "Display over other apps" screen for this app, "Not now" keeps the in-app float). When the user comes back with the permission granted, `resumePopups()` moves every in-app floating window into the overlay (`refreshFloatHost()`). If the system refuses the overlay window, the pop-up falls back to the app layer.
+- **Restore / Open as tab** from an overlay window first brings the app to the front (`bringAppToFront()`, a plain explicit launch of `MainActivity`, which is `singleTask`; its `onNewIntent` does nothing for an intent without extras or the HOME category), then restores the pop-up as a dialog or turns it into a tab. Close just removes the overlay window.
+- **Teardown**: `release()`, `detachWebView()` and leaving FLOAT all go through one `removeFloatView()` (overlay: `removeViewImmediate`; app layer: `removeView`), so no overlay window is left behind when the pop-up closes, becomes a tab or the activity is destroyed.
+- **Limit**: the overlay window is not focusable, so the keyboard does not open in it; use Restore to type (login, forms). Playing and scrolling a page work.
+- Not built or run here (no Android SDK / Gradle). Test: minimize a pop-up (permission prompt, Allow), press Home (window stays, audio keeps playing), drag and resize it over another app, tap Restore (app comes to the front, pop-up is a dialog again), tap Open as tab, tap Close, and rotate the phone while it floats (a window outside the new screen can be dragged back by its header).
+
 ## PPSSPP — `:ppsspp` module (PPSSPP v1.20.4, package `org.ppsspp.ppsspp`)
 
 [PPSSPP](https://github.com/hrydgard/ppsspp) (pinned tag **v1.20.4**, GPL-2.0-or-later) is a PSP emulator. It is now a built-in app of Win11 in the same style as J2ME / Camera:
@@ -1460,6 +1507,7 @@ It relies on the all-files permission `:app` already declares. PPSSPP's own firs
 - Hooks present and consistent: Start menu (`StartApps.kt`), Home icon (`Win11Shell.kt`), `rizwans2://ppsspp` (`MainActivity.kt`), File Manager (`FileManagerUi.kt` + `FileExplorerUi.kt`), `PpssppLauncher.kt`.
 - CI: both build workflows have the same PPSSPP steps (cache, fetch, ccache, APK check) and a 120 minute timeout; `ppsspp/upstream/` is git-ignored.
 - Gradle: `include(":ppsspp")`, `implementation(project(":ppsspp"))`, protobuf plugin in the root file, `ndkVer` defined, compileSdk 37 / minSdk 26 equal to `:app`.
+- **Device-test fix**: PPSSPP showed "Give PPSSPP permission to access storage" (upstream only checks `WRITE_EXTERNAL_STORAGE`, never granted at API 28 on Android 11+). `PpssppActivity` now also accepts all-files access (`MANAGE_EXTERNAL_STORAGE`, already used by the File Manager) and opens the system "All files access" page when asked; see `ppsspp/README.md`.
 - Behaviour note: a tap on a PSP file starts the game directly (same as J2ME / video / gallery); the own **"Open with..."** sheet (`:chooser`) is shown through the file's "Open with..." action, where PPSSPP is listed through its VIEW filters.
 
 ### Not verified here

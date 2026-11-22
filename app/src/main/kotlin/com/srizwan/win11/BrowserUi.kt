@@ -495,11 +495,44 @@ internal fun MainActivity.openDownloaded(t: DlTask) {
             Toast.makeText(this, "File not available", Toast.LENGTH_SHORT).show()
             return
         }
+        if (DlEngine.isFileMissing(t)) { // deleted / moved outside the app: tell the user and clean the list
+            Toast.makeText(this, "File is no longer in storage", Toast.LENGTH_SHORT).show()
+            DlEngine.refreshFromStorage()
+            return
+        }
         val mime = t.mime.ifBlank { DlEngine.guessMime(t.fileName) }
         // Chooser step 5: our own glass "Open with" sheet instead of Intent.createChooser (the system chooser / TranResolver)
         OpenWith.show(this, uri, fileName = t.fileName, mime = mime)
     } catch (e: Exception) {
         Toast.makeText(this, "No app can open this file", Toast.LENGTH_SHORT).show()
+    }
+}
+
+
+/** Step 5: shares a finished download through the system share sheet (read access to the file is granted for the share). */
+internal fun MainActivity.shareDownloaded(t: DlTask) {
+    try {
+        val uri = t.savedUri.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
+        if (uri == null) {
+            Toast.makeText(this, "File not available", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (DlEngine.isFileMissing(t)) {
+            Toast.makeText(this, "File is no longer in storage", Toast.LENGTH_SHORT).show()
+            DlEngine.refreshFromStorage()
+            return
+        }
+        val mime = t.mime.ifBlank { DlEngine.guessMime(t.fileName) }
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, t.fileName)
+            clipData = android.content.ClipData.newRawUri(t.fileName, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(send, "Share ${t.fileName}"))
+    } catch (e: Exception) {
+        Toast.makeText(this, "Cannot share this file", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -514,16 +547,17 @@ internal fun MainActivity.copyText(text: String) {
 internal fun MainActivity.updateDesktopModeForTab(tab: WebTab) {
     val ua = if (tab.isDesktopMode)
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    else WebSettings.getDefaultUserAgent(this)
+    else webViewFriendlyUa(WebSettings.getDefaultUserAgent(this)) // no "; wv" marker: Google sign-in refuses plain WebViews
     try { tab.webView.settings.userAgentString = ua } catch (e: Exception) { }
 }
 
 
 @SuppressLint("SetJavaScriptEnabled")
-internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
+/** [existing]: an already loaded WebView (a popup that was expanded to a tab) — it keeps its page instead of loading [url] again. */
+internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existing: WebView? = null) {
     try {
         // FIX: Use 'this' Activity context for WebView — not applicationContext
-        val webView = WebView(this).apply {
+        val webView = (existing ?: WebView(this)).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -547,12 +581,12 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
             @Suppress("DEPRECATION") setSavePassword(true)
             @Suppress("DEPRECATION") setSaveFormData(true)
             javaScriptCanOpenWindowsAutomatically = true
-            setSupportMultipleWindows(false)
+            setSupportMultipleWindows(true) // window.open / target=_blank -> onCreateWindow -> custom popup dialog (BrowserPopup.kt)
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         CookieManager.getInstance().setAcceptCookie(true)
 
-        val tab = WebTab(webView, title = "Loading…", url = url, isDesktopMode = false)
+        val tab = WebTab(webView, title = existing?.title?.takeIf { it.isNotBlank() } ?: "Loading…", url = url, isDesktopMode = false)
         webTabs.add(tab)
         updateDesktopModeForTab(tab)
 
@@ -616,6 +650,13 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
                 if (i != -1 && !title.isNullOrEmpty()) {
                     webTabs[i].title = title; updateTabTitles()
                 }
+            }
+            // Popups: window.open() / target="_blank" open in a custom dialog instead of replacing this page
+            override fun onCreateWindow(
+                view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
+            ): Boolean {
+                if (view == null) return false
+                return this@addNewTab.openPopupWindow(view, isUserGesture, resultMsg)
             }
             override fun onJsAlert(
                 view: WebView?, url: String?, message: String?, result: JsResult?
@@ -762,7 +803,7 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
         chip.setOnLongClickListener { confirmCloseTab(tab); true }
         chip.close.setOnClickListener { confirmCloseTab(tab) }
         tabContainer.addView(chip)
-        webView.loadUrl(url)
+        if (existing == null) webView.loadUrl(url)
         if (switch) switchTab(tabIndex)
     } catch (e: Exception) {
         Toast.makeText(
@@ -792,6 +833,7 @@ internal fun MainActivity.switchTab(index: Int) {
     updateDesktopBtnIcon()
     updateNavButtons()
     updateReloadIcon()
+    refreshPopupVisibility()
 }
 
 
@@ -823,6 +865,7 @@ internal fun MainActivity.closeTab(index: Int): Boolean {
         Toast.makeText(this, "Cannot close last tab", Toast.LENGTH_SHORT).show()
         return false
     }
+    closePopupsOf(webTabs[index])
     try {
         webTabs[index].webView.stopLoading()
         webContainer.removeView(webTabs[index].webView)

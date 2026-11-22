@@ -231,14 +231,39 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 		return shouldAsk;
 	}
 
-	public void sendInitialGrants() {
+	// Win11: the host app targets API 28 and holds the all-files permission (MANAGE_EXTERNAL_STORAGE). On Android 11+ the old
+	// WRITE_EXTERNAL_STORAGE runtime permission is never granted to such an app, so upstream's check always said "denied"
+	// and the game list showed "Give PPSSPP permission to access storage" forever. All-files access counts as storage access.
+	private boolean waitingForAllFilesAccess = false;
+
+	private boolean hasStoragePermission() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+			return true;
+		}
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			// Let's start out granted if it was granted already.
-			if (this.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-				NativeApp.sendMessageFromJava("permission_granted", "storage");
-			} else {
-				NativeApp.sendMessageFromJava("permission_denied", "storage");
-			}
+			return this.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+		}
+		return true;
+	}
+
+	// Opens the system "All files access" page of this app (Android 11+). The result is read again in onResume.
+	private void askForAllFilesAccess() {
+		try {
+			Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+				Uri.parse("package:" + getPackageName()));
+			startActivity(intent);
+		} catch (Exception e) {
+			Log.w(TAG, "App all-files page failed, trying the general one: " + e);
+			startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+		}
+	}
+
+	public void sendInitialGrants() {
+		// Let's start out granted if it was granted already.
+		if (hasStoragePermission()) {
+			NativeApp.sendMessageFromJava("permission_granted", "storage");
+		} else {
+			NativeApp.sendMessageFromJava("permission_denied", "storage");
 		}
 	}
 
@@ -1094,6 +1119,11 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 
 		gainAudioFocus(this.audioManager, this.audioFocusChangeListener);
 		NativeApp.resume();
+		if (waitingForAllFilesAccess) {
+			// back from the "All files access" settings page
+			waitingForAllFilesAccess = false;
+			NativeApp.sendMessageFromJava(hasStoragePermission() ? "permission_granted" : "permission_denied", "storage");
+		}
 		mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_GAME);
 
 		InputManager inputManager =
@@ -1721,7 +1751,14 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 			recreate();
 			return true;
 		} else if (command.equals("ask_permission") && params.equals("storage")) {
-			if (askForPermissions(permissionsForStorage, REQUEST_CODE_STORAGE_PERMISSION)) {
+			if (hasStoragePermission()) {
+				NativeApp.sendMessageFromJava("permission_granted", "storage");
+			} else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+				// Android 11+: the answer comes from the "All files access" settings page, see onResume
+				waitingForAllFilesAccess = true;
+				NativeApp.sendMessageFromJava("permission_pending", "storage");
+				askForAllFilesAccess();
+			} else if (askForPermissions(permissionsForStorage, REQUEST_CODE_STORAGE_PERMISSION)) {
 				NativeApp.sendMessageFromJava("permission_pending", "storage");
 			} else {
 				NativeApp.sendMessageFromJava("permission_granted", "storage");

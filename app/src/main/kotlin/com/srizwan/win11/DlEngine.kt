@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
@@ -18,6 +19,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
@@ -26,6 +28,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -282,6 +285,258 @@ object DlEngine {
             else if (t.savedPath.startsWith("/")) File(t.savedPath).delete()
         } catch (e: Exception) { }
         cancel(id)
+    }
+
+    /**
+     * Removes many downloads at once (Step 4: multi-select). The list is saved ONCE for the whole batch instead of
+     * once per item. Running / queued downloads are stopped first. With [deleteFiles] the finished files are deleted
+     * from storage too (MediaStore / SAF uri or plain path); without it only the list entries go.
+     * File work runs on a background thread; [onDone] runs on the main thread with the number of entries removed.
+     */
+    fun deleteMany(ids: Collection<Long>, deleteFiles: Boolean, onDone: ((removed: Int) -> Unit)? = null) {
+        if (!inited) { onDone?.let { main.post { it(0) } }; return }
+        val victims = ArrayList<DlTask>()
+        for (id in ids.toSet()) find(id)?.let { victims.add(it) }
+        for (t in victims) {
+            val wasDone = t.status == DONE
+            t.status = CANCELED
+            closeConns(t)
+            try { t.blobOut?.close() } catch (e: Exception) { }
+            tasks.remove(t)
+            if (!wasDone) try { tempFile(t).delete() } catch (e: Exception) { }
+        }
+        persist(); changed(); pump()
+        if (victims.isEmpty() || !deleteFiles) { onDone?.let { cb -> main.post { cb(victims.size) } }; return }
+        pool.execute {
+            for (t in victims) {
+                if (t.savedUri.isEmpty() && t.savedPath.isEmpty()) continue
+                try {
+                    if (t.savedUri.isNotEmpty()) app.contentResolver.delete(Uri.parse(t.savedUri), null, null)
+                    fileFor(t)?.let { if (it.exists()) it.delete() }
+                } catch (e: Exception) { }
+            }
+            main.post { changed(); onDone?.invoke(victims.size) }
+        }
+    }
+
+    // ── Step 5: sort mode, rename, re-download ──────────────────
+
+    const val SORT_NEWEST = 0
+    const val SORT_OLDEST = 1
+    const val SORT_NAME_AZ = 2
+    const val SORT_NAME_ZA = 3
+    const val SORT_SIZE_DESC = 4
+    const val SORT_SIZE_ASC = 5
+
+    /** How the Downloads screen orders its list (kept between runs). */
+    var sortMode: Int
+        get() = if (inited) prefs.getInt("sort", SORT_NEWEST).coerceIn(0, 5) else SORT_NEWEST
+        set(v) { if (inited) prefs.edit().putInt("sort", v.coerceIn(0, 5)).apply() }
+
+    /** Invalid file-name characters (\\ / : * ? " < > | and control characters) become "_"; dots / spaces at the ends go; max 200 chars, extension kept. */
+    fun cleanFileName(raw: String): String {
+        var n = raw.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().trim('.', ' ')
+        if (n.length > 200) {
+            val ext = n.substringAfterLast('.', "")
+            n = if (ext.length in 1..10) n.substringBeforeLast('.').take(200 - ext.length - 1) + "." + ext else n.take(200)
+        }
+        return n
+    }
+
+    /**
+     * Renames the finished file of download [id] (MediaStore / SAF [DlTask.savedUri], or a plain [DlTask.savedPath]).
+     * A name that already exists gets " (1)", " (2)" ...; a name typed without an extension keeps the old one.
+     * Runs on a background thread; [onDone] runs on the main thread with (success, new name or error text).
+     */
+    fun rename(id: Long, newName: String, onDone: (ok: Boolean, info: String) -> Unit) {
+        val t = find(id)
+        if (!inited || t == null || t.status != DONE) { main.post { onDone(false, "Only finished downloads can be renamed") }; return }
+        var name = cleanFileName(newName)
+        if (name.isBlank()) { main.post { onDone(false, "Type a file name") }; return }
+        val oldExt = t.fileName.substringAfterLast('.', "")
+        if (!name.contains('.') && oldExt.isNotEmpty()) name += ".$oldExt"
+        if (name == t.fileName) { main.post { onDone(true, t.fileName) }; return }
+        val wanted = name
+        pool.execute {
+            val r = try { doRename(t, wanted) } catch (e: Exception) { false to (e.message ?: "Rename failed") }
+            main.post { onDone(r.first, r.second) }
+        }
+    }
+
+    private fun doRename(t: DlTask, wanted: String): Pair<Boolean, String> {
+        if (t.savedUri.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val uri = Uri.parse(t.savedUri)
+            val cr = app.contentResolver
+            val finalName = uniqueMediaName(uri, wanted)
+            val cv = ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME, finalName) }
+            val n = try { cr.update(uri, cv, null, null) } catch (e: SecurityException) { 0 }
+            if (n <= 0) return false to "Cannot rename: this file belongs to another app"
+            var real = finalName
+            try {
+                cr.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                    if (it.moveToFirst()) it.getString(0)?.let { v -> real = v }
+                }
+            } catch (e: Exception) { }
+            t.savedPath = t.savedPath.substringBeforeLast('/', "Download") + "/" + real
+            applyRenamed(t, real)
+            return true to real
+        }
+        val f = fileFor(t) ?: return false to "File not found"
+        if (!f.exists()) return false to "File is no longer in storage"
+        val dir = f.parentFile ?: return false to "File not found"
+        val dest = uniqueFile(dir, wanted)
+        if (!f.renameTo(dest)) return false to "Rename failed"
+        t.savedPath = dest.absolutePath
+        try {
+            MediaScannerConnection.scanFile(app, arrayOf(f.absolutePath, dest.absolutePath), null) { path, uri ->
+                if (path == dest.absolutePath && uri != null) { t.savedUri = uri.toString(); persist(); changed() }
+            }
+        } catch (e: Exception) { }
+        applyRenamed(t, dest.name)
+        return true to dest.name
+    }
+
+    /** A display name that no other file in the same MediaStore folder uses. */
+    private fun uniqueMediaName(uri: Uri, wanted: String): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return wanted
+        val cr = app.contentResolver
+        var rel = "Download/"
+        var selfId = -1L
+        try {
+            cr.query(uri, arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns._ID), null, null, null)?.use {
+                if (it.moveToFirst()) { it.getString(0)?.let { v -> rel = v }; selfId = it.getLong(1) }
+            }
+        } catch (e: Exception) { }
+        val base = wanted.substringBeforeLast('.', wanted)
+        val ext = if (wanted.contains('.')) "." + wanted.substringAfterLast('.') else ""
+        var cand = wanted
+        var i = 1
+        while (i < 1000) {
+            var taken = false
+            try {
+                cr.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.MediaColumns._ID),
+                    "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns._ID}!=?",
+                    arrayOf(rel, cand, selfId.toString()), null
+                )?.use { taken = it.count > 0 }
+            } catch (e: Exception) { }
+            if (!taken) return cand
+            cand = "$base ($i)$ext"; i++
+        }
+        return cand
+    }
+
+    private fun applyRenamed(t: DlTask, name: String) {
+        val extChanged = !name.substringAfterLast('.', "").equals(t.fileName.substringAfterLast('.', ""), true)
+        t.fileName = name
+        if (extChanged) t.mime = guessMime(name)
+        persist(); changed()
+    }
+
+    /** Starts the same download again as a new entry (a finished or failed one). Null for blob / data downloads. */
+    fun redownload(id: Long): DlTask? {
+        val t = find(id) ?: return null
+        if (t.isBlob || t.url.isBlank()) return null
+        return enqueue(t.url, t.fileName, t.mime, t.cookie, t.ua, t.referer)
+    }
+
+    // ── Storage sync (Step 3) ───────────────────────────────────
+    //
+    // The list is kept in SharedPreferences, but the files live in the phone's storage, where the user can
+    // rename, move or delete them (file manager, gallery, adb ...). refreshFromStorage() compares every finished
+    // download with what is really there: entries whose file is gone are dropped from the list, and renamed /
+    // resized files get their real name and size.
+
+    private val syncing = AtomicBoolean(false)
+
+    /** exists: true = file is there, false = file is gone, null = cannot tell (nothing is changed then). */
+    private class StoragePoint(val exists: Boolean?, val name: String? = null, val size: Long = -1L, val path: String? = null)
+
+    private fun fileFor(t: DlTask): File? {
+        val p = t.savedPath
+        return when {
+            p.startsWith("/") -> File(p)
+            p.isNotEmpty() -> File(Environment.getExternalStorageDirectory(), p) // "Download/name.ext"
+            else -> null
+        }
+    }
+
+    private fun probeStorage(t: DlTask): StoragePoint {
+        var uriAnswered = false
+        if (t.savedUri.isNotEmpty()) {
+            try {
+                val uri = Uri.parse(t.savedUri)
+                val proj = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE, MediaStore.MediaColumns.RELATIVE_PATH)
+                else arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
+                val cr = app.contentResolver
+                cr.query(uri, proj, null, null, null)?.use { c ->
+                    uriAnswered = true
+                    if (c.moveToFirst()) {
+                        val name = c.getString(0)
+                        val size = if (c.isNull(1)) -1L else c.getLong(1)
+                        val rel = if (proj.size > 2) c.getString(2) else null
+                        // a media row can outlive its file: make sure the bytes can really be opened
+                        val openable = try {
+                            cr.openFileDescriptor(uri, "r")?.use { true } ?: true
+                        } catch (e: FileNotFoundException) { false } catch (e: Exception) { true }
+                        if (openable) {
+                            val path = if (!rel.isNullOrEmpty() && !name.isNullOrEmpty()) rel.trimEnd('/') + "/" + name else null
+                            return StoragePoint(true, name, size, path)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                return StoragePoint(null) // no permission / provider trouble: do not guess
+            }
+        }
+        val f = fileFor(t)
+        if (f != null && f.exists()) return StoragePoint(true, f.name, f.length(), null)
+        if (t.savedUri.isEmpty() && f == null) return StoragePoint(null)
+        if (t.savedUri.isNotEmpty() && !uriAnswered) return StoragePoint(null)
+        return StoragePoint(false)
+    }
+
+    /** true when the finished file of [t] is no longer in storage (quick check, used before opening a file). */
+    fun isFileMissing(t: DlTask): Boolean = t.status == DONE && probeStorage(t).exists == false
+
+    /**
+     * Syncs the finished downloads with the storage on a background thread.
+     * [onDone] runs on the main thread with (entries removed, entries updated); it is also called when a sync is
+     * already running (with 0, 0), so a spinner that waits for it never hangs.
+     */
+    fun refreshFromStorage(onDone: ((removed: Int, updated: Int) -> Unit)? = null) {
+        if (!inited) { onDone?.let { main.post { it(0, 0) } }; return }
+        if (!syncing.compareAndSet(false, true)) { onDone?.let { main.post { it(0, 0) } }; return }
+        pool.execute {
+            var removed = 0
+            var updated = 0
+            try {
+                for (t in tasks.toList()) {
+                    if (t.status != DONE) continue
+                    val p = probeStorage(t)
+                    when (p.exists) {
+                        false -> { tasks.remove(t); removed++ }
+                        true -> {
+                            var ch = false
+                            if (!p.name.isNullOrBlank() && p.name != t.fileName) { t.fileName = p.name; ch = true }
+                            if (!p.path.isNullOrBlank() && p.path != t.savedPath) { t.savedPath = p.path; ch = true }
+                            if (p.size >= 0 && p.size != t.total) { t.total = p.size; t.downloaded.set(p.size); ch = true }
+                            if (ch) updated++
+                        }
+                        else -> { }
+                    }
+                }
+                if (removed > 0 || updated > 0) persist()
+            } catch (e: Exception) {
+            } finally {
+                syncing.set(false)
+            }
+            main.post {
+                if (removed > 0 || updated > 0) changed()
+                onDone?.invoke(removed, updated)
+            }
+        }
     }
 
     fun clearFinished() {

@@ -112,3 +112,13 @@ Both build workflows got the same changes (the other workflows do not build the 
 - Not run: Gradle, the native build, CI, a device. The first real build is your GitHub workflow (`UltimateBuild.yml`).
 - Final file: `RizwanS2-main-ppsspp.zip` (flat: `build.gradle.kts`, `app/`, `j2me/` ... at the root). The C++ core is not inside; CI clones `UPSTREAM_VERSION` into `ppsspp/upstream/`.
 - ABI: `arm64-v8a` only (default). For 32-bit phones add `ppssppAbis=arm64-v8a,armeabi-v7a` to `gradle.properties` (bigger APK, longer build).
+
+## Fix after the first device test — "Give PPSSPP permission to access storage"
+
+- Symptom (screenshot from the phone): PPSSPP starts, but its game list only shows "Give PPSSPP permission to access storage" / "PPSSPP can't load games or save right now".
+- Cause: upstream asks for `WRITE_EXTERNAL_STORAGE` only. Win11 targets API 28 and uses the all-files permission (`MANAGE_EXTERNAL_STORAGE`); on Android 11+ the old permission is never granted to such an app, so the check always said "denied".
+- Fix (`PpssppActivity.java`, 3 places): new `hasStoragePermission()` = all-files access (`Environment.isExternalStorageManager()`, Android 11+) **or** `WRITE_EXTERNAL_STORAGE`;
+  `sendInitialGrants()` uses it (so the message is gone at start when Win11 already has all-files access); the "ask storage permission" button opens the system
+  "All files access" page of the app on Android 11+ (old runtime dialog below that), and `onResume` reports the result back to the native code.
+- Listed in `NOTICE-PPSSPP.md` (changes). The C++ is still unmodified.
+- Not run on a device here: after installing, the message should disappear at start; if it still shows, tap it once, allow "All files access" for the app, and come back.

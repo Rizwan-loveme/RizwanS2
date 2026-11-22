@@ -103,6 +103,7 @@ class MainActivity : AppCompatActivity() {
     internal lateinit var tabContainer: LinearLayout
     internal lateinit var tabScroll: HorizontalScrollView
     internal val webTabs = mutableListOf<WebTab>()
+    internal val popupWindows = mutableListOf<BrowserPopup>() // window.open() popups (BrowserPopup.kt)
     internal var currentTabIndex = 0
     internal lateinit var urlBar: EditText
     internal lateinit var progressBar: ProgressBar
@@ -344,6 +345,7 @@ class MainActivity : AppCompatActivity() {
         AppLog.d(LOGT, "onPause")
         saveState()
         webTabs.forEach { try { it.webView.onPause() } catch (e: Exception) { } }
+        pausePopups()
     }
 
     override fun onResume() {
@@ -353,6 +355,9 @@ class MainActivity : AppCompatActivity() {
         webTabs.getOrNull(currentTabIndex)?.let {
             try { it.webView.onResume() } catch (e: Exception) { }
         }
+        resumePopups()
+        // back from a file manager / gallery: the Downloads list may be out of date
+        if (::downloadsView.isInitialized && downloadsView.visibility == View.VISIBLE) DlEngine.refreshFromStorage()
         if (isUIInitialized) tabLayout.visibility = View.VISIBLE
     }
 
@@ -360,6 +365,7 @@ class MainActivity : AppCompatActivity() {
         AppLog.i(LOGT, "onDestroy (finishing=$isFinishing)")
         try { if (::shell.isInitialized) shell.stopClock() } catch (e: Exception) { }
         try { if (::explorerUi.isInitialized) explorerUi.destroy() } catch (e: Exception) { }
+        try { destroyAllPopups() } catch (e: Exception) { }
         try {
             saveState()
             webTabs.forEach {
@@ -755,7 +761,8 @@ class MainActivity : AppCompatActivity() {
             onBack = { hideDownloads() },
             onOpen = { openDownloaded(it) },
             onShowFolder = { showDownloadsFolder() },
-            onCopyLink = { copyText(it) }
+            onCopyLink = { copyText(it) },
+            onShare = { shareDownloaded(it) }
         )
         downloadsView = downloadsUi.root
         contentFrame.addView(downloadsView)
@@ -1124,7 +1131,8 @@ class MainActivity : AppCompatActivity() {
         }
         when {
             ::shell.isInitialized && shell.isStartOpen() -> { if (!shell.handleBack()) shell.closeStart() }
-            ::downloadsView.isInitialized && downloadsView.visibility == View.VISIBLE -> hideDownloads()
+            ::downloadsView.isInitialized && downloadsView.visibility == View.VISIBLE -> { if (!downloadsUi.handleBack()) hideDownloads() }
+            activeSection == "browser" && customView == null && topPopupOfCurrentTab() != null -> handleBackInPopup()
             customView != null -> {
                 val chromeClient = try {
                     webTabs[currentTabIndex].webView.webChromeClient

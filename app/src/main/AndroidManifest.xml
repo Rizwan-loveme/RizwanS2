@@ -51,6 +51,8 @@
     <!-- Download manager (foreground service + progress notification) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Browser pop-up minimized to a floating window keeps playing in the background -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <!-- Screen recorder (MediaProjection foreground service, optional microphone) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
@@ -241,6 +243,12 @@
             android:name=".DownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- ── Browser pop-up background playback foreground service ── -->
+        <service
+            android:name=".PopupPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- ── Screen recorder foreground service (MediaProjection) ── -->
         <service
