@@ -646,12 +646,16 @@ internal fun MainActivity.addNewTab(
                 if (idx != -1 && !url.isNullOrEmpty() && url != "about:blank") webTabs[idx].navigated = true
                 view?.evaluateJavascript(BLOB_HOOK_JS, null)
                 view?.evaluateJavascript(MEDIA_HOOK_JS, null)
-                if (view != null) clearSniffedMedia(view) // Media Grabber: a new page, forget the old page's media
+                view?.evaluateJavascript(GRAB_HOOK_JS, null) // Media Grabber: fetch / XHR / <video> hooks (also added at document start)
                 updateNavButtons()
             }
-            // Media Grabber: remember the media addresses a page loads (the request itself is left alone)
+            // Media Grabber: remember the media addresses a page loads (the request itself is left alone).
+            // A main-frame request = a new page: the old page's list is forgotten (the whole-site list is kept).
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                request?.url?.toString()?.let { sniffMediaRequest(view, it) }
+                request?.let { r ->
+                    val u = r.url.toString()
+                    if (r.isForMainFrame) clearSniffedMedia(view, u) else sniffMediaRequest(view, u)
+                }
                 return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -663,6 +667,7 @@ internal fun MainActivity.addNewTab(
                 view?.let { injectImageLongClickSave(it) }
                 view?.evaluateJavascript(BLOB_HOOK_JS, null)
                 view?.evaluateJavascript(MEDIA_HOOK_JS, null)
+                view?.evaluateJavascript(GRAB_HOOK_JS, null)
                 // a page that plays in a hidden tab must think it is still visible, or it pauses itself
                 if (idx != currentTabIndex && view != null && isMediaPlaying(view)) view.evaluateJavascript(KEEP_ALIVE_JS, null)
                 updateNavButtons()
@@ -840,6 +845,7 @@ internal fun MainActivity.addNewTab(
 
         webView.addJavascriptInterface(BlobBridge(), "AndroidBlobDl")
         webView.addJavascriptInterface(MediaBridge(this, webView), "AndroidMedia")
+        installGrabHooks(webView) // Media Grabber: W11Grab bridge + document-start hook (BrowserMediaGrabber.kt)
         webView.setDownloadListener { dlUrl, ua, cd, mime, len ->
             handleDownload(dlUrl, ua, cd, mime, len, webView)
             // a tab that was opened only to start the download is no longer needed

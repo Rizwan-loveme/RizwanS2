@@ -568,11 +568,20 @@ private fun MainActivity.popupBlockedToast() {
     Toast.makeText(this, "Pop-up blocked", Toast.LENGTH_SHORT).show()
 }
 
+/** Decisions made with "Remember for this site" in the new-tab dialog: host -> allowed. Kept until the app is closed. */
+private val newTabDecisions = HashMap<String, Boolean>()
+/** true while the "allow a new tab?" dialog is on screen: further requests are refused until it is answered */
+private var newTabDialogOpen = false
+
 /**
  * Answers WebChromeClient.onCreateWindow (window.open() / target="_blank"): the new window is a NEW TAB.
  * The tab's WebView is handed back through WebViewTransport, so window.opener, postMessage and window.close()
  * keep working (OAuth / "Sign in with Google"). Returns true when the request was taken, false when blocked.
  * Windows opened without a user gesture are blocked, and a page cannot spam tabs.
+ *
+ * Step 5b: a page that was tapped by the user now has to be ALLOWED once per site: a dialog "<site> wants to open a
+ * new tab" (Allow / Block, with "Remember for this site"). While the dialog is open the request stays pending
+ * (return true, the answer is sent later); Block answers the request with no WebView, so window.open() gives null.
  */
 internal fun MainActivity.openWindowAsTab(opener: WebView, isUserGesture: Boolean, resultMsg: Message?): Boolean {
     val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
@@ -586,8 +595,67 @@ internal fun MainActivity.openWindowAsTab(opener: WebView, isUserGesture: Boolea
     if (popupOpenTimes.size >= BURST_LIMIT || webTabs.size >= MAX_TABS) {
         popupBlockedToast(); return false
     }
-    popupOpenTimes.add(now)
+    if (newTabDialogOpen) { popupBlockedToast(); return false }
 
+    val host = runCatching { Uri.parse(opener.url).host }.getOrNull().orEmpty().ifEmpty { "This page" }
+    when (newTabDecisions[host]) {
+        true -> return createTabForWindow(opener, ownerTab, transport, resultMsg)
+        false -> { popupBlockedToast(); return false }
+        null -> { /* ask below */ }
+    }
+
+    // opened from a floating popup while another app is on screen: the dialog needs the app in front
+    if (popupWindows.any { it.webView == opener && it.floatInOverlay }) bringAppToFront()
+    newTabDialogOpen = true
+    var answered = false
+    fun answer(allow: Boolean, remember: Boolean) {
+        if (answered) return
+        answered = true
+        newTabDialogOpen = false
+        if (remember) newTabDecisions[host] = allow
+        if (allow) {
+            if (!createTabForWindow(opener, ownerTab, transport, resultMsg)) {
+                try { transport.webView = null; resultMsg.sendToTarget() } catch (e: Exception) { }
+            }
+        } else {
+            popupBlockedToast()
+            try { transport.webView = null; resultMsg.sendToTarget() } catch (e: Exception) { }
+        }
+    }
+    runOnUiThread {
+        try {
+            val remember = android.widget.CheckBox(this).apply {
+                text = "Remember for this site (until the app is closed)"
+                textSize = 13f
+                setTextColor(Color.parseColor("#D0D0D0"))
+                buttonTintList = ColorStateList.valueOf(Color.parseColor("#4CC2FF"))
+            }
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp(4), 0, 0)
+                addView(remember)
+            }
+            W11Dialog.Builder(this)
+                .setTitle("Open a new tab?")
+                .setMessage("$host wants to open a new tab.")
+                .setView(box)
+                .setCancelable(false)
+                .setPositiveButton("Allow") { _, _ -> answer(true, remember.isChecked) }
+                .setNegativeButton("Block") { _, _ -> answer(false, remember.isChecked) }
+                .show()
+        } catch (e: Exception) {
+            AppLog.e("BrowserPopup", "cannot show the new-tab dialog", e)
+            answer(false, false)
+        }
+    }
+    return true
+}
+
+/** Creates the tab for an allowed window.open() and answers the pending request. true = done. */
+private fun MainActivity.createTabForWindow(
+    opener: WebView, ownerTab: WebTab, transport: WebView.WebViewTransport, resultMsg: Message
+): Boolean {
+    popupOpenTimes.add(SystemClock.uptimeMillis())
     return try {
         // opened from a floating popup (or while another screen is showing): show the browser first
         if (popupWindows.any { it.webView == opener && it.floatInOverlay }) bringAppToFront()
