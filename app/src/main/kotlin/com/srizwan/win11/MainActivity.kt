@@ -46,6 +46,7 @@ import android.media.RingtoneManager
 import android.webkit.*
 import android.widget.*
 import android.widget.VideoView
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -165,7 +166,7 @@ class MainActivity : AppCompatActivity() {
     internal var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     /** The `accept` types of the upload that is open now (decides the Camera button and the camera's photo / video mode). */
     internal var uploadAccept: List<String> = emptyList()
-    internal val fileChooserLauncher =
+    internal val fileChooserLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val cb = fileUploadCallback ?: return@registerForActivityResult
             // Camera step 7: the user tapped the Camera button of the file picker -> take a photo / video, its uri comes back here
