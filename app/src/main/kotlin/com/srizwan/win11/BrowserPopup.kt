@@ -56,6 +56,11 @@ import androidx.core.content.ContextCompat
 //  * Popups belong to the tab that opened them: they are hidden when another tab is selected
 //    and are closed together with their tab.
 //
+// Step 3 (this change) — window.open() / target="_blank" now opens a NEW TAB (openWindowAsTab) instead of a
+// popup window, and every tab has a "pop out" icon (popOutTab) that turns that tab into a floating popup.
+// The popup windows below are what a tab becomes when it is popped out. See also BrowserMedia.kt
+// (audio keeps playing when you work in another tab).
+//
 // Step 2 — a popup has three sizes (PopupMode) and can become a normal tab:
 //  * DIALOG  the card over the browser area
 //  * FULL    the same popup filling the whole browser area (maximize / restore)
@@ -68,7 +73,7 @@ import androidx.core.content.ContextCompat
 //  * "Open as tab" moves the popup's WebView into a normal browser tab (page and login are kept)
 // =====================================================================
 
-private const val MAX_POPUPS_PER_TAB = 3
+private const val MAX_TABS = 30
 private const val BURST_WINDOW_MS = 3000L
 private const val BURST_LIMIT = 3
 private var playbackServiceOn = false
@@ -79,11 +84,11 @@ internal fun Context.canDrawOverApps(): Boolean =
     Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
 
 /** Asked once per run, the first time a popup is minimized without the permission. The window floats inside the app meanwhile. */
-private fun MainActivity.askOverlayPermissionOnce() {
+internal fun MainActivity.askOverlayPermissionOnce() {
     if (overlayAsked || canDrawOverApps()) return
     overlayAsked = true
     W11Dialog.Builder(this).setTitle("Float over other apps?")
-        .setMessage("To keep the minimized pop-up on screen when you switch to another app or the home screen, allow \"Display over other apps\" for this app. Until then it floats inside this app only.")
+        .setMessage("To keep audio / video playing when you switch to another app or the home screen, and to keep a minimized pop-up on screen over other apps, allow \"Display over other apps\" for this app.")
         .setPositiveButton("Allow") { _, _ ->
             try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) }
             catch (e: Exception) { Toast.makeText(this, "Open Settings > Apps > Display over other apps", Toast.LENGTH_LONG).show() }
@@ -130,9 +135,12 @@ private class GripView(ctx: Context) : View(ctx) {
  */
 internal class BrowserPopup(
     private val act: MainActivity,
-    val owner: WebTab,
+    var owner: WebTab,
     val webView: WebView
 ) {
+    /** desktop-site mode of the page, kept so it survives tab → popup → tab */
+    var desktop = false
+
     val root = FrameLayout(act)
     private val card = LinearLayout(act)
     private val cardBg = GradientDrawable()
@@ -541,6 +549,7 @@ internal class BrowserPopup(
     fun release() {
         if (released) return
         released = true
+        mediaPlayingViews.remove(webView)
         try { root.animate().cancel(); floatView?.animate()?.cancel() } catch (e: Exception) { }
         try { webView.stopLoading() } catch (e: Exception) { }
         try { (webView.parent as? ViewGroup)?.removeView(webView) } catch (e: Exception) { }
@@ -560,50 +569,98 @@ private fun MainActivity.popupBlockedToast() {
 }
 
 /**
- * Answers WebChromeClient.onCreateWindow. Returns true when the request was taken (a popup dialog is
- * shown), false when it was blocked.
+ * Answers WebChromeClient.onCreateWindow (window.open() / target="_blank"): the new window is a NEW TAB.
+ * The tab's WebView is handed back through WebViewTransport, so window.opener, postMessage and window.close()
+ * keep working (OAuth / "Sign in with Google"). Returns true when the request was taken, false when blocked.
+ * Windows opened without a user gesture are blocked, and a page cannot spam tabs.
  */
-@SuppressLint("SetJavaScriptEnabled")
-internal fun MainActivity.openPopupWindow(opener: WebView, isUserGesture: Boolean, resultMsg: Message?): Boolean {
+internal fun MainActivity.openWindowAsTab(opener: WebView, isUserGesture: Boolean, resultMsg: Message?): Boolean {
     val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
-    val owner = webTabs.firstOrNull { it.webView == opener }
+    val ownerTab = webTabs.firstOrNull { it.webView == opener }
         ?: popupWindows.firstOrNull { it.webView == opener }?.owner
         ?: return false
 
     if (!isUserGesture) { popupBlockedToast(); return false }
     val now = SystemClock.uptimeMillis()
     popupOpenTimes.removeAll { now - it > BURST_WINDOW_MS }
-    if (popupOpenTimes.size >= BURST_LIMIT || popupWindows.count { it.owner == owner } >= MAX_POPUPS_PER_TAB) {
+    if (popupOpenTimes.size >= BURST_LIMIT || webTabs.size >= MAX_TABS) {
         popupBlockedToast(); return false
     }
     popupOpenTimes.add(now)
 
     return try {
+        // opened from a floating popup (or while another screen is showing): show the browser first
+        if (popupWindows.any { it.webView == opener && it.floatInOverlay }) bringAppToFront()
+        if (activeSection != "browser") switchToSection("browser")
         val wv = WebView(this)
-        val popup = BrowserPopup(this, owner, wv)
-        configurePopupWebView(popup, opener)
-        popupWindows.add(popup)
-        webContainer.addView(popup.root, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        // opened from a floating popup (or while another tab / screen is showing): bring the owner tab forward
-        if (activeSection != "browser" || webTabs.getOrNull(currentTabIndex) != owner) {
-            switchToSection("browser")
-            val idx = webTabs.indexOf(owner)
-            if (idx >= 0) switchTab(idx)
+        val before = webTabs.size
+        addNewTab(
+            "about:blank", switch = true, existing = wv,
+            desktop = ownerTab.isDesktopMode, openerWebView = opener
+        )
+        if (webTabs.size == before) { // the tab could not be created: do not leak the WebView
+            try { wv.destroy() } catch (e: Exception) { }
+            return false
         }
-        popup.root.visibility = View.VISIBLE
-        popup.animateIn()
         transport.webView = wv
         resultMsg.sendToTarget()
         true
     } catch (e: Exception) {
-        AppLog.e("BrowserPopup", "cannot open popup", e)
+        AppLog.e("BrowserPopup", "cannot open the new tab", e)
         false
     }
 }
 
+/**
+ * Tab "pop out" icon: the tab becomes a floating popup window. The same WebView is moved, so the page
+ * (and its audio / video) keeps running; the tab disappears from the strip.
+ */
+internal fun MainActivity.popOutTab(tab: WebTab) {
+    if (webTabs.indexOf(tab) < 0) return
+    if (webTabs.size <= 1) addNewTab("https://www.google.com", switch = false) // one tab must always stay
+    if (webTabs.size <= 1) return
+    val i = webTabs.indexOf(tab)
+    if (i < 0) return
+    val wv = tab.webView
+    val wasCurrent = i == currentTabIndex
+
+    // take the tab out of the strip WITHOUT destroying its WebView
+    webTabs.removeAt(i)
+    if (i < tabContainer.childCount) tabContainer.removeViewAt(i)
+    try { webContainer.removeView(wv) } catch (e: Exception) { }
+    currentTabIndex = when {
+        wasCurrent -> i.coerceAtMost(webTabs.size - 1)
+        i < currentTabIndex -> currentTabIndex - 1
+        else -> currentTabIndex
+    }
+    val newOwner = webTabs[currentTabIndex]
+    // popups of the popped-out tab now belong to the tab that is shown next
+    popupWindows.filter { it.owner == tab }.forEach { it.owner = newOwner }
+
+    try {
+        wv.visibility = View.VISIBLE
+        try { wv.onResume() } catch (e: Exception) { }
+        val popup = BrowserPopup(this, newOwner, wv)
+        popup.desktop = tab.isDesktopMode
+        configurePopupWebView(popup, wv)
+        popup.navigated = true
+        popup.onTitle(tab.title)
+        popup.onUrl(tab.url)
+        popupWindows.add(popup)
+        popup.setMode(PopupMode.FLOAT)
+    } catch (e: Exception) {
+        AppLog.e("BrowserPopup", "cannot pop out the tab", e)
+        // fall back: put the page back as a normal tab
+        try { (wv.parent as? ViewGroup)?.removeView(wv) } catch (x: Exception) { }
+        addNewTab(wv.url ?: tab.url, switch = true, existing = wv, desktop = tab.isDesktopMode)
+        return
+    }
+    switchTab(currentTabIndex)
+    updatePopupService()
+}
+
 @SuppressLint("SetJavaScriptEnabled")
-private fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView) {
+internal fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView) {
     val wv = p.webView
     val act = this
     wv.settings.apply {
@@ -628,6 +685,7 @@ private fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView)
     CookieManager.getInstance().setAcceptCookie(true)
     CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true)
     wv.addJavascriptInterface(BlobBridge(), "AndroidBlobDl")
+    wv.addJavascriptInterface(MediaBridge(this, wv), "AndroidMedia")
 
     wv.setDownloadListener { dlUrl, ua, cd, mime, len ->
         handleDownload(dlUrl, ua, cd, mime, len, wv)
@@ -646,6 +704,7 @@ private fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView)
             if (!url.isNullOrEmpty() && url != "about:blank") p.navigated = true
             p.onUrl(url)
             view?.evaluateJavascript(BLOB_HOOK_JS, null)
+            view?.evaluateJavascript(MEDIA_HOOK_JS, null)
         }
         override fun onPageFinished(view: WebView?, url: String?) {
             p.onUrl(url)
@@ -665,7 +724,7 @@ private fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView)
         }
         override fun onCreateWindow(
             view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
-        ): Boolean = if (view == null) false else act.openPopupWindow(view, isUserGesture, resultMsg)
+        ): Boolean = if (view == null) false else act.openWindowAsTab(view, isUserGesture, resultMsg)
 
         override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
             runOnUiThread {
@@ -705,6 +764,8 @@ private fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView)
 internal fun MainActivity.closePopup(p: BrowserPopup) {
     if (!popupWindows.remove(p)) return
     try { CookieManager.getInstance().flush() } catch (e: Exception) { }
+    mediaPlayingViews.remove(p.webView)
+    updateTabTitles()
     updatePopupService()
     p.root.isClickable = false
     p.animateOut { p.release() }
@@ -716,7 +777,7 @@ internal fun MainActivity.closePopup(p: BrowserPopup) {
 internal fun MainActivity.closePopupsOf(tab: WebTab) {
     val mine = popupWindows.filter { it.owner == tab }
     popupWindows.removeAll(mine.toSet())
-    mine.forEach { it.release() }
+    mine.forEach { mediaPlayingViews.remove(it.webView); it.release() }
     updatePopupService()
 }
 
@@ -724,6 +785,7 @@ internal fun MainActivity.closePopupsOf(tab: WebTab) {
 internal fun MainActivity.destroyAllPopups() {
     val all = popupWindows.toList()
     popupWindows.clear()
+    mediaPlayingViews.clear()
     all.forEach { it.release() }
     updatePopupService()
 }
@@ -749,13 +811,17 @@ internal fun MainActivity.refreshPopupVisibility() {
         if (p.mode == PopupMode.FLOAT) continue
         val show = p.owner == current
         p.root.visibility = if (show) View.VISIBLE else View.GONE
-        try { if (show) p.webView.onResume() else p.webView.onPause() } catch (e: Exception) { }
+        try {
+            if (show) p.webView.onResume()
+            else if (isMediaPlaying(p.webView)) p.webView.evaluateJavascript(KEEP_ALIVE_JS, null) // keeps playing
+            else p.webView.onPause()
+        } catch (e: Exception) { }
     }
 }
 
 /** App goes to the background: pause dialog popups, but NOT floating ones — they keep playing. */
 internal fun MainActivity.pausePopups() {
-    popupWindows.filter { it.mode != PopupMode.FLOAT }
+    popupWindows.filter { it.mode != PopupMode.FLOAT && !isMediaPlaying(it.webView) }
         .forEach { try { it.webView.onPause() } catch (e: Exception) { } }
 }
 
@@ -771,7 +837,7 @@ internal fun MainActivity.resumePopups() {
 private fun Context.windowManager(): WindowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
 /** An overlay window can be tapped while this app is in the background: bring the app back before it shows the page. */
-private fun MainActivity.bringAppToFront() {
+internal fun MainActivity.bringAppToFront() {
     try {
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
     } catch (e: Exception) { AppLog.e("BrowserPopup", "cannot bring the app to the front", e) }
@@ -795,15 +861,15 @@ internal fun MainActivity.expandPopupToTab(p: BrowserPopup) {
     if (wasOverlay) bringAppToFront()
     updatePopupService()
     switchToSection("browser")
-    addNewTab(wv.url ?: "about:blank", switch = true, existing = wv)
+    addNewTab(wv.url ?: "about:blank", switch = true, existing = wv, desktop = p.desktop)
     if (webTabs.none { it.webView == wv }) { // the tab could not be created: do not leak the WebView
         try { wv.destroy() } catch (e: Exception) { }
     }
 }
 
-/** Runs the foreground service exactly while at least one popup is minimized to a floating window. */
+/** Runs the foreground service exactly while a popup is minimized to a floating window OR a page is playing audio / video. */
 internal fun MainActivity.updatePopupService() {
-    val need = popupWindows.any { it.mode == PopupMode.FLOAT }
+    val need = popupWindows.any { it.mode == PopupMode.FLOAT } || mediaPlayingViews.isNotEmpty()
     if (need == playbackServiceOn) return
     try {
         val i = Intent(this, PopupPlaybackService::class.java)

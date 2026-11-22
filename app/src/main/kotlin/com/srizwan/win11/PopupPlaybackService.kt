@@ -14,8 +14,9 @@ import androidx.core.app.NotificationCompat
 
 /**
  * Keeps the app process alive while a browser popup is minimized to a floating window
- * (BrowserPopup.kt), so its audio / video keeps playing when the app goes to the background.
- * Started when the first popup is minimized and stopped when the last one is closed or restored.
+ * (BrowserPopup.kt) or any tab / popup is playing audio / video (BrowserMedia.kt), so the sound keeps
+ * playing when the app goes to the background. Started by updatePopupService() and stopped when nothing
+ * is floating or playing any more.
  */
 class PopupPlaybackService : Service() {
 
@@ -42,7 +43,7 @@ class PopupPlaybackService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 nm.createNotificationChannel(
-                    NotificationChannel(CHANNEL, "Pop-up playback", NotificationManager.IMPORTANCE_LOW)
+                    NotificationChannel(CHANNEL, "Background playback", NotificationManager.IMPORTANCE_LOW)
                 )
             }
             val open = Intent(ctx, MainActivity::class.java)
@@ -52,8 +53,8 @@ class PopupPlaybackService : Service() {
             )
             return NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(R.drawable.ic_popup_minimize)
-                .setContentTitle("Pop-up window is open")
-                .setContentText("Playing in the background — tap to return")
+                .setContentTitle("Browser is playing in the background")
+                .setContentText("Tap to return")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(pi)

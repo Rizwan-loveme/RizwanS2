@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
     internal lateinit var tabContainer: LinearLayout
     internal lateinit var tabScroll: HorizontalScrollView
     internal val webTabs = mutableListOf<WebTab>()
-    internal val popupWindows = mutableListOf<BrowserPopup>() // window.open() popups (BrowserPopup.kt)
+    internal val popupWindows = mutableListOf<BrowserPopup>() // popups made by the tab "pop out" icon (BrowserPopup.kt)
     internal var currentTabIndex = 0
     internal lateinit var urlBar: EditText
     internal lateinit var progressBar: ProgressBar
@@ -321,6 +321,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         AppLog.d(LOGT, "onStart")
+        try { unparkFromBackground() } catch (e: Exception) { }
         guard("notification access check") {
             if (!WhatsAppNotificationListener.isEnabled(this)) requestNotificationAccess()
             else registerChatReceiver()
@@ -336,6 +337,8 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         AppLog.d(LOGT, "onStop")
+        // playing tabs keep playing: move them into an invisible overlay window (BrowserMedia.kt)
+        try { parkPlayingInBackground() } catch (e: Exception) { }
         unregisterChatReceiver()
         unregisterSmsLive()
     }
@@ -344,7 +347,13 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         AppLog.d(LOGT, "onPause")
         saveState()
-        webTabs.forEach { try { it.webView.onPause() } catch (e: Exception) { } }
+        // a tab that is playing audio / video keeps playing in the background (BrowserMedia.kt)
+        webTabs.forEach {
+            try {
+                if (isMediaPlaying(it.webView)) it.webView.evaluateJavascript(KEEP_ALIVE_JS, null)
+                else it.webView.onPause()
+            } catch (e: Exception) { }
+        }
         pausePopups()
     }
 
@@ -366,6 +375,7 @@ class MainActivity : AppCompatActivity() {
         try { if (::shell.isInitialized) shell.stopClock() } catch (e: Exception) { }
         try { if (::explorerUi.isInitialized) explorerUi.destroy() } catch (e: Exception) { }
         try { destroyAllPopups() } catch (e: Exception) { }
+        try { unparkFromBackground() } catch (e: Exception) { }
         try {
             saveState()
             webTabs.forEach {

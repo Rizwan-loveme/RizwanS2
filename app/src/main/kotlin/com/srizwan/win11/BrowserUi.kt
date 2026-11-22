@@ -74,7 +74,13 @@ data class WebTab(
     var title: String = "New Tab",
     var url: String = "",
     var isDesktopMode: Boolean = false
-)
+) {
+    /** The page that opened this tab with window.open() / target="_blank" (null for a normal tab). */
+    var openerWebView: WebView? = null
+    val openedByScript: Boolean get() = openerWebView != null
+    /** true once a real page (not about:blank) has started loading */
+    var navigated = false
+}
 
 // ── File upload ──────────────────────────────────────────────
 
@@ -207,26 +213,47 @@ internal fun MainActivity.buildFallbackUrl(originalUrl: String, scheme: String):
 internal class TabChip(private val act: MainActivity, val tab: WebTab) : LinearLayout(act) {
     val title = TextView(act)
     val close = TextView(act)
+    /** turns this tab into a floating pop-up window (the page keeps running) */
+    val popout = TextView(act)
+    /** small speaker icon, visible while the tab plays audio / video */
+    private val audio = TextView(act)
 
     init {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        layoutParams = LinearLayout.LayoutParams(act.dp(150), act.dp(36)).apply { rightMargin = act.dp(2) }
-        setPadding(act.dp(12), 0, act.dp(2), 0)
+        layoutParams = LinearLayout.LayoutParams(act.dp(178), act.dp(36)).apply { rightMargin = act.dp(2) }
+        setPadding(act.dp(10), 0, act.dp(2), 0)
+        audio.apply {
+            iconOnly(R.drawable.ic_tab_audio, 12, Color.parseColor("#4CC2FF"))
+            layoutParams = LinearLayout.LayoutParams(act.dp(18), ViewGroup.LayoutParams.MATCH_PARENT)
+            visibility = View.GONE
+        }
         title.apply {
             textSize = 12.5f
             setSingleLine(true)
             ellipsize = android.text.TextUtils.TruncateAt.END
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
+        popout.apply {
+            iconOnly(R.drawable.ic_tab_popout, 13, Color.parseColor("#9D9D9D"))
+            setTextColor(Color.parseColor("#9D9D9D"))
+            layoutParams = LinearLayout.LayoutParams(act.dp(28), ViewGroup.LayoutParams.MATCH_PARENT)
+            contentDescription = "Pop out this tab"
+        }
         close.apply {
             iconOnly(R.drawable.ic_qs_close, 12, Color.parseColor("#9D9D9D"))
             setTextColor(Color.parseColor("#9D9D9D"))
             layoutParams = LinearLayout.LayoutParams(act.dp(30), ViewGroup.LayoutParams.MATCH_PARENT)
         }
+        addView(audio)
         addView(title)
+        addView(popout)
         addView(close)
         setActive(false)
+    }
+
+    fun setPlaying(playing: Boolean) {
+        audio.visibility = if (playing) View.VISIBLE else View.GONE
     }
 
     fun setActive(active: Boolean) {
@@ -554,7 +581,10 @@ internal fun MainActivity.updateDesktopModeForTab(tab: WebTab) {
 
 @SuppressLint("SetJavaScriptEnabled")
 /** [existing]: an already loaded WebView (a popup that was expanded to a tab) — it keeps its page instead of loading [url] again. */
-internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existing: WebView? = null) {
+internal fun MainActivity.addNewTab(
+    url: String, switch: Boolean = true, existing: WebView? = null,
+    desktop: Boolean = false, openerWebView: WebView? = null
+) {
     try {
         // FIX: Use 'this' Activity context for WebView — not applicationContext
         val webView = (existing ?: WebView(this)).apply {
@@ -581,12 +611,13 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
             @Suppress("DEPRECATION") setSavePassword(true)
             @Suppress("DEPRECATION") setSaveFormData(true)
             javaScriptCanOpenWindowsAutomatically = true
-            setSupportMultipleWindows(true) // window.open / target=_blank -> onCreateWindow -> custom popup dialog (BrowserPopup.kt)
+            setSupportMultipleWindows(true) // window.open / target=_blank -> onCreateWindow -> a new tab (openWindowAsTab, BrowserPopup.kt)
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         CookieManager.getInstance().setAcceptCookie(true)
 
-        val tab = WebTab(webView, title = existing?.title?.takeIf { it.isNotBlank() } ?: "Loading…", url = url, isDesktopMode = false)
+        val tab = WebTab(webView, title = existing?.title?.takeIf { it.isNotBlank() } ?: "Loading…", url = url, isDesktopMode = desktop)
+        tab.openerWebView = openerWebView
         webTabs.add(tab)
         updateDesktopModeForTab(tab)
 
@@ -597,6 +628,8 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
                 val reqUrl = request.url.toString()
                 val scheme = request.url.scheme?.lowercase() ?: ""
                 if (scheme == "http" || scheme == "https" || scheme == "about") {
+                    // a tab opened by window.open() loads normally (keeps referrer / POST data for login flows)
+                    if (tab.openedByScript) return false
                     view.loadUrl(reqUrl); return true
                 }
                 if (scheme == "data") return false
@@ -608,7 +641,9 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
                     progressBar.visibility = View.VISIBLE; urlBar.setText(url)
                 }
                 if (idx != -1) webTabs[idx].url = url ?: ""
+                if (idx != -1 && !url.isNullOrEmpty() && url != "about:blank") webTabs[idx].navigated = true
                 view?.evaluateJavascript(BLOB_HOOK_JS, null)
+                view?.evaluateJavascript(MEDIA_HOOK_JS, null)
                 updateNavButtons()
             }
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -619,6 +654,9 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
                 if (idx != -1) webTabs[idx].url = url ?: ""
                 view?.let { injectImageLongClickSave(it) }
                 view?.evaluateJavascript(BLOB_HOOK_JS, null)
+                view?.evaluateJavascript(MEDIA_HOOK_JS, null)
+                // a page that plays in a hidden tab must think it is still visible, or it pauses itself
+                if (idx != currentTabIndex && view != null && isMediaPlaying(view)) view.evaluateJavascript(KEEP_ALIVE_JS, null)
                 updateNavButtons()
             }
             override fun onReceivedError(
@@ -651,12 +689,20 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
                     webTabs[i].title = title; updateTabTitles()
                 }
             }
-            // Popups: window.open() / target="_blank" open in a custom dialog instead of replacing this page
+            // window.open() / target="_blank" open in a NEW TAB instead of replacing this page
             override fun onCreateWindow(
                 view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
             ): Boolean {
                 if (view == null) return false
-                return this@addNewTab.openPopupWindow(view, isUserGesture, resultMsg)
+                return this@addNewTab.openWindowAsTab(view, isUserGesture, resultMsg)
+            }
+            // window.close() — e.g. the Google sign-in tab closes itself when finished (only tabs opened by a page)
+            override fun onCloseWindow(window: WebView?) {
+                val w = window ?: return
+                w.post {
+                    val i = webTabs.indexOfFirst { it.webView == w }
+                    if (i >= 0 && webTabs[i].openedByScript) closeTab(i)
+                }
             }
             override fun onJsAlert(
                 view: WebView?, url: String?, message: String?, result: JsResult?
@@ -785,8 +831,13 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
         }
 
         webView.addJavascriptInterface(BlobBridge(), "AndroidBlobDl")
+        webView.addJavascriptInterface(MediaBridge(this, webView), "AndroidMedia")
         webView.setDownloadListener { dlUrl, ua, cd, mime, len ->
             handleDownload(dlUrl, ua, cd, mime, len, webView)
+            // a tab that was opened only to start the download is no longer needed
+            if (tab.openedByScript && !tab.navigated) webView.post {
+                val i = webTabs.indexOf(tab); if (i >= 0) closeTab(i)
+            }
         }
         webView.setOnLongClickListener { v ->
             val hit = (v as WebView).hitTestResult
@@ -802,6 +853,7 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true, existin
         chip.setOnClickListener { switchTab(webTabs.indexOf(tab)) }
         chip.setOnLongClickListener { confirmCloseTab(tab); true }
         chip.close.setOnClickListener { confirmCloseTab(tab) }
+        chip.popout.setOnClickListener { popOutTab(tab) }
         tabContainer.addView(chip)
         if (existing == null) webView.loadUrl(url)
         if (switch) switchTab(tabIndex)
@@ -821,7 +873,12 @@ internal fun MainActivity.switchTab(index: Int) {
             try { tab.webView.onResume() } catch (e: Exception) { }
         } else {
             tab.webView.visibility = View.GONE
-            try { tab.webView.onPause() } catch (e: Exception) { }
+            if (isMediaPlaying(tab.webView)) {
+                // keep playing in the background: no onPause, and the page must not think it is hidden
+                try { tab.webView.evaluateJavascript(KEEP_ALIVE_JS, null) } catch (e: Exception) { }
+            } else {
+                try { tab.webView.onPause() } catch (e: Exception) { }
+            }
         }
     }
     currentTabIndex = index
@@ -865,16 +922,24 @@ internal fun MainActivity.closeTab(index: Int): Boolean {
         Toast.makeText(this, "Cannot close last tab", Toast.LENGTH_SHORT).show()
         return false
     }
-    closePopupsOf(webTabs[index])
+    val closing = webTabs[index]
+    val wasCurrent = index == currentTabIndex
+    closePopupsOf(closing)
+    mediaPlayingViews.remove(closing.webView)
     try {
-        webTabs[index].webView.stopLoading()
-        webContainer.removeView(webTabs[index].webView)
-        webTabs[index].webView.destroy()
+        closing.webView.stopLoading()
+        webContainer.removeView(closing.webView)
+        closing.webView.destroy()
     } catch (e: Exception) { }
     webTabs.removeAt(index)
     if (index < tabContainer.childCount) tabContainer.removeViewAt(index)
+    if (!wasCurrent && index < currentTabIndex) currentTabIndex--
+    // closing the tab you are on: go back to the tab that opened it (if it still exists)
+    val openerIdx = if (wasCurrent) webTabs.indexOfFirst { it.webView == closing.openerWebView } else -1
+    if (openerIdx >= 0) currentTabIndex = openerIdx
     currentTabIndex = currentTabIndex.coerceIn(0, webTabs.size - 1)
     switchTab(currentTabIndex)
+    updatePopupService()
     return true
 }
 
@@ -885,6 +950,7 @@ internal fun MainActivity.updateTabTitles() {
         chip.title.text =
             if (i < webTabs.size) webTabs[i].title.ifBlank { "New Tab" } else "Tab ${i + 1}"
         chip.setActive(i == currentTabIndex)
+        chip.setPlaying(i < webTabs.size && mediaPlayingViews.contains(webTabs[i].webView))
     }
 }
 
