@@ -77,10 +77,13 @@ public class MainActivity extends BaseActivity {
 	public void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		// Must be assigned before requestStorageAccess(): when storage access is already granted it calls
+		// checkAndCreateDirs() synchronously, which uses appListModel (was a NullPointerException on launch).
+		appListModel = new ViewModelProvider(this).get(AppListModel.class);
+		preferences = PreferenceManager.getDefaultSharedPreferences(this);
 		if (FileUtils.isExternalStorageLegacy()) {
 			requestStorageAccess();
 		}
-		appListModel = new ViewModelProvider(this).get(AppListModel.class);
 		if (savedInstanceState == null) {
 			Intent intent = getIntent();
 			Uri uri = null;
@@ -91,7 +94,6 @@ public class MainActivity extends BaseActivity {
 			getSupportFragmentManager().beginTransaction()
 					.replace(R.id.container, fragment).commit();
 		}
-		preferences = PreferenceManager.getDefaultSharedPreferences(this);
 		if (!preferences.contains(PREF_TOOLBAR)) {
 			boolean enable = !ViewConfiguration.get(this).hasPermanentMenuKey();
 			preferences.edit().putBoolean(PREF_TOOLBAR, enable).apply();
