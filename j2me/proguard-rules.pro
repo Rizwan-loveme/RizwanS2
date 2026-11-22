@@ -40,3 +40,33 @@
 -keep class com.arthenica.mobileffmpeg.** { *; }
 -keep class org.acra.attachment.DefaultAttachmentProvider { *; }
 -keep class ru.playsoftware.j2meloader.crashes.models.* { *; }
+
+# --- added for the release build ---
+-keep class ru.woesss.** { *; }
+-keep class ru.playsoftware.** { *; }
+-keep class com.arthenica.** { *; }
+-keep class com.antonkarpenko.** { *; }
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao class * { *; }
+-dontwarn io.reactivex.**
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn org.checkerframework.**
+-dontwarn com.google.j2objc.annotations.**
+
+# whole J2ME API packages (used by games loaded from outside the app)
+-keep class com.j_phone.** { *; }
+-keep class com.jblend.** { *; }
+-keep class com.kddi.** { *; }
+-keep class com.mascotcapsule.** { *; }
+-keep class com.nokia.** { *; }
+-keep class com.samsung.** { *; }
+-keep class com.siemens.** { *; }
+-keep class com.sonyericsson.** { *; }
+-keep class com.sprintpcs.** { *; }
+-keep class com.sun.** { *; }
+-keep class mmpp.** { *; }
+-keep class javax.bluetooth.** { *; }
+-keep class javax.microedition.** { *; }
+-keep class javax.obex.** { *; }
+-keep class javax.wireless.** { *; }

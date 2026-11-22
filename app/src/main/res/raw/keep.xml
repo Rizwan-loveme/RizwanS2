@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Resource shrinking (isShrinkResources) removes resources that no code refers to. These are looked up by NAME
+  (Resources.getIdentifier, e.g. the J2ME "jl_locale_config" locale list) or loaded by library code, so the
+  shrinker cannot see the reference. Lenient mode keeps everything whose name appears as text in the code;
+  the explicit list keeps the xml / raw / menu resources of every module.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:shrinkMode="lenient"
+    tools:keep="@xml/*,@raw/*,@menu/*,@xml/jl_locale_config" />

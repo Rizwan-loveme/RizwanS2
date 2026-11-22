@@ -428,13 +428,18 @@ class CameraActivity : AppCompatActivity() {
         finish()
     }
 
-    /** Thumbnail tap: the photo opens in the Gallery viewer, the video in the Video player (both are part of this app). */
+    /**
+     * Thumbnail tap: the photo opens in the built-in Gallery viewer, the video in the built-in Video player (both are part of
+     * this app). The intent names the activity directly (explicit component), so the system app chooser / resolver (for example
+     * "TranResolver is not available" on some Tecno phones) is never involved.
+     */
     private fun openLast() {
         val uri = lastUri ?: return
         if (engine.isRecording) return
+        val target = if (lastVideo) VIDEO_PLAYER_CLASS else GALLERY_VIEWER_CLASS
         val intent = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, if (lastVideo) "video/*" else "image/*")
-            .setPackage(packageName)
+            .setClassName(packageName, target)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         try {
             startActivity(intent)
@@ -481,6 +486,10 @@ class CameraActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "CameraActivity"
+
+        /** Built-in Gallery photo viewer and Video player, opened by name (this module does not depend on them). */
+        private const val GALLERY_VIEWER_CLASS = "com.srizwan.gallery.viewer.GalleryViewerActivity"
+        private const val VIDEO_PLAYER_CLASS = "com.srizwan.video.player.VideoPlayerActivity"
 
         /** String extra: [MODE_PHOTO] or [MODE_VIDEO]. */
         const val EXTRA_MODE = "com.srizwan.camera.MODE"

@@ -1336,6 +1336,10 @@ labels are content descriptions, icons are vectors (`cm_ic_*`), the only visible
   `image/*` reaches the Gallery viewer, `video/*` the Video player (both already have that filter), so `:camera` needs no dependency on
   `:gallery` or `:video`. On Android 8 / 9 (file written to DCIM) the uri comes from the media scanner a moment after saving
   (`CameraStorage.scan(..., onDone)`); a `file://` uri is never sent to another screen. Ignored while recording.
+  **Fix (explicit component):** the implicit intent made some phones (Tecno / Transsion) show the system resolver and the error
+  "TranResolver is not available right now". `openLast()` now uses `setClassName(packageName, ...)` with
+  `com.srizwan.gallery.viewer.GalleryViewerActivity` (photo) or `com.srizwan.video.player.VideoPlayerActivity` (video), so the tap always
+  opens the built-in Gallery / Video player directly. Same uri, mime type and read-permission flag; `:camera` still has no module dependency.
 - Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
 
 ### Step 7 — Browser link (`:camera`, `:chooser`, `:app` `BrowserUi` / `MainActivity`)
@@ -1392,3 +1396,26 @@ Build and test once: `./gradlew :app:assembleDebug` (CI: `UltimateBuild.yml`). T
 Known limits (kept small on purpose): no filters / HDR / timer / grid / QR mode; the icons do not rotate with the phone; the capture camera for
 uploads ignores the page's front / back hint (`capture="user"`), because WebView does not pass it on; the torch of the Quick controls and the
 Camera's flash use the same hardware, so use one at a time.
+
+## Release build: code shrink + resource shrink (R8), crash-safe setup
+
+`:app` release now has `isMinifyEnabled = true` and `isShrinkResources = true` (before: both off, and `app/proguard-rules.pro` did not exist).
+Safety first, size second; the debug app and the release app must behave the same.
+
+- **`app/proguard-rules.pro`** (new): `-dontobfuscate` (nothing renamed, so reflection, JNI, class names in intents / strings / XML keep working),
+  `-dontoptimize` (only unused code goes), `-ignorewarnings` (a class missing only at build time, e.g. hidden Android API, does not stop the build).
+  Keeps: all `com.srizwan.**` (the Camera opens `GalleryViewerActivity` / `VideoPlayerActivity` by class name), BlackBox (`top.niunaijun.**`,
+  `mirror.**`, **`black.**`** = BlackReflection classes looked up by name), Winlator (`com.winlator.**`), J2ME (`ru.playsoftware.**`, `ru.woesss.**`,
+  and every J2ME API package whole: the games are loaded from outside the app, so R8 cannot see their use), `native` methods, `@JavascriptInterface`
+  methods (Browser: `AndroidBlobDl`, `DlEngine`), enums / Parcelable / Serializable members, NewPipeExtractor + Rhino + jsoup + nanojson, zstd / xz /
+  commons-compress, Room, ffmpeg-kit.
+- **Module consumer rules** (a library's own `proguard-rules.pro` is NOT used by an app build, only `consumerProguardFiles` is):
+  `Bcore/consumer-rules.pro` now also has the BlackReflection rules (they were only in `Bcore/proguard-rules.pro`) and `black.**`;
+  `winlator/consumer-rules.pro`, `j2me/proguard-rules.pro` and `youtube/consumer-rules.pro` got the extra keeps / `-dontwarn` lines. Old lines are unchanged.
+- **`app/src/main/res/raw/keep.xml`** (new): `shrinkMode="lenient"` and `tools:keep="@xml/*,@raw/*,@menu/*"` so resources that are looked up by name
+  (J2ME `jl_locale_config` through `getIdentifier`) are never removed.
+- **`gradle.properties`**: `android.enableR8.fullMode=false` (R8 compatibility mode, safer for the reflection-heavy engines).
+- `app/build.gradle.kts` now uses `proguard-android.txt` (not the `-optimize` file).
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleRelease`, then test on the phone: Browser download + upload,
+  Camera -> thumbnail -> Gallery, a video, a J2ME game, Winlator, ParallelRizwan (BlackBox), YouTube. If R8 ever reports a missing rule,
+  the build log names the class: add one `-keep class <name> { *; }` line to `app/proguard-rules.pro`.
