@@ -685,6 +685,8 @@ class MainActivity : AppCompatActivity() {
                 } else if (section == "gallery") {
                     try { startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open GalleryHomeActivity", e) }
+                } else if (section == "j2me") {
+                    openJ2me()
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -841,7 +843,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | j2me | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -871,6 +873,7 @@ class MainActivity : AppCompatActivity() {
                 "youtube" -> startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java))
                 "video" -> startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java))
                 "gallery" -> startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java))
+                "j2me" -> openJ2me()
                 // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
                 "chooser" -> com.srizwan.chooser.settings.ChooserSettings.open(this)
                 else -> { // "open" and anything unknown

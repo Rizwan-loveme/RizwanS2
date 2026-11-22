@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    J2ME Loader (https://github.com/nikita36078/J2ME-Loader, Apache-2.0) as the built-in "J2ME" app of Win11.
+    Library module: the Application class, the launcher icon (MAIN / LAUNCHER filter) and the application-level
+    attributes of upstream are NOT here (the host app owns them). Every activity sets its own theme and label.
+
+    Permissions the host already declares (INTERNET, CAMERA, RECORD_AUDIO, POST_NOTIFICATIONS, VIBRATE,
+    READ / WRITE_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_CONNECT) are
+    not repeated, so the host's own flags (maxSdkVersion) stay untouched. Only the missing ones are added.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- JSR-179 Location API, JSR-82 Bluetooth, shortcuts for installed MIDlets -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <application>
+
+        <!-- The J2ME app list. Opened by the launcher (Start menu / Home icon / rizwans2://j2me / File Manager).
+             No MAIN / LAUNCHER filter on purpose: it must not appear a second time in the system app list.
+             The VIEW filters stay, so .jar / .jad files opened from other apps can be installed here. -->
+        <activity
+            android:name="ru.playsoftware.j2meloader.MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="true"
+            android:label="@string/jl_app_name"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="application/java" />
+                <data android:mimeType="application/java-archive" />
+                <data android:mimeType="application/x-java-archive" />
+                <data android:mimeType="text/vnd.sun.j2me.app-descriptor" />
+                <data android:host="*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="text/vnd.sun.j2me.app-descriptor" />
+                <data android:host="*" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="*/*" />
+                <data android:host="*" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*.jar" />
+                <data android:pathPattern=".*..*.jar" />
+                <data android:pathPattern=".*..*..*.jar" />
+                <data android:pathPattern=".*..*..*..*.jar" />
+                <data android:pathPattern=".*.JAR" />
+                <data android:pathPattern=".*..*.JAR" />
+                <data android:pathPattern=".*..*..*.JAR" />
+                <data android:pathPattern=".*..*..*..*.JAR" />
+                <data android:pathPattern=".*.jad" />
+                <data android:pathPattern=".*..*.jad" />
+                <data android:pathPattern=".*..*..*.jad" />
+                <data android:pathPattern=".*..*..*..*.jad" />
+                <data android:pathPattern=".*.JAD" />
+                <data android:pathPattern=".*..*.JAD" />
+                <data android:pathPattern=".*..*..*.JAD" />
+                <data android:pathPattern=".*..*..*..*.JAD" />
+                <data android:pathPattern=".*.kjx" />
+                <data android:pathPattern=".*..*.kjx" />
+                <data android:pathPattern=".*..*..*.kjx" />
+                <data android:pathPattern=".*..*..*..*.kjx" />
+                <data android:pathPattern=".*.KJX" />
+                <data android:pathPattern=".*..*.KJX" />
+                <data android:pathPattern=".*..*..*.KJX" />
+                <data android:pathPattern=".*..*..*..*.KJX" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="ru.playsoftware.j2meloader.config.ConfigActivity"
+            android:exported="true"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme"
+            android:windowSoftInputMode="stateHidden|adjustPan" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.config.ConfigFilesActivity"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme" />
+        <!-- The running MIDlet. Own process: when the game ends, that process is killed (MidletThread), not the launcher. -->
+        <activity
+            android:name="javax.microedition.shell.MicroActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:process=":midlet"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.settings.SettingsActivity"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="ru.playsoftware.j2meloader.settings.BackupActivity"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.settings.KeyMapperActivity"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.config.KeyCodesActivity"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.config.KeyboardLayoutActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.filepicker.FilteredFilePickerActivity"
+            android:exported="false"
+            android:theme="@style/FilePickerTheme" />
+        <activity
+            android:name="ru.playsoftware.j2meloader.config.ProfilesActivity"
+            android:exported="false"
+            android:label="@string/jl_app_name"
+            android:theme="@style/AppTheme" />
+
+        <!-- Shows the J2ME folder (MIDlets, saves) in the system file picker (Android 10+) -->
+        <provider
+            android:name="ru.playsoftware.j2meloader.storage.DocumentProvider"
+            android:authorities="${applicationId}.documentProvider"
+            android:enabled="@bool/isAtLeastQ"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+        <receiver
+            android:name="com.nokia.mid.ui.NotificationBroadcastReceiver"
+            android:exported="false"
+            android:process=":midlet" />
+        <!-- Keeps the language chosen on the J2ME settings screen (Android 12 and older) -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+    </application>
+
+</manifest>

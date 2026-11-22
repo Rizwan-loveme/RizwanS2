@@ -95,6 +95,8 @@ internal fun MainActivity.openFile(file: File) {
         file.name.endsWith(".pdf", true) -> openPdfFile(file)
         file.name.endsWith(".zip", true) -> showZipOptions(file)
         isImageFile(file.name) -> openImageFile(file)
+        // .jar .jad .kjx: Java ME games open in the built-in J2ME app (:j2me module = J2ME Loader), see J2meLauncher.kt
+        isJ2meFile(file.name) -> openJ2meFile(file)
         // .exe .msi .bat .lnk: PC software runs in the built-in Winlator (Wine + Box64)
         WinlatorLauncher.isWindowsProgram(file.name) -> WinlatorLauncher.runFile(this, file)
         // Chooser step 5: no built-in viewer -> our own glass "Open with" sheet (saved "Always" app first), never the system chooser

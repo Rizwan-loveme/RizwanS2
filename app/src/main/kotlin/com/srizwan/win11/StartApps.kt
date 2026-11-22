@@ -104,6 +104,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_YOUTUBE = "builtin.youtube"
         private const val BUILTIN_CLS_VIDEO = "builtin.video"
         private const val BUILTIN_CLS_GALLERY = "builtin.gallery"
+        private const val BUILTIN_CLS_J2ME = "builtin.j2me"
+        /** Game pad (Material "videogame_asset"): the built-in J2ME app (:j2me module = J2ME Loader, package ru.playsoftware.j2meloader). */
+        private const val J2ME_PATH =
+            "M21,6H3c-1.1,0 -2,0.9 -2,2v8c0,1.1 0.9,2 2,2h18c1.1,0 1.99,-0.9 1.99,-2L23,8c0,-1.1 -0.9,-2 -2,-2zM11,13H8v3H6v-3H3v-2h3V8h2v3h3v2zM15.5,15c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5zM19.5,12c-0.83,0 -1.5,-0.67 -1.5,-1.5S18.67,9 19.5,9s1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z"
         /** Framed picture with a mountain (Material "image"): the built-in Gallery app (:gallery module, package com.srizwan.gallery). */
         private const val GALLERY_PATH =
             "M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z"
@@ -257,6 +261,12 @@ class AppRepository(private val ctx: Context) {
             "Gallery", ctx.packageName, BUILTIN_CLS_GALLERY,
             BuiltInIconDrawable(GALLERY_PATH, Color.parseColor("#4FD1A5")),
             section = "gallery"
+        ),
+        // Built-in J2ME app (:j2me module = J2ME Loader, ru.playsoftware.j2meloader.MainActivity), vector icon only
+        AppEntry(
+            "J2ME", ctx.packageName, BUILTIN_CLS_J2ME,
+            BuiltInIconDrawable(J2ME_PATH, Color.parseColor("#FF9F43")),
+            section = "j2me"
         )
     ) + (
         // Winlator (PC software: .exe via Wine + Box64) exists only for 64-bit ARM phones.

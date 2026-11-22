@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Upstream J2ME Loader generated "app_name" with a Gradle resValue (rootProject.name). As a library module
+         it has its own, prefixed string: used for dialog titles, the Documents provider root and shortcuts. -->
+    <string name="jl_app_name" translatable="false">J2ME Loader</string>
+</resources>

@@ -39,6 +39,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // :winlator and :j2me (ndk-build, c++_shared) / ffmpeg-kit / oboe each bring a libc++_shared.so
+            pickFirsts += "**/libc++_shared.so"
         }
     }
     
@@ -76,6 +78,8 @@ dependencies {
     implementation(project(":gallery"))
     // Own Open with / Share sheets and file picker (package com.srizwan.chooser)
     implementation(project(":chooser"))
+    // J2ME Loader: built-in J2ME app (Java ME games, .jar / .jad), package ru.playsoftware.j2meloader
+    implementation(project(":j2me"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

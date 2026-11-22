@@ -81,6 +81,7 @@ internal fun fileTypeColor(ext: String): Int = when (ext) {
     "zip", "rar", "7z", "tar", "gz" -> Color.parseColor("#E8A33D")
     "apk" -> Color.parseColor("#4CAF50")
     "exe", "msi", "bat", "lnk" -> Color.parseColor("#C77DFF") // Windows programs (run with Winlator)
+    "jar", "jad", "kjx" -> Color.parseColor("#FF9F43") // Java ME games (open in the built-in J2ME app)
     else -> Color.parseColor("#8A8A8A")
 }
 

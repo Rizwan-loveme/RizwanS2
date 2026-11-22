@@ -1150,3 +1150,65 @@ The own sheets never depend on the system chooser, but when one of them cannot b
 - Tests: `HostBridgePlanTest` (17 cases: storage and unmanaged not bridged, held = nothing to do, missing asked and answered by what the host holds afterwards, a store-Deny is never turned into a grant, not declared = denied, SDK gating for `POST_NOTIFICATIONS` / Bluetooth, background location separate from Android 11 / together on Android 10 / alone when foreground is held, blocked rule, one prompt per group, approximate location, background prompt, cancelled request = no prompt, back from settings = granted, null / empty input, duplicates). With `PermissionRequestPlanTest` and `TemporaryGrantsTest`: **31 / 31 pass** on a plain JVM (JUnit 4.13.2). `HostPermissionCheck`, the `PermissionPolicy` / `IActivityManagerProxy` change, `PermissionRequestActivity` and the Kotlin text were **not** built or run here (no Gradle / Android SDK), so do a Gradle build first.
 - **Test on a device (Xiaomi / HyperOS first)**: remove the camera and microphone permission of the host app in the phone settings, open a clone with the camera set to ✅ and start its camera → the **phone's own** permission dialog must appear first, then the camera works and the MIUI "Camera, Microphone" dialog must **not** come back. Then: tap "don't allow" twice → the "ফোনের অনুমতি বন্ধ আছে" prompt appears; "⚙️ সেটিংস খুলুন" opens the permission editor; allow there and press back → the app gets "granted". Microphone-only app (voice recorder) with the old forced grant: must ask the host once. A location request with "approximate" chosen → the app gets coarse granted / fine denied and no prompt. Clone set to ⛔ → no host dialog at all. Android 13+: an app that posts notifications asks the host for `POST_NOTIFICATIONS`. An app that only needs storage must behave as before (no host dialog).
 - Not done here: part 19 (cache cleanup) and the rest of the list.
+
+## J2ME — `:j2me` + `:j2me-dexlib` modules (J2ME Loader, package `ru.playsoftware.j2meloader`)
+
+[J2ME Loader](https://github.com/nikita36078/J2ME-Loader) (v1.8.2, upstream commit `360681d`, Apache-2.0) runs Java ME games and apps (`.jar` / `.jad`) with
+virtual keyboard, per-game settings, Mascot Capsule 3D, M3G, MMAPI sound, soundbanks, JSR-82 Bluetooth, JSR-179 location and more. It is now a built-in
+app of Win11 in the same style as Video / Gallery. Licence and credits: `NOTICE-J2ME-Loader.md`, `LICENSE-J2ME-Loader`.
+
+### Where it is hooked in
+
+| Place | What |
+|---|---|
+| Start menu | built-in app **J2ME** (gamepad icon, orange), section `j2me` (`StartApps.kt`) |
+| Home screen | desktop icon **J2ME** under Gallery (`Win11Shell.kt`, `VectorIconView.J2ME`) |
+| Deep link | `rizwans2://j2me` (`MainActivity.kt`, manifest comment) |
+| File Manager | tap a `.jar` / `.jad` / `.kjx` → the J2ME installer opens (`FileManagerUi.kt` `openFile`, `J2meLauncher.kt`); these files get an orange type chip (`fileTypeColor`) |
+| Other apps | `.jar` / `.jad` / `.kjx` opened from any app (browser download, other file manager, the own "Open with" sheet) can be installed here (VIEW filters of upstream kept) |
+| Settings | `settings.gradle.kts` (`:j2me`, `:j2me-dexlib`), `app/build.gradle.kts` (`implementation(project(":j2me"))`, `pickFirsts += "**/libc++_shared.so"`) |
+
+Games, saves and settings live in `/storage/emulated/0/J2ME-Loader` (upstream "legacy storage" layout, visible in the File Manager).
+The J2ME screens keep their own settings (theme, language, virtual keyboard, shaders, backup / restore, key mapper, profiles) and their own translations (40 languages).
+
+### What changed compared with upstream (Apache-2.0 "changes" list)
+
+- **Library, not an app**: `:j2me` is an Android library (`namespace ru.playsoftware.j2meloader`, minSdk 26, ndk-build, ABIs arm64-v8a + armeabi-v7a, NDK `ext.ndkVer`
+  like `:Bcore`). `:j2me-dexlib` is upstream's `:dexlib` unchanged (Gradle file converted to Kotlin DSL). Java package names, JNI names and `R` are unchanged.
+- **No Application class**: `EmulatorApplication` is now a plain helper. `App.kt` calls `EmulatorApplication.attach(this)` (launcher process) or
+  `EmulatorApplication.attachMidletProcess(this)` (the `:midlet` process: crash dialog (ACRA) + saved theme). The saved day / night theme is applied by
+  `BaseActivity` when a J2ME screen opens, so J2ME's "Theme" setting does not change the launcher at start-up.
+- **The `:midlet` process and BlackBox**: each running game is `MicroActivity` in the process `com.srizwan.win11:midlet` (upstream design; the game ends by killing
+  that process). `App.kt` does **not** attach / create the BlackBox engine there, otherwise BlackBox would treat the process as a cloned app.
+- **No launcher icon**: the `MAIN` / `LAUNCHER` filter of upstream is gone (no second "J2ME Loader" icon in the system app list). Every activity has its own theme and label
+  (`jl_app_name`), because the host's application theme is not J2ME's.
+- **Manifest**: only the permissions the host does not declare are added (fine / coarse location, Bluetooth scan / advertise, install shortcut); the rest merge from `:app`
+  without touching its flags (`maxSdkVersion`).
+- **Storage permission**: `:app` declares `WRITE_EXTERNAL_STORAGE` only up to Android 9, so J2ME's start-up permission dialog could never succeed on newer phones.
+  `MainActivity` now uses "All files access" (already declared by `:app`) on Android 11+, with a retry / exit dialog; Android 10 and older ask `WRITE_EXTERNAL_STORAGE` as before.
+- **Build flavors dropped**: `play` / `open` / `fdroid` / `dev` / `midlet` do not exist; `BuildConfig.FULL_EMULATOR` is `true` and `BuildConfig.J2ME_VERSION_NAME` replaces
+  `VERSION_NAME`. The "create a standalone Android port of one game" flavor (`src/midlet`) and the instrumented test (`src/androidTest`) were not copied.
+- **Resources**: the names that clashed with `:app` / `:winlator` got the prefix `jl_` (`about add browse edit exit reset version` strings, `ic_launcher`,
+  `ic_launcher_foreground`, `ic_launcher_background`, `ic_delete`, `simple_list_item_multiple_choice`), plus the new string `jl_app_name` (upstream generated `app_name` with a Gradle
+  `resValue`). Without this the app's own resources would have silently replaced them. All other upstream resource names are unique in the project.
+- **Language list**: upstream built it from `generateLocaleConfig` (application modules only); it is now `res/xml/jl_locale_config.xml`.
+- **Duplicate native lib**: `:winlator`, ffmpeg-kit, Oboe and `:j2me` all ship `libc++_shared.so` → `pickFirsts` in `:app`.
+- **APK size**: grows by the native libraries of ffmpeg-kit, Oboe and J2ME (not measured here).
+
+### Versions
+
+`:j2me` keeps upstream's library versions (appcompat 1.8.0, activity 1.13.0, material 1.13.0, recyclerview 1.4.0, constraintlayout 2.2.2, room 2.8.5, camerax 1.6.2, preference 1.2.1,
+ffmpeg-kit 6.0.LTS (Maven Central), pngj / filepicker / ambilwarna (JitPack, already a repository in `settings.gradle.kts`), ACRA 5.14.2). Gradle resolves each library to the highest version asked for, so
+`:app` and the other modules now compile against these newer AndroidX / Material versions too. The coroutines pin in the root `build.gradle.kts` (1.8.1) still applies.
+Upstream builds with AGP 9.4.1; this project stays on AGP 8.13.2 (`:Bcore`).
+
+### Not verified here
+
+This environment has no Android SDK, NDK or Maven access, so **no Gradle build, native build or device test was run**. Checked by hand instead: every `R.x.y` and `@type/name`
+of the module resolves inside the module or its libraries; no resource name clashes with `:app`, `:Bcore`, `:winlator`, `:youtube`, `:video`, `:gallery`, `:chooser`; no duplicate class names
+with any other module; all XML parses. **Build once with `./gradlew :app:assembleDebug`.** Things to look at first if it fails: (1) an AndroidX library asking for a newer AGP than 8.13.2
+(`checkAarMetadata`) → lower that version in `j2me/build.gradle.kts`; (2) `libc++_shared.so` picked from `:winlator` instead of the NDK one (symptom: `UnsatisfiedLinkError` when a 3D / MIDI game starts)
+→ ship only one copy; (3) the ndk-build step (NDK `29.0.13846066`, upstream used `29.0.14206865`).
+Test on a device: open **J2ME** from the Start menu → allow "All files access" → install a `.jar` from the File Manager → start it (separate process, back button ends it) → rotate, virtual keyboard,
+sound, settings screen, language / theme change. "All apps" numbers (`rizwans2://N`) shift by one after the entry **J2ME** (the list is sorted by name).
+Version stays 2.5.3 (code 120).
