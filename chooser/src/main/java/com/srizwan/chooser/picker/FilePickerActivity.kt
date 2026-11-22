@@ -225,6 +225,11 @@ class FilePickerActivity : AppCompatActivity() {
         // top: bar + breadcrumb (or the search field)
         bar = GlassBar(this).apply {
             setBackVisible(true) { goBack() }
+            // Camera button (the Browser's uploads): the caller opens its own camera when it gets RESULT_CAMERA
+            if (options.cameraButton && trusted) addAction(R.drawable.ch_ic_camera, R.string.ch_cd_camera) {
+                setResult(FilePicker.RESULT_CAMERA)
+                finish()
+            }
             addAction(R.drawable.ch_ic_search, R.string.ch_cd_search) { openSearch() }
         }
         viewToggle = bar.addAction(

@@ -114,7 +114,7 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, j2me, chooser, start, quick).
+            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, chooser, start, quick).
                  By number: rizwans2://1, rizwans2://#1 or rizwans2://app/1 opens app number 1 of the Start menu's "All apps" list. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

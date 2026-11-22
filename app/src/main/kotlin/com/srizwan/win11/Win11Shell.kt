@@ -90,6 +90,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         const val WINLATOR = "winlator"
         const val VIDEO = "video"
         const val GALLERY = "gallery"
+        const val CAMERA = "camera"
         const val J2ME = "j2me"
 
         private fun data(type: String): String? = when (type) {
@@ -111,6 +112,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             WINLATOR -> "M6,2 H18 L17.3,8.6 C16.9,11.9 14.8,14.2 12.9,14.8 V19.2 H16.2 V21.2 H7.8 V19.2 H11.1 V14.8 C9.2,14.2 7.1,11.9 6.7,8.6 Z M8.2,4 L8.6,8.3 C8.9,10.2 10.2,11.9 12,12.4 C13.8,11.9 15.1,10.2 15.4,8.3 L15.8,4 Z"
             VIDEO -> "M18,4l2,4h-3l-2,-4h-2l2,4h-3l-2,-4H8l2,4H5L3,4H2.99C1.9,4 2,5 2,6v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V4h-4z"
             GALLERY -> "M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z"
+            CAMERA -> "M9,2L7.17,4H4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2H9zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"
             J2ME -> "M21,6H3c-1.1,0 -2,0.9 -2,2v8c0,1.1 0.9,2 2,2h18c1.1,0 1.99,-0.9 1.99,-2L23,8c0,-1.1 -0.9,-2 -2,-2zM11,13H8v3H6v-3H3v-2h3V8h2v3h3v2zM15.5,15c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5zM19.5,12c-0.83,0 -1.5,-0.67 -1.5,-1.5S18.67,9 19.5,9s1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z"
             else -> null
         }
@@ -125,6 +127,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             WINLATOR -> Color.parseColor("#C77DFF")
             VIDEO -> Color.parseColor("#FF6B8B")
             GALLERY -> Color.parseColor("#4FD1A5")
+            CAMERA -> Color.parseColor("#FFD34E")
             J2ME -> Color.parseColor("#FF9F43")
             START -> Color.parseColor("#4CC2FF")
             else -> Color.WHITE
@@ -1511,6 +1514,8 @@ class Win11Shell(
         column.addView(desktopIcon(VectorIconView.VIDEO, "Video", "video"))
         // Home screen icon of the built-in Gallery app (:gallery module)
         column.addView(desktopIcon(VectorIconView.GALLERY, "Gallery", "gallery"))
+        // Home screen icon of the built-in Camera app (:camera module)
+        column.addView(desktopIcon(VectorIconView.CAMERA, "Camera", "camera"))
         // Home screen icon of the built-in J2ME app (:j2me module, J2ME Loader)
         column.addView(desktopIcon(VectorIconView.J2ME, "J2ME", "j2me"))
         if (WinlatorLauncher.isSupported()) column.addView(desktopIcon(VectorIconView.WINLATOR, "Winlator", WinlatorLauncher.SECTION))

@@ -686,6 +686,14 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
             }
+            // Camera step 7: a website's live camera / microphone (getUserMedia: QR scan, video call, photo booth)
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                if (request == null) return
+                runOnUiThread { handleWebPermission(request) }
+            }
+            override fun onPermissionRequestCanceled(request: PermissionRequest?) {
+                if (request != null && request == pendingWebPermission) pendingWebPermission = null
+            }
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
@@ -698,8 +706,25 @@ internal fun MainActivity.addNewTab(url: String, switch: Boolean = true) {
                 val accept = fileChooserParams?.acceptTypes
                     ?.flatMap { it.split(',') }?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
                 val multiple = fileChooserParams?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
+                uploadAccept = accept
+                // Camera step 7: <input type=file capture> goes straight to the built-in Camera (one photo / video back to the page);
+                // if the camera cannot start, the file picker below opens as before.
+                if (fileChooserParams?.isCaptureEnabled == true && uploadAcceptsMedia(accept)) {
+                    try {
+                        fileChooserLauncher.launch(uploadCameraIntent(accept))
+                        return true
+                    } catch (e: Exception) {
+                        AppLog.e("BrowserUi", "cannot open the camera for a capture upload", e)
+                    }
+                }
                 try {
-                    fileChooserLauncher.launch(FilePicker.intent(this@addNewTab, multiple = multiple, mimeTypes = accept))
+                    // the picker gets a Camera button when the page accepts photos / videos (it ends with RESULT_CAMERA, see MainActivity)
+                    fileChooserLauncher.launch(
+                        FilePicker.intent(
+                            this@addNewTab, multiple = multiple, mimeTypes = accept,
+                            cameraButton = uploadAcceptsMedia(accept)
+                        )
+                    )
                 } catch (e: Exception) {
                     // the picker could not start: the system screen as before
                     try {
@@ -1272,5 +1297,93 @@ internal fun MainActivity.createTabButton(
             setBackgroundColor(Color.parseColor("#333333"))
             onClick()
         }
+    }
+}
+
+
+// ── Camera step 7: Browser <-> built-in Camera ───────────────────────────────────────────────────────
+
+private val IMAGE_EXT = setOf(".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".bmp")
+private val VIDEO_EXT = setOf(".mp4", ".mov", ".3gp", ".webm", ".mkv", ".m4v")
+
+/** "image", "video" or null (anything else) for one `accept` entry of a page (MIME type, family or extension). */
+private fun acceptKind(type: String): String? {
+    val t = type.trim().lowercase()
+    return when {
+        t.startsWith("image/") || t in IMAGE_EXT -> "image"
+        t.startsWith("video/") || t in VIDEO_EXT -> "video"
+        else -> null
+    }
+}
+
+/** True when the page takes photos / videos: no `accept` at all, or at least one image / video entry. */
+internal fun uploadAcceptsMedia(accept: List<String>): Boolean =
+    accept.isEmpty() || accept.any { acceptKind(it) != null }
+
+/**
+ * The built-in Camera in capture mode for a page's upload: video when the page accepts only videos, photo otherwise; the
+ * photo / video switch is hidden when the page accepts only one of the two kinds.
+ */
+internal fun MainActivity.uploadCameraIntent(accept: List<String>): Intent {
+    val kinds = accept.map { acceptKind(it) }
+    val onlyOneKind = accept.isNotEmpty() && kinds.all { it != null } && kinds.toSet().size == 1
+    val mode = if (onlyOneKind && kinds.first() == "video") com.srizwan.camera.CameraActivity.MODE_VIDEO
+    else com.srizwan.camera.CameraActivity.MODE_PHOTO
+    return com.srizwan.camera.CameraActivity.captureIntent(this, mode, lockMode = onlyOneKind)
+}
+
+/**
+ * A website wants the camera and / or the microphone. The user is asked first (which site, which device), then Android's own
+ * permission if the app does not hold it yet; only then the page gets the stream.
+ */
+internal fun MainActivity.handleWebPermission(request: PermissionRequest) {
+    val wantsVideo = PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources
+    val wantsAudio = PermissionRequest.RESOURCE_AUDIO_CAPTURE in request.resources
+    if (!wantsVideo && !wantsAudio) { request.deny(); return } // other resources (protected media id, MIDI) are not offered
+    val what = when {
+        wantsVideo && wantsAudio -> "camera and microphone"
+        wantsVideo -> "camera"
+        else -> "microphone"
+    }
+    val site = request.origin?.host ?: request.origin?.toString().orEmpty()
+    try {
+        W11Dialog.Builder(this)
+            .setTitle("Allow $what?")
+            .setMessage("$site wants to use your $what.")
+            .setPositiveButton("Allow") { _, _ -> askAndroidPermissionForWeb(request, wantsVideo, wantsAudio) }
+            .setNegativeButton("Block") { _, _ -> request.deny() }
+            .setCancelable(false)
+            .show()
+    } catch (e: Exception) {
+        request.deny()
+    }
+}
+
+private fun MainActivity.askAndroidPermissionForWeb(request: PermissionRequest, video: Boolean, audio: Boolean) {
+    val missing = ArrayList<String>()
+    if (video && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+        missing += Manifest.permission.CAMERA
+    if (audio && ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+        missing += Manifest.permission.RECORD_AUDIO
+    pendingWebPermission?.deny() // an older request that never got its answer
+    pendingWebPermission = request
+    if (missing.isEmpty()) finishWebPermission() else webPermissionLauncher.launch(missing.toTypedArray())
+}
+
+/** Android answered (or nothing was missing): give the page what is now allowed, deny the rest. */
+internal fun MainActivity.finishWebPermission() {
+    val request = pendingWebPermission ?: return
+    pendingWebPermission = null
+    val granted = ArrayList<String>()
+    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources &&
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    ) granted += PermissionRequest.RESOURCE_VIDEO_CAPTURE
+    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in request.resources &&
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    ) granted += PermissionRequest.RESOURCE_AUDIO_CAPTURE
+    try {
+        if (granted.isEmpty()) request.deny() else request.grant(granted.toTypedArray())
+    } catch (e: Exception) {
+        AppLog.e("BrowserUi", "web permission answer failed", e)
     }
 }

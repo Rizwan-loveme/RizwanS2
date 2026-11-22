@@ -13,13 +13,16 @@ import java.io.File
  *  - [foldersOnly] : the user picks a folder, not a file. Only for this app's own screens (the result carries a path, not a uri).
  *  - [startDir]    : the folder to open first. Only honoured for this app's own screens; the last folder is used otherwise.
  *  - [title]       : replaces the default heading.
+ *  - [cameraButton]: shows a Camera button in the top bar (this app's own screens only). Tapping it closes the picker with
+ *                    [FilePicker.RESULT_CAMERA] and no data; the caller then opens its own camera. Used by the Browser's uploads.
  */
 class PickerOptions(
     val multiple: Boolean = false,
     val mimeTypes: List<String> = emptyList(),
     val foldersOnly: Boolean = false,
     val startDir: File? = null,
-    val title: String? = null
+    val title: String? = null,
+    val cameraButton: Boolean = false
 ) {
     companion object {
 
@@ -57,7 +60,8 @@ class PickerOptions(
                 mimeTypes = types,
                 foldersOnly = intent.getBooleanExtra(FilePicker.EXTRA_FOLDERS_ONLY, false),
                 startDir = intent.getStringExtra(FilePicker.EXTRA_START_DIR)?.takeIf { it.isNotBlank() }?.let { File(it) },
-                title = intent.getStringExtra(FilePicker.EXTRA_TITLE)?.takeIf { it.isNotBlank() }?.take(80)
+                title = intent.getStringExtra(FilePicker.EXTRA_TITLE)?.takeIf { it.isNotBlank() }?.take(80),
+                cameraButton = intent.getBooleanExtra(FilePicker.EXTRA_CAMERA_BUTTON, false)
             )
         }
     }

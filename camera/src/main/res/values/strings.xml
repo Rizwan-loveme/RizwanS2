@@ -1,0 +1,18 @@
+<resources>
+    <!-- The Camera shows no text of its own: these are content descriptions (read by screen readers). -->
+    <string name="cm_cd_back">Back</string>
+    <string name="cm_cd_shutter">Take a photo</string>
+    <string name="cm_cd_record">Record a video</string>
+    <string name="cm_cd_stop">Stop recording</string>
+    <string name="cm_cd_switch">Switch camera</string>
+    <string name="cm_cd_flash">Flash</string>
+    <string name="cm_cd_flash_off">Flash off</string>
+    <string name="cm_cd_flash_auto">Flash auto</string>
+    <string name="cm_cd_flash_on">Flash on</string>
+    <string name="cm_cd_timer">Recording time</string>
+    <string name="cm_cd_photo_mode">Photo</string>
+    <string name="cm_cd_video_mode">Video</string>
+    <string name="cm_cd_last">Last photo or video</string>
+    <string name="cm_cd_error">Camera not available</string>
+    <string name="cm_cd_lock">Permission needed</string>
+</resources>

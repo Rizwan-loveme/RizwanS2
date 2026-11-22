@@ -1,0 +1,9 @@
+<resources>
+    <!-- Dark, like Theme.Gallery / Theme.Video; the viewfinder fills the screen on a black background. -->
+    <style name="Theme.Camera" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/cm_bg</item>
+        <item name="android:statusBarColor">@color/cm_bg</item>
+        <item name="android:navigationBarColor">@color/cm_bg</item>
+        <item name="colorAccent">@color/cm_accent</item>
+    </style>
+</resources>

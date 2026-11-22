@@ -1,0 +1,6 @@
+<resources>
+    <color name="cm_bg">#000000</color>
+    <color name="cm_text">#FFFFFF</color>
+    <color name="cm_text_dim">#B3FFFFFF</color>
+    <color name="cm_accent">#FFD34E</color>
+</resources>

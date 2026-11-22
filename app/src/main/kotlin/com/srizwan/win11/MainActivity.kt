@@ -163,9 +163,22 @@ class MainActivity : AppCompatActivity() {
     internal val REQ_CONTACTS = 203
 
     internal var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+    /** The `accept` types of the upload that is open now (decides the Camera button and the camera's photo / video mode). */
+    internal var uploadAccept: List<String> = emptyList()
     internal val fileChooserLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val cb = fileUploadCallback ?: return@registerForActivityResult
+            // Camera step 7: the user tapped the Camera button of the file picker -> take a photo / video, its uri comes back here
+            // (CameraActivity capture mode returns it as `data`, which FilePicker.uris reads below).
+            if (result.resultCode == FilePicker.RESULT_CAMERA) {
+                try {
+                    fileChooserLauncher.launch(uploadCameraIntent(uploadAccept))
+                } catch (e: Exception) {
+                    fileUploadCallback = null
+                    cb.onReceiveValue(null)
+                }
+                return@registerForActivityResult
+            }
             fileUploadCallback = null
             // :chooser file picker (step 8): one or many content:// uris (clip data); the system screen gives just `data`
             val results =
@@ -174,6 +187,11 @@ class MainActivity : AppCompatActivity() {
                 else null
             cb.onReceiveValue(results)
         }
+
+    /** A website asked for the camera / microphone (getUserMedia): the page's request waits here for the Android permission answer. */
+    internal var pendingWebPermission: android.webkit.PermissionRequest? = null
+    internal val webPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { finishWebPermission() }
 
     internal val storagePermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -685,6 +703,9 @@ class MainActivity : AppCompatActivity() {
                 } else if (section == "gallery") {
                     try { startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open GalleryHomeActivity", e) }
+                } else if (section == "camera") {
+                    try { com.srizwan.camera.CameraActivity.start(this) }
+                    catch (e: Throwable) { AppLog.e(LOGT, "cannot open CameraActivity", e) }
                 } else if (section == "j2me") {
                     openJ2me()
                 } else if (section == "parallel") {
@@ -843,7 +864,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | j2me | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -873,6 +894,11 @@ class MainActivity : AppCompatActivity() {
                 "youtube" -> startActivity(Intent(this, com.srizwan.YouTube.YouTubeActivity::class.java))
                 "video" -> startActivity(Intent(this, com.srizwan.video.home.VideoHomeActivity::class.java))
                 "gallery" -> startActivity(Intent(this, com.srizwan.gallery.home.GalleryHomeActivity::class.java))
+                "camera" -> com.srizwan.camera.CameraActivity.start(
+                    this,
+                    if (uri.getQueryParameter("mode").equals("video", ignoreCase = true)) com.srizwan.camera.CameraActivity.MODE_VIDEO
+                    else com.srizwan.camera.CameraActivity.MODE_PHOTO
+                )
                 "j2me" -> openJ2me()
                 // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
                 "chooser" -> com.srizwan.chooser.settings.ChooserSettings.open(this)

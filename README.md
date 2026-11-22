@@ -1212,3 +1212,183 @@ with any other module; all XML parses. **Build once with `./gradlew :app:assembl
 Test on a device: open **J2ME** from the Start menu → allow "All files access" → install a `.jar` from the File Manager → start it (separate process, back button ends it) → rotate, virtual keyboard,
 sound, settings screen, language / theme change. "All apps" numbers (`rizwans2://N`) shift by one after the entry **J2ME** (the list is sorted by name).
 Version stays 2.5.3 (code 120).
+
+## Camera — `:camera` module (package `com.srizwan.camera`)
+
+A built-in Camera app in its own Gradle module, same pattern as `:gallery` (resources prefixed `cm_`, no text of its own,
+content descriptions only). Only the necessary features: photo, video, front / back, flash, pinch zoom, tap to focus.
+Photos and videos are saved to `DCIM/Camera`, so the Gallery and Video apps show them. The built-in Browser opens it for
+page uploads with `capture` and for a website's live camera. `:app` depends on it.
+
+### Camera plan (9 steps)
+
+| # | Step | Status |
+|---|------|--------|
+| 1 | Module setup (`:camera`, manifest, theme, `:app` dependency) | done |
+| 2 | Camera engine (CameraX: preview, photo, video, front / back) | done |
+| 3 | Controls (flash, pinch zoom, tap to focus, photo / video mode, rotation) | done |
+| 4 | Glass UI (shutter, switch, flash, last-shot thumbnail, video timer) | done |
+| 5 | Saving to `DCIM/Camera` (MediaStore) and camera / microphone permissions | done |
+| 6 | Launcher integration: Start menu entry, Home icon, deep link `rizwans2://camera`, thumbnail opens Gallery / Video | done |
+| 7 | Browser link: `capture` uploads, website live camera (`getUserMedia`), "Camera" option in the file picker |done |
+| 8 | Update all details (README, manifest and `MainActivity` deep-link lists) | done |
+| 9 | Final review, flat zip | done |
+
+### Step 1 — module setup
+
+- `camera/build.gradle.kts`: Android library, `namespace = "com.srizwan.camera"`, minSdk 26, compileSdk 37, Java / Kotlin 21,
+  view binding, coroutines 1.8.1 pin like the other modules. CameraX `1.6.2` (core, camera2, lifecycle, view, video): the same
+  version `:j2me` already uses, so Gradle resolves one version for the whole app.
+- `settings.gradle.kts`: `include(":camera")`. `app/build.gradle.kts`: `implementation(project(":camera"))`.
+- Manifest: `CAMERA` and `RECORD_AUDIO` (same lines as `:app`, the merge is a no-op); `uses-feature` camera / camera.front with
+  `required="false"`; one activity, `CameraActivity` (`exported="false"`, started with an explicit intent from the same app).
+- Resources: `cm_bg`, `cm_text`, `cm_text_dim`, `cm_accent` colours, `Theme.Camera` (dark), `cm_cd_*` content descriptions.
+- Code: `CameraActivity` is an empty black screen for now. `CameraActivity.start(context, mode)` already exists with the shape
+  the launcher and the Browser will use (`MODE_PHOTO` / `MODE_VIDEO`).
+- `:app` and every other module are unchanged apart from the one dependency line. Version stays 2.5.3 (code 120).
+- No Android SDK / network in this environment: a Gradle build was **not** run. Build once with `./gradlew :app:assembleDebug`.
+
+### Step 2 — camera engine (`CameraEngine`, `CameraActivity`)
+
+- `CameraEngine(context, lifecycleOwner, previewView)` talks to CameraX only; it draws nothing and does not choose where files go
+  (the caller passes the output options, step 5 passes MediaStore ones). Main thread in, main thread out.
+  - `start(mode, front)`: gets the `ProcessCameraProvider`, binds the use cases. `mode` is `Mode.PHOTO` (Preview + ImageCapture,
+    minimize-latency) or `Mode.VIDEO` (Preview + VideoCapture with a `Recorder`, HD, falls back to SD or higher). The use cases are
+    bound per mode, not all three at once: that combination is not supported on legacy-level devices.
+  - `switchLens()` (front <-> back) and `setMode()` rebind; both are ignored while recording. `canSwitchLens()` says whether the
+    device has both lenses.
+  - `takePhoto(OutputFileOptions, OnImageSavedCallback)`.
+  - `startRecording(FileOutputOptions | MediaStoreOutputOptions, audio, onEvent)` and `stopRecording()`; audio only when
+    RECORD_AUDIO is granted, the `Finalize` event reaches `onEvent`. `isRecording`.
+  - `camera` (CameraX `Camera`, used by flash / zoom / focus in step 3), `onBound`, `onError`, `release()`.
+- `CameraActivity`: full-screen `PreviewView` (fill-center), asks for the CAMERA permission, opens the camera in the mode given by
+  `CameraActivity.start(context, mode)`. `engine` is public for steps 3 to 5. No buttons yet; a denied permission or a missing
+  camera just closes the screen (replaced in steps 4 and 5 by the glass error / lock states).
+- No new dependency: `camera-video` was already in the Step 1 `build.gradle.kts`.
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
+
+### Step 3 — controls (`CameraEngine`, `CameraActivity`)
+
+- **Flash**: `Flash.OFF / AUTO / ON`, `cycleFlash()`, `hasFlash` (false for most front cameras: the button is dimmed / ignored).
+  Photo uses `ImageCapture` flash modes (off / auto / on); video uses the torch (on / off only, so auto becomes off when the mode
+  changes to video). The setting is kept when the mode or the lens changes and re-applied after every bind.
+- **Zoom**: `zoomBy(factor)`, `setZoom(ratio)` (clamped to the lens' min / max), `zoomRatio`. It resets to 1.0 on a mode or lens change.
+  `CameraActivity`: pinch on the preview zooms.
+- **Tap to focus**: `focusAt(x, y)` (focus + exposure metering point from `PreviewView.meteringPointFactory`, back to auto after 3 s).
+  `CameraActivity`: a single tap on the preview focuses (not while a pinch is running). The focus ring itself is drawn in step 4.
+- **Photo / video mode**: `setMode()` / `start(mode)` from step 2 (ignored while recording); the buttons come in step 4.
+- **Rotation**: an `OrientationEventListener` (enabled only between onStart and onStop of the screen) sets `targetRotation` of
+  `ImageCapture` and `VideoCapture`, so the saved photo / video is upright however the phone is held, also with the screen
+  rotation locked. The first value is the display rotation.
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
+
+### Step 4 — glass UI (`camera/ui`, `CameraActivity`)
+
+Same glass look as `:gallery` / `:video` (the classes are copied, not shared, so `:camera` stays independent); no text of its own:
+labels are content descriptions, icons are vectors (`cm_ic_*`), the only visible characters are the digits of the video timer.
+
+- `ui/GlassDrawable` (copied from `:gallery`), `ui/CameraViews.kt`:
+  - `glassIconButton` – round glass button with one icon (back, flash, switch camera).
+  - `ShutterButton` – ring + white disc (photo), red disc (video ready), red rounded square (recording); shrinks while pressed.
+  - `ModePill` – glass pill with a photo icon and a video icon, the chosen one lit (accent colour).
+  - `TimerPill` – red dot + `mm:ss` (`h:mm:ss` after an hour), visible only while recording.
+  - `FocusRingView` – ring at the tapped point, shrinks and fades in 1 s, never takes touches (touches pass to the preview).
+- `ui/ThumbLoader` – square thumbnail of the last photo (EXIF-rotated) or video (first frame), loaded off the main thread.
+- `CameraActivity` layout (built in code): preview, focus ring, shutter-flash overlay, top row (back | timer | flash), bottom
+  (mode pill above thumbnail | shutter | switch camera) on a soft dark fade.
+  - Flash button cycles the engine's flash and shows off / auto / on (lit when on); dimmed when the lens has no flash unit.
+  - Switch button is dimmed when the device has only one lens. While a video records, switch / mode / thumbnail are dimmed and
+    ignored; the shutter turns into a stop square and the timer runs (from CameraX's recording stats).
+  - Shutter: photo mode takes a photo (short white flash, haptic tick), video mode starts / stops the recording.
+  - If the camera cannot be opened, a glass error icon replaces the controls (the screen stays open, back still works).
+  - Pinch zoom and tap to focus (with the ring) from step 3.
+- (Replaced later) Until step 5 the files were written to `cache/camera`; step 5 moved them to `DCIM/Camera`. The thumbnail tap
+  was wired in step 6 (Gallery / Video).
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
+
+### Step 5 — saving to `DCIM/Camera` and permissions (`CameraStorage`, `CameraActivity`)
+
+- `CameraStorage` (internal object) decides where a photo / video goes, so the Gallery, the Video app and every other gallery show it:
+  - **Android 10+**: MediaStore (`RELATIVE_PATH = DCIM/Camera`, `IMG_yyyyMMdd_HHmmss` / `VID_…`), no storage permission. Photo:
+    `ImageCapture.OutputFileOptions(contentResolver, …)`; video: `MediaStoreOutputOptions` (the engine overload from step 2).
+  - **Android 8 / 9**: a plain file in `DCIM/Camera`; needs `WRITE_EXTERNAL_STORAGE` (declared with `maxSdkVersion="28"`, same line as
+    `:gallery` / `:app`), asked together with the camera. After saving, `MediaScannerConnection.scanFile` lists it at once. If the user
+    denies it, the file goes to the app's own folder (`Android/data/<app>/files/DCIM/Camera`): saved, but other apps do not see it.
+  - `discard()` removes the half-written result of a recording that ended with an error.
+- `ui/ThumbLoader` now takes a uri (`content://` or `file://`) instead of a file.
+- **Permissions** (`CameraActivity`):
+  - Opening the screen asks for CAMERA (+ storage on Android 9 and older). Only CAMERA decides: granted → the camera opens.
+  - Denied → a glass **lock** icon replaces the controls. Tap: ask again while Android still asks, otherwise open the app's settings page;
+    coming back with the permission granted opens the camera (`onResume`).
+  - RECORD_AUDIO is asked once, when the first video starts. Granted or not, the recording starts (without sound when denied).
+- The `cache/camera` folder of step 4 is no longer used.
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
+
+### Step 6 — launcher integration (`:app`) and thumbnail tap
+
+- **Start menu / "All apps"**: new built-in entry **Camera** (`StartApps`: `BUILTIN_CLS_CAMERA`, vector icon `CAMERA_PATH`, yellow `#FFD34E`,
+  `section = "camera"`), placed after Gallery. `MainActivity` opens `CameraActivity.start(this)` for that section.
+  Note: the "All apps" list is sorted by name, so the numbers of `rizwans2://N` after "Camera" shift by one.
+- **Home screen icon**: `VectorIconView.CAMERA` (same path and colour) and `desktopIcon(…, "Camera", "camera")` in `Win11Shell`.
+- **Deep link**: `rizwans2://camera` opens the Camera in photo mode, `rizwans2://camera?mode=video` in video mode (`MainActivity.handleDeepLink`;
+  the comment list in `AndroidManifest.xml` and the KDoc are updated).
+- **Thumbnail tap** (`CameraActivity`): a plain `ACTION_VIEW` intent with `setPackage(packageName)` and the saved `content://` uri:
+  `image/*` reaches the Gallery viewer, `video/*` the Video player (both already have that filter), so `:camera` needs no dependency on
+  `:gallery` or `:video`. On Android 8 / 9 (file written to DCIM) the uri comes from the media scanner a moment after saving
+  (`CameraStorage.scan(..., onDone)`); a `file://` uri is never sent to another screen. Ignored while recording.
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
+
+### Step 7 — Browser link (`:camera`, `:chooser`, `:app` `BrowserUi` / `MainActivity`)
+
+Three ways the built-in Browser uses the Camera. `:camera` still depends on no other module.
+
+1. **`<input type=file capture>`**: `onShowFileChooser` checks `FileChooserParams.isCaptureEnabled`. If the page takes photos / videos it opens
+   `CameraActivity` in **capture mode** (`CameraActivity.captureIntent(context, mode, lockMode)`, started for a result):
+   one photo / video, saved to `DCIM/Camera` like any other, returned as `data` (a `content://` uri with a read grant, `CameraActivity.resultUri`)
+   and the screen closes. The thumbnail is hidden; the photo / video switch is hidden too when the page accepts only one kind. The mode is
+   video when the page accepts only videos, photo otherwise (the `accept` list may hold MIME types, families or extensions). The result goes
+   through the same `fileChooserLauncher` / `FilePicker.uris` as a picked file. If the camera cannot start, the file picker opens as before.
+2. **Camera button in the file picker** (page upload without `capture`, accepting photos / videos or anything): `FilePicker.intent(..., cameraButton = true)`
+   shows a camera icon in the picker's top bar (`ch_ic_camera`, `ch_cd_camera`; own callers only, `PickerOptions.cameraButton`). Tapping it
+   ends the picker with `FilePicker.RESULT_CAMERA` (no data); `MainActivity.fileChooserLauncher` then opens the capture camera for the same
+   upload. `:chooser` knows nothing about `:camera`: it only reports the tap. Pages that accept only e.g. PDF get no Camera button.
+3. **Website live camera / microphone** (`getUserMedia`: QR scan, video call, photo booth): `WebChromeClient.onPermissionRequest` (before,
+   the Browser never answered it, so such pages got nothing). Flow: a glass dialog "Allow camera / microphone / camera and microphone?" naming the
+   site (Allow / Block) -> Android's own CAMERA / RECORD_AUDIO permission when missing (`webPermissionLauncher`) -> `request.grant` with what is
+   now allowed, `deny` otherwise. Other resources (protected media id, MIDI) are denied. `MODIFY_AUDIO_SETTINGS` was already in the manifest.
+   A site is asked each time (nothing is remembered); only secure pages (https / localhost) can call `getUserMedia` in a WebView at all.
+
+Where the code is: `BrowserUi.kt` (`onShowFileChooser`, `onPermissionRequest`, helpers `uploadAcceptsMedia`, `uploadCameraIntent`, `handleWebPermission`,
+`finishWebPermission` at the end of the file), `MainActivity.kt` (`uploadAccept`, `pendingWebPermission`, `webPermissionLauncher`, the `RESULT_CAMERA` branch).
+- Not run here (no Android SDK / network): build once with `./gradlew :app:assembleDebug`. Version stays 2.5.3 (code 120).
+
+### Step 8 — details updated
+
+- `README.md`: this section, the plan table (all 9 steps done) and the notes of steps 2 and 4 that later steps replaced.
+- `settings.gradle.kts` (`include(":camera")` with its comment), `app/build.gradle.kts` (dependency), `AndroidManifest.xml` of `:app`
+  (deep-link comment: `camera`, `camera?mode=video`) and of `:camera`, `MainActivity` KDoc of `handleDeepLink`: all list the Camera.
+- Start menu entry **Camera** (after Gallery) shifts the numbers of `rizwans2://N` for the apps after it by one (the list is sorted by name).
+- Version stays **2.5.3 (code 120)**: nothing in the build files asks for a bump; change `versionName` / `versionCode` in `app/build.gradle.kts` if you want one.
+
+### Step 9 — final review
+
+Read-through of every new / changed file (no Android SDK or network here, so **no Gradle build was run**):
+- XML of the module (manifest, values, 9 vector icons) parses; every `R.string / R.drawable / R.color` used by `:camera` exists; `ch_ic_camera` /
+  `ch_cd_camera` exist in `:chooser`.
+- `:camera` has no dependency on `:gallery`, `:video` or `:chooser`; `:app` talks to it through `CameraActivity.start()` and `captureIntent()`.
+- Changed outside `:camera`: `settings.gradle.kts`, `app/build.gradle.kts`, `:app` (`StartApps`, `Win11Shell`, `MainActivity`, `BrowserUi`, manifest comment),
+  `:chooser` (`FilePicker`, `FilePickerActivity`, `PickerOptions`, one icon, one string). Nothing else.
+
+Build and test once: `./gradlew :app:assembleDebug` (CI: `UltimateBuild.yml`). Then on a device:
+1. Start menu -> **Camera** (also the Home icon and `rizwans2://camera`, `rizwans2://camera?mode=video`): preview appears after the permission.
+2. Photo: shutter -> white flash, thumbnail appears; tap the thumbnail -> Gallery viewer. File is in `DCIM/Camera` (Gallery app lists it).
+3. Video: mode pill -> video, shutter -> timer runs, shutter again -> thumbnail; tap -> Video player. First time asks for the microphone.
+4. Flash button (off / auto / on), pinch zoom, tap to focus (ring), front / back switch. Rotate the phone while shooting: the picture is upright.
+5. Deny the camera permission -> glass lock; tap it -> asks again, or opens the app settings after "don't ask again".
+6. Browser: a page with `<input type=file accept="image/*" capture>` -> Camera opens, one shot returns to the page. A page with a plain file
+   input -> picker with a camera icon in the top bar. A page that calls `getUserMedia` (https) -> Allow / Block dialog, then the stream.
+7. Android 8 / 9 (if you have one): the first start also asks for storage; denied storage saves to the app's own folder.
+
+Known limits (kept small on purpose): no filters / HDR / timer / grid / QR mode; the icons do not rotate with the phone; the capture camera for
+uploads ignores the page's front / back hint (`capture="user"`), because WebView does not pass it on; the torch of the Quick controls and the
+Camera's flash use the same hardware, so use one at a time.

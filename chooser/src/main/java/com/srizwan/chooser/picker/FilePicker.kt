@@ -1,5 +1,6 @@
 package com.srizwan.chooser.picker
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -29,6 +30,12 @@ object FilePicker {
     const val EXTRA_START_DIR = "com.srizwan.chooser.extra.START_DIR"
     const val EXTRA_TITLE = "com.srizwan.chooser.extra.TITLE"
 
+    /** Own callers only: show a Camera button in the top bar. Tapping it ends the picker with [RESULT_CAMERA] (no data). */
+    const val EXTRA_CAMERA_BUTTON = "com.srizwan.chooser.extra.CAMERA_BUTTON"
+
+    /** Result code of the picker when the user tapped the Camera button (`Activity.RESULT_FIRST_USER`). */
+    const val RESULT_CAMERA = Activity.RESULT_FIRST_USER
+
     /** Result extra (this app's own callers only): the chosen paths, in the order they were chosen. */
     const val EXTRA_RESULT_PATHS = "com.srizwan.chooser.extra.RESULT_PATHS"
 
@@ -42,7 +49,8 @@ object FilePicker {
         mimeTypes: List<String> = emptyList(),
         foldersOnly: Boolean = false,
         startDir: File? = null,
-        title: String? = null
+        title: String? = null,
+        cameraButton: Boolean = false
     ): Intent = Intent(context, FilePickerActivity::class.java).apply {
         putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple)
         val types = mimeTypes.map { it.trim() }.filter { it.isNotEmpty() }
@@ -50,6 +58,7 @@ object FilePicker {
         if (foldersOnly) putExtra(EXTRA_FOLDERS_ONLY, true)
         if (startDir != null) putExtra(EXTRA_START_DIR, startDir.absolutePath)
         if (!title.isNullOrBlank()) putExtra(EXTRA_TITLE, title)
+        if (cameraButton) putExtra(EXTRA_CAMERA_BUTTON, true)
     }
 
     /** Every uri in a picker result: the clip first, else `data`; empty when nothing was chosen. */

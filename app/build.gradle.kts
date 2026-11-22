@@ -76,6 +76,8 @@ dependencies {
     implementation(project(":video"))
     // Glass Gallery + built-in Gallery app (package com.srizwan.gallery), used by the File Manager for images
     implementation(project(":gallery"))
+    // Built-in Camera app (package com.srizwan.camera): Start menu, Home icon, rizwans2://camera, Browser camera
+    implementation(project(":camera"))
     // Own Open with / Share sheets and file picker (package com.srizwan.chooser)
     implementation(project(":chooser"))
     // J2ME Loader: built-in J2ME app (Java ME games, .jar / .jad), package ru.playsoftware.j2meloader

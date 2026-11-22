@@ -62,6 +62,7 @@
     <string name="ch_picker_allow">Allow</string>
     <string name="ch_picker_toast_gone">That file is no longer available</string>
     <string name="ch_cd_search">Search</string>
+    <string name="ch_cd_camera">Take a photo or video</string>
     <string name="ch_cd_view_grid">Show as grid</string>
     <string name="ch_cd_view_list">Show as list</string>
     <string name="ch_cd_options">Sort and filter</string>

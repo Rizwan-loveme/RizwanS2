@@ -40,3 +40,6 @@ include(":chooser")
 // Used by the Start menu, the Home screen, the rizwans2://j2me deep link and the File Manager (.jar / .jad files).
 include(":j2me")
 include(":j2me-dexlib")
+// Built-in Camera app (CameraX: photo, video, front / back, flash, zoom, focus), package com.srizwan.camera, resources prefixed "cm_".
+// Used by the Start menu, the Home screen, the rizwans2://camera deep link and the built-in Browser (page camera / file upload with capture).
+include(":camera")
