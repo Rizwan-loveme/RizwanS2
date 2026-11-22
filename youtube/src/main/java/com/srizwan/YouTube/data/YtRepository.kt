@@ -59,19 +59,35 @@ object YtRepository {
 
     // ───────────── Home feed ─────────────
 
-    /** Trending kiosk; if YouTube returns nothing, falls back to a search so the home screen is never empty. */
+    /** The Videos tab of the home channel while the feed comes from it (null = the feed is a search). */
+    @Volatile private var homeTab: ListLinkHandler? = null
+
+    /**
+     * Step 4: the home feed is the uploads of [HomeChannel] ("Afnan the horror world"), newest first, no longer the
+     * trending list. If the channel cannot be found or loaded, it falls back to a video search for its name so the
+     * home screen is never empty.
+     */
     fun home(): PageResult {
-        val kiosk = runCatching {
-            val ex = yt.kioskList.getDefaultKioskExtractor()
-            ex.fetchPage()
-            val page = ex.initialPage
-            PageResult(mapAll(page.items), page.nextPage)
-        }.getOrNull()
-        if (kiosk != null && kiosk.items.isNotEmpty()) return kiosk
-        return search("trending videos", Filter.VIDEOS)
+        val channelUrl = runCatching { HomeChannel.resolve() }.getOrNull()
+        if (channelUrl != null) {
+            var failed = false
+            val page = runCatching {
+                val info = ChannelInfo.getInfo(yt, channelUrl)
+                val tab = info.tabs.firstOrNull { it.contentFilters.contains(ChannelTabs.VIDEOS) }
+                val first = tab?.let { channelTab(it) }
+                if (tab != null && first != null && first.items.isNotEmpty()) { homeTab = tab; first } else null
+            }.onFailure { failed = true }.getOrNull()
+            if (page != null) return page
+            if (failed) HomeChannel.forgetFound()
+        }
+        homeTab = null
+        return search(HomeChannel.NAME, Filter.VIDEOS)
     }
 
-    fun homeMore(page: Page): PageResult = searchMore("trending videos", Filter.VIDEOS, page)
+    fun homeMore(page: Page): PageResult {
+        val tab = homeTab
+        return if (tab != null) channelTabMore(tab, page) else searchMore(HomeChannel.NAME, Filter.VIDEOS, page)
+    }
 
     // ───────────── Search ─────────────
 

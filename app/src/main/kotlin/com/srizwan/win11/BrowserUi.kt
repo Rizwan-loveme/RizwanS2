@@ -424,6 +424,7 @@ internal fun MainActivity.createBrowserView(): LinearLayout {
     dlHolder.addView(dlBadge, FrameLayout.LayoutParams(dp(15), dp(15), Gravity.TOP or Gravity.END).apply {
         topMargin = dp(3); rightMargin = dp(2)
     })
+    toolbar.addView(makeMediaGrabberButton()) // Media Grabber (BrowserMediaGrabber.kt)
     toolbar.addView(dlHolder)
 
     progressBar =
@@ -471,6 +472,7 @@ internal fun MainActivity.updateReloadIcon() {
 
 
 internal fun MainActivity.updateNavButtons() {
+    refreshGrabDot() // Media Grabber: the dot follows the open tab / page
     if (!backNavIconInit) return
     val wv = webTabs.getOrNull(currentTabIndex)?.webView
     try {
@@ -644,7 +646,13 @@ internal fun MainActivity.addNewTab(
                 if (idx != -1 && !url.isNullOrEmpty() && url != "about:blank") webTabs[idx].navigated = true
                 view?.evaluateJavascript(BLOB_HOOK_JS, null)
                 view?.evaluateJavascript(MEDIA_HOOK_JS, null)
+                if (view != null) clearSniffedMedia(view) // Media Grabber: a new page, forget the old page's media
                 updateNavButtons()
+            }
+            // Media Grabber: remember the media addresses a page loads (the request itself is left alone)
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                request?.url?.toString()?.let { sniffMediaRequest(view, it) }
+                return super.shouldInterceptRequest(view, request)
             }
             override fun onPageFinished(view: WebView?, url: String?) {
                 val idx = webTabs.indexOfFirst { it.webView == view }
