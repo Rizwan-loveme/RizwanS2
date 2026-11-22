@@ -20,8 +20,25 @@ extra["ndkVer"] = "29.0.13846066"
 // (required by androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1, which appcompat 1.6.1 brings in).
 // Every module now uses one coroutines version that is published for sure, so nothing asks for 1.6.1.
 val coroutinesVersion = "1.8.1"
+
+// Release build failed in :app:compileReleaseKotlin: kotlin-stdlib 2.4.20 (pulled in transitively by a
+// library) has metadata 2.4.0, but the compiler is 2.2.10 and reads up to 2.3.0 ("Incompatible classes
+// were found in dependencies"). Every kotlin-stdlib* artifact is pinned to the compiler version on the
+// compile/runtime classpaths. Annotation-processor and Kotlin tooling configurations are left alone.
+val kotlinStdlibVersion = "2.2.10"
 allprojects {
     configurations.configureEach {
+        val cfgName = name
+        if ((cfgName.contains("CompileClasspath") || cfgName.contains("RuntimeClasspath")) &&
+            !cfgName.startsWith("kotlin")
+        ) {
+            resolutionStrategy.eachDependency {
+                if (requested.group == "org.jetbrains.kotlin" && requested.name.startsWith("kotlin-stdlib")) {
+                    useVersion(kotlinStdlibVersion)
+                    because("2.4.x stdlib is unreadable by the Kotlin 2.2.10 compiler")
+                }
+            }
+        }
         resolutionStrategy.eachDependency {
             if (requested.group == "org.jetbrains.kotlinx" && requested.name.startsWith("kotlinx-coroutines-")) {
                 useVersion(coroutinesVersion)
