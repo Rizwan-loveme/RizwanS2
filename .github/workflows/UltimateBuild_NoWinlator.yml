@@ -14,6 +14,9 @@ name: Android Release Build (Signed, without Winlator)
 # Nothing is committed, so your repo (with Winlator) is untouched. Release tags are
 # "release-nowinlator-N" so they never clash with the normal workflow's "release-N".
 #
+# PPSSPP (:ppsspp): the C++ core + assets are cloned at build time (ppsspp/UPSTREAM_VERSION, cached) and built with ccache;
+# the run fails if libppsspp_jni.so or the PPSSPP assets are missing from the APK. Timeout is 120 minutes because of that native build.
+#
 # Package rename: the old -> new replacement happens only inside this run's
 # temporary checkout. Nothing is committed or pushed, so your repo is untouched.
 #
@@ -57,7 +60,7 @@ jobs:
   build:
     name: Build & Sign Release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     permissions:
       contents: write
@@ -65,6 +68,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      # Winlator assets + PPSSPP source + several native builds need a lot of disk: free the runner's unused big toolchains first.
+      - name: Free disk space
+        run: |
+          df -h / | tail -n 1
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost || true
+          df -h / | tail -n 1
 
       # Runs BEFORE the package rename, so the stub is renamed together with the rest of the code.
       - name: Remove Winlator (build without it)
@@ -261,6 +271,42 @@ jobs:
           echo "== Installed platforms =="
           ls "$ANDROID_HOME/platforms"
 
+      # PPSSPP (:ppsspp module): the C++ core and assets are not in the repo, they are cloned at the tag pinned in
+      # ppsspp/UPSTREAM_VERSION (ppsspp/tools/fetch-upstream.sh). Cached between runs; the Gradle task fetchPpssppUpstream
+      # does the same clone by itself when this folder is missing, so this step only saves time (and shows clone errors early).
+      - name: Cache PPSSPP source
+        id: ppsspp_src
+        uses: actions/cache@v4
+        with:
+          path: ppsspp/upstream
+          key: ppsspp-upstream-${{ hashFiles('ppsspp/UPSTREAM_VERSION', 'ppsspp/tools/fetch-upstream.sh') }}
+
+      - name: Fetch PPSSPP source
+        run: |
+          set -e
+          bash ppsspp/tools/fetch-upstream.sh
+          echo "PPSSPP: $(cat ppsspp/UPSTREAM_VERSION)"; du -sh ppsspp/upstream ppsspp/upstream/assets
+
+      # ccache for the PPSSPP C++ build only (the -PppssppCcache property adds the compiler launcher to :ppsspp's CMake arguments).
+      # The NDK is installed fresh on every run, so compilers are compared by content, not by modification time.
+      - name: Set up ccache for PPSSPP
+        run: |
+          sudo apt-get install -y --no-install-recommends ccache
+          ccache --version | head -n 1
+          echo "CCACHE_DIR=$HOME/.cache/ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=1500M" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_ppssppCcache=true" >> "$GITHUB_ENV"
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-ppsspp-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-ppsspp-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION') }}-
+            ccache-ppsspp-${{ runner.os }}-
+
       # If gradlew is missing from the repo, regenerate it from the committed
       # wrapper properties instead of failing with "No such file or directory".
       - name: Make gradlew executable
@@ -303,6 +349,21 @@ jobs:
           fi
           echo "unsigned_apk=$UNSIGNED_APK" >> "$GITHUB_OUTPUT"
           ls -lh app/build/outputs/apk/release/
+
+          # PPSSPP must really be inside the APK (native library + runtime assets), otherwise the app opens but PPSSPP cannot start.
+          # (the listing goes to a file first: "unzip | grep -q" would fail under pipefail when grep stops reading early)
+          echo "== PPSSPP in the APK =="
+          unzip -l "$UNSIGNED_APK" > "$RUNNER_TEMP/apk-list.txt"
+          grep -E "libppsspp_jni\.so|assets/ppge_atlas\.zim|assets/flash0/" "$RUNNER_TEMP/apk-list.txt" | head -n 6 || true
+          if ! grep -q "lib/arm64-v8a/libppsspp_jni\.so" "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::lib/arm64-v8a/libppsspp_jni.so is not in the APK (PPSSPP native build missing)"
+            exit 1
+          fi
+          if ! grep -q "assets/ppge_atlas\.zim" "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::PPSSPP assets are not in the APK"
+            exit 1
+          fi
+          ccache -s 2>/dev/null | head -n 12 || true
 
       # Optional and safe: prints only lengths and whitespace flags, never secret
       # characters (the old hex-dump step leaked the last 4 characters of each
