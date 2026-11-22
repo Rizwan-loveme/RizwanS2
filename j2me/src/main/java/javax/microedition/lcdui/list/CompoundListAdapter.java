@@ -58,7 +58,7 @@ public class CompoundListAdapter extends CompoundAdapter implements ListAdapter 
 				viewResourceID = android.R.layout.simple_list_item_single_choice;
 				break;
 			case Choice.MULTIPLE:
-				viewResourceID = android.R.layout.jl_simple_list_item_multiple_choice;
+				viewResourceID = R.layout.jl_simple_list_item_multiple_choice;
 				break;
 			default:
 				throw new IllegalArgumentException("list type " + type + " is not supported");
