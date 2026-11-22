@@ -82,6 +82,7 @@ internal fun fileTypeColor(ext: String): Int = when (ext) {
     "apk" -> Color.parseColor("#4CAF50")
     "exe", "msi", "bat", "lnk" -> Color.parseColor("#C77DFF") // Windows programs (run with Winlator)
     "jar", "jad", "kjx" -> Color.parseColor("#FF9F43") // Java ME games (open in the built-in J2ME app)
+    "iso", "cso", "chd", "pbp", "elf", "ppdmp" -> Color.parseColor("#4C8DFF") // PSP games (open in the built-in PPSSPP app)
     else -> Color.parseColor("#8A8A8A")
 }
 

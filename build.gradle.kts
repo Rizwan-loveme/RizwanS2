@@ -8,6 +8,8 @@ plugins {
     id("com.android.application") version "8.13.2" apply false
     id("com.android.library") version "8.13.2" apply false
     id("org.jetbrains.kotlin.android") version "2.2.10" apply false
+    // :ppsspp (tombstone.proto). 0.9.6 is the AGP 8.x line; 0.10.0 is for AGP 9 (this project stays on AGP 8.13.2).
+    id("com.google.protobuf") version "0.9.6" apply false
 }
 
 // Read by :Bcore (Groovy) as rootProject.ext.xxx

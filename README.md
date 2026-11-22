@@ -1396,3 +1396,78 @@ Build and test once: `./gradlew :app:assembleDebug` (CI: `UltimateBuild.yml`). T
 Known limits (kept small on purpose): no filters / HDR / timer / grid / QR mode; the icons do not rotate with the phone; the capture camera for
 uploads ignores the page's front / back hint (`capture="user"`), because WebView does not pass it on; the torch of the Quick controls and the
 Camera's flash use the same hardware, so use one at a time.
+
+## PPSSPP — `:ppsspp` module (PPSSPP v1.20.4, package `org.ppsspp.ppsspp`)
+
+[PPSSPP](https://github.com/hrydgard/ppsspp) (pinned tag **v1.20.4**, GPL-2.0-or-later) is a PSP emulator. It is now a built-in app of Win11 in the same style as J2ME / Camera:
+own Gradle module, resources prefixed `pp_`, no launcher icon of its own. Licence and credits: `NOTICE-PPSSPP.md`, `LICENSE-PPSSPP`. The module's own notes (more detail per step) are in `ppsspp/README.md`.
+
+The Android part (19 Java files, `tombstone.proto`, icons, manifest) is in `ppsspp/`. The C++ core (`android/jni`, `ext/`, FFmpeg libraries) and the runtime `assets/` are **not in the project zip**:
+`ppsspp/tools/fetch-upstream.sh` clones the tag from `ppsspp/UPSTREAM_VERSION` into `ppsspp/upstream/` (git-ignored) before every build.
+
+### PPSSPP plan (10 steps)
+
+| # | Step | Status |
+|---|------|--------|
+| 1 | Get the source (v1.20.4 + submodules) | done |
+| 2 | `:ppsspp` module: Java, proto, `pp_` resources, library manifest, fetch script | done |
+| 3 | Gradle wiring: `settings.gradle.kts`, protobuf plugin, CMake path, NDK, ABIs, `:app` dependency, `fetchPpssppUpstream` task | done |
+| 4 | Manifest merge into `:app` (reviewed against every other module) | done |
+| 5 | Hooks: Start menu, Home icon, `rizwans2://ppsspp`, File Manager | done |
+| 6 | Assets and licence files (`NOTICE-PPSSPP.md`, `LICENSE-PPSSPP`) | done |
+| 7 | CI: source cache, ccache, disk space, timeout, APK check | done |
+| 8 | Update all details (this section, `ppsspp/README.md`, comments) | done |
+| 9 | Checks (static only, see "Step 9 results" below) | done |
+| 10 | Final flat zip `RizwanS2-main-ppsspp.zip` | done |
+
+### Where it is hooked in
+
+| Place | What |
+|---|---|
+| Start menu | built-in app **PPSSPP** (handheld-console icon, blue), section `ppsspp` (`StartApps.kt`) |
+| Home screen | desktop icon **PPSSPP** under J2ME (`Win11Shell.kt`, `VectorIconView.PPSSPP`) |
+| Deep link | `rizwans2://ppsspp` (`MainActivity.kt` `handleDeepLink`, the KDoc list and the manifest comment) |
+| File Manager | tap `.iso` / `.cso` / `.chd` / `.pbp` / `.elf` / `.ppdmp` → the game starts in PPSSPP (`FileManagerUi.kt` `openFile`, `PpssppLauncher.kt`); blue type chip (`fileTypeColor`) |
+| Other apps | the same file types opened from any app can start in PPSSPP (VIEW filters of upstream kept in `:ppsspp`'s manifest) |
+| Settings | `settings.gradle.kts` (`:ppsspp`), `app/build.gradle.kts` (`implementation(project(":ppsspp"))`), root `build.gradle.kts` (protobuf plugin 0.9.6) |
+
+`PpssppLauncher.kt` passes the game as a plain absolute path in PPSSPP's own shortcut extra (`PpssppActivity.SHORTCUT_EXTRA_KEY`): a `file://` uri would throw (target API 28) and a `content://` uri would leave PPSSPP without a real path.
+It relies on the all-files permission `:app` already declares. PPSSPP's own first-start choices (where to keep its data, its permission prompts) are upstream behaviour, unchanged.
+
+### What changed compared with upstream (GPL "changes" list, also in `NOTICE-PPSSPP.md`)
+
+- **Library, not an app**: `:ppsspp` is an Android library (`namespace org.ppsspp.ppsspp`, compileSdk 37, minSdk 26, NDK `ext.ndkVer`, CMake 3.22.1, upstream's root `CMakeLists.txt` with the "normal" flavor arguments, platform android-26).
+  Java package names and JNI names are unchanged (the native code depends on them).
+- **One variant**: no gold / legacy / vr flavors, no signing, no git-version logic, no lint baseline. `PpssppActivity.isVR()` returns `false` (it used `BuildConfig.FLAVOR`).
+- **Resources**: all names start with `pp_` (`pp_app_name`, `pp_shortcut_name`, `pp_style`, `pp_theme_proxy_transparent`, `pp_black`, `pp_ic_launcher*`, `pp_ic_banner`); `ShortcutActivity` uses `R.mipmap.pp_ic_launcher`. A scan found no clash with another module.
+- **Manifest**: no `MAIN` / `LAUNCHER` filter (no second icon), no `<application>` attributes (`:app` keeps its own), icon / label / banner on `PpssppActivity`, `android.max_aspect` moved from `<application>` to the activity,
+  no `uses-sdk tools:overrideLibrary`. All permissions already exist in other modules except `TRANSMIT_IR` (no prompt) and `archos.permission.FULLSCREEN.FULL` (ignored).
+- **ABIs**: `arm64-v8a` only by default (like `:winlator`); more with `-PppssppAbis=arm64-v8a,armeabi-v7a`. On a 32-bit phone PPSSPP cannot load its library (upstream shows its own "no native binary" message).
+- **Source and assets at build time**: `fetchPpssppUpstream` (bash + git) runs before CMake and asset merging; offline, put the files in `ppsspp/upstream/` by hand. `upstream/assets` (about 22 MB) is the module's assets folder.
+- **CI**: `UltimateBuild.yml` and `UltimateBuild_NoWinlator.yml` cache the source, use ccache for PPSSPP only, free disk space first, run up to 120 minutes and fail if `libppsspp_jni.so` or the assets are missing from the APK.
+- **Library versions** (same as upstream): appcompat (project uses 1.6.1), documentfile 1.1.0, protobuf-javalite 4.33.5, protoc 3.25.3, protobuf Gradle plugin 0.9.6 (the AGP 8.x line; 0.10.0 is for AGP 9).
+- **APK size**: grows by the arm64 `libppsspp_jni.so` plus about 22 MB of assets (not measured here).
+- **Licence**: GPL-2.0-or-later code now runs in the same process as the Apache-2.0 and LGPL parts. `NOTICE-PPSSPP.md` explains the usual handling; check it before publishing.
+- Version stays 2.5.3 (code 120).
+
+### Step 9 results (static checks, run on this zip)
+
+- All 482 `.xml` files parse (manifests, layouts, values, drawables); all 7 workflow files parse as YAML; none has a duplicate step name.
+- Bracket balance with a real tokenizer (comments / strings / templates skipped): 68 files (4 Gradle files, 19 PPSSPP Java files, all `:app` Kotlin files), 0 problems.
+- Resources: every `pp_` name is unique inside `:ppsspp` and does not exist in any other module; every `@type/name` in `:ppsspp`'s manifest and every `R.x.y` in its Java files resolves
+  (`Theme_Material_Dialog_Alert` is `android.R`, not ours); all 4 manifest class names exist as files.
+- `:app` manifest: no duplicate component or permission; the PPSSPP entries come from the merged library manifest, `:app` only has comments.
+- Hooks present and consistent: Start menu (`StartApps.kt`), Home icon (`Win11Shell.kt`), `rizwans2://ppsspp` (`MainActivity.kt`), File Manager (`FileManagerUi.kt` + `FileExplorerUi.kt`), `PpssppLauncher.kt`.
+- CI: both build workflows have the same PPSSPP steps (cache, fetch, ccache, APK check) and a 120 minute timeout; `ppsspp/upstream/` is git-ignored.
+- Gradle: `include(":ppsspp")`, `implementation(project(":ppsspp"))`, protobuf plugin in the root file, `ndkVer` defined, compileSdk 37 / minSdk 26 equal to `:app`.
+- Behaviour note: a tap on a PSP file starts the game directly (same as J2ME / video / gallery); the own **"Open with..."** sheet (`:chooser`) is shown through the file's "Open with..." action, where PPSSPP is listed through its VIEW filters.
+
+### Not verified here
+
+No Android SDK, NDK, Gradle download or GitHub access in this environment, so **no Gradle build, native build, CI run or device test was run**. Checked by hand: all XML parses, every `@type/name` of the module resolves, no resource clash,
+both workflow files parse as YAML, bracket balance of the Gradle files. **Build once with `./gradlew :app:assembleDebug` or run `UltimateBuild.yml`.** Things to look at first if it fails:
+(1) the protobuf plugin 0.9.6 with AGP 8.13.2 (`generateProto` task; `builtins { create("java") }` syntax); (2) a CMake / NDK error in upstream's build (NDK `29.0.13846066`, upstream used `29.0.14206865`);
+(3) `libc++_shared.so` picked from another module (already `pickFirsts` in `:app`); (4) disk space on the runner.
+Test on a device: Start menu → **PPSSPP** (also the Home icon and `rizwans2://ppsspp`) → PPSSPP's game browser opens → pick a `.iso` / `.cso` → the game runs; File Manager → tap a `.iso` → the game starts directly;
+rotate, back button, close and open again. Keep PPSSPP closed before starting a second game from the File Manager (upstream does not switch games while running).
+"All apps" numbers (`rizwans2://N`) shift by one for the apps after **PPSSPP** (the list is sorted by name).

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pp_app_name">PPSSPP</string>
+    <string name="pp_shortcut_name">PPSSPP game</string>
+</resources>

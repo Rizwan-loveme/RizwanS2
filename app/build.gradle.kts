@@ -82,6 +82,8 @@ dependencies {
     implementation(project(":chooser"))
     // J2ME Loader: built-in J2ME app (Java ME games, .jar / .jad), package ru.playsoftware.j2meloader
     implementation(project(":j2me"))
+    // PPSSPP: built-in PSP emulator (package org.ppsspp.ppsspp), Start menu, Home icon, rizwans2://ppsspp, File Manager (.iso / .cso / .pbp)
+    implementation(project(":ppsspp"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

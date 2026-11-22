@@ -7,3 +7,5 @@ build/
 local.properties
 *.jks
 *.keystore
+# PPSSPP C++ core is fetched at build time (ppsspp/tools/fetch-upstream.sh)
+ppsspp/upstream/

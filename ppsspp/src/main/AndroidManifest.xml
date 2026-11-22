@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Library manifest of :ppsspp (upstream: PPSSPP v1.20.4, android/AndroidManifest.xml), package org.ppsspp.ppsspp.
+  Differences from upstream (merged into :app in step 4, see ppsspp/README.md):
+   - resources renamed with the pp_ prefix (pp_style, pp_theme_proxy_transparent, pp_app_name, pp_shortcut_name, pp_ic_*)
+   - no MAIN / LAUNCHER / LEANBACK_LAUNCHER filter: PPSSPP is opened from the Start menu, the Home screen,
+     the rizwans2://ppsspp deep link and the File Manager, not from its own launcher icon
+   - no <application> level attributes (allowBackup, requestLegacyExternalStorage, banner, appCategory / isGame, profileable, ...) and no
+     <uses-sdk tools:overrideLibrary>: those belong to :app (minSdk 26). icon / label / banner are on PpssppActivity instead;
+     android.max_aspect moved from <application> to PpssppActivity
+   - Step 4 merge review (see README): permissions all overlap with :app / :winlator / :Bcore / :j2me / :camera, except TRANSMIT_IR (normal, no prompt) and
+     archos FULLSCREEN (unknown, ignored); android.hardware.* features are all required="false"; only glEsVersion 0x00020000 is a hard requirement
+   - no VR / gold / legacy flavors (single "normal" variant)
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:glEsVersion="0x00020000" />
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.type.pc" android:required="false" />
+
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="archos.permission.FULLSCREEN.FULL" />
+    <uses-permission-sdk-23 android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission-sdk-23 android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission-sdk-23 android:name="android.permission.TRANSMIT_IR" />
+    <uses-permission-sdk-23 android:name="android.permission.CAMERA" />
+    <uses-permission-sdk-23 android:name="android.permission.RECORD_AUDIO" />
+
+    <application>
+        <activity
+            android:name=".PpssppActivity"
+            android:label="@string/pp_app_name"
+            android:icon="@mipmap/pp_ic_launcher"
+            android:banner="@drawable/pp_ic_banner"
+            android:configChanges="locale|keyboard|keyboardHidden|navigation|uiMode"
+            android:theme="@style/pp_style"
+            android:launchMode="singleInstance"
+            android:exported="true">
+            <!-- upstream has this meta-data on <application>; it is kept on the activity so it does not change the other apps of Win11 -->
+            <meta-data android:name="android.max_aspect" android:value="2.4" />
+            <property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:mimeType="*/*" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.iso" />
+                <data android:pathPattern=".*\\..*\\.iso" />
+                <data android:pathPattern=".*\\..*\\..*\\.iso" />
+                <data android:pathPattern=".*\\.cso" />
+                <data android:pathPattern=".*\\..*\\.cso" />
+                <data android:pathPattern=".*\\..*\\..*\\.cso" />
+                <data android:pathPattern=".*\\.chd" />
+                <data android:pathPattern=".*\\..*\\.chd" />
+                <data android:pathPattern=".*\\..*\\..*\\.chd" />
+                <data android:pathPattern=".*\\.elf" />
+                <data android:pathPattern=".*\\..*\\.elf" />
+                <data android:pathPattern=".*\\..*\\..*\\.elf" />
+                <data android:pathPattern=".*\\.ISO" />
+                <data android:pathPattern=".*\\..*\\.ISO" />
+                <data android:pathPattern=".*\\..*\\..*\\.ISO" />
+                <data android:pathPattern=".*\\.CSO" />
+                <data android:pathPattern=".*\\..*\\.CSO" />
+                <data android:pathPattern=".*\\..*\\..*\\.CSO" />
+                <data android:pathPattern=".*\\.ELF" />
+                <data android:pathPattern=".*\\..*\\.ELF" />
+                <data android:pathPattern=".*\\..*\\..*\\.ELF" />
+                <data android:pathPattern=".*\\.CHD" />
+                <data android:pathPattern=".*\\..*\\.CHD" />
+                <data android:pathPattern=".*\\..*\\..*\\.CHD" />
+                <data android:pathPattern=".*\\.ppdmp" />
+                <data android:pathPattern=".*\\.pbp" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ShortcutActivity"
+            android:label="@string/pp_shortcut_name"
+            android:exported="true">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ImageResultProxyActivity"
+            android:theme="@style/pp_theme_proxy_transparent"
+            android:launchMode="standard" />
+        <activity
+            android:name=".DocumentResultProxyActivity"
+            android:theme="@style/pp_theme_proxy_transparent"
+            android:launchMode="standard" />
+    </application>
+
+</manifest>

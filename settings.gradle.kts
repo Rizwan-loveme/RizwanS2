@@ -43,3 +43,8 @@ include(":j2me-dexlib")
 // Built-in Camera app (CameraX: photo, video, front / back, flash, zoom, focus), package com.srizwan.camera, resources prefixed "cm_".
 // Used by the Start menu, the Home screen, the rizwans2://camera deep link and the built-in Browser (page camera / file upload with capture).
 include(":camera")
+// PPSSPP (PSP emulator) as the built-in "PPSSPP" app, package org.ppsspp.ppsspp (upstream package kept: the JNI names depend on it).
+// Upstream: https://github.com/hrydgard/ppsspp (GPL-2.0-or-later), pinned in ppsspp/UPSTREAM_VERSION (v1.20.4), see NOTICE-PPSSPP.md.
+// The C++ core is NOT in the project zip: ppsspp/tools/fetch-upstream.sh clones it into ppsspp/upstream/ at build time.
+// Resources prefixed "pp_". Used by the Start menu, the Home screen, the rizwans2://ppsspp deep link and the File Manager (.iso / .cso / .pbp), built step by step, see ppsspp/README.md.
+include(":ppsspp")

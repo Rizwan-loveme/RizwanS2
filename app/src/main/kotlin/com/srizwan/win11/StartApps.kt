@@ -106,6 +106,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_GALLERY = "builtin.gallery"
         private const val BUILTIN_CLS_CAMERA = "builtin.camera"
         private const val BUILTIN_CLS_J2ME = "builtin.j2me"
+        private const val BUILTIN_CLS_PPSSPP = "builtin.ppsspp"
+        /** Handheld console with a screen and two buttons (even-odd fill makes the hollow screen): the built-in PPSSPP app (:ppsspp module, package org.ppsspp.ppsspp). */
+        private const val PPSSPP_PATH =
+            "M5,6H19C20.66,6 22,7.34 22,9V15C22,16.66 20.66,18 19,18H5C3.34,18 2,16.66 2,15V9C2,7.34 3.34,6 5,6ZM8,8H16C16.55,8 17,8.45 17,9V15C17,15.55 16.55,16 16,16H8C7.45,16 7,15.55 7,15V9C7,8.45 7.45,8 8,8ZM3.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0ZM18.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0Z"
         /** Camera body with a lens (Material "photo_camera"): the built-in Camera app (:camera module, package com.srizwan.camera). */
         private const val CAMERA_PATH =
             "M9,2L7.17,4H4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2H9zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"
@@ -277,6 +281,12 @@ class AppRepository(private val ctx: Context) {
             "J2ME", ctx.packageName, BUILTIN_CLS_J2ME,
             BuiltInIconDrawable(J2ME_PATH, Color.parseColor("#FF9F43")),
             section = "j2me"
+        ),
+        // Built-in PPSSPP app (:ppsspp module, org.ppsspp.ppsspp.PpssppActivity), vector icon only
+        AppEntry(
+            "PPSSPP", ctx.packageName, BUILTIN_CLS_PPSSPP,
+            BuiltInIconDrawable(PPSSPP_PATH, Color.parseColor("#4C8DFF"), evenOdd = true),
+            section = "ppsspp"
         )
     ) + (
         // Winlator (PC software: .exe via Wine + Box64) exists only for 64-bit ARM phones.

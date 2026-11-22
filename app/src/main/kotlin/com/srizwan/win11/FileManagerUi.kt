@@ -97,6 +97,8 @@ internal fun MainActivity.openFile(file: File) {
         isImageFile(file.name) -> openImageFile(file)
         // .jar .jad .kjx: Java ME games open in the built-in J2ME app (:j2me module = J2ME Loader), see J2meLauncher.kt
         isJ2meFile(file.name) -> openJ2meFile(file)
+        // .iso .cso .chd .pbp .elf .ppdmp: PSP games start in the built-in PPSSPP (:ppsspp module), see PpssppLauncher.kt
+        isPpssppFile(file.name) -> openPpssppFile(file)
         // .exe .msi .bat .lnk: PC software runs in the built-in Winlator (Wine + Box64)
         WinlatorLauncher.isWindowsProgram(file.name) -> WinlatorLauncher.runFile(this, file)
         // Chooser step 5: no built-in viewer -> our own glass "Open with" sheet (saved "Always" app first), never the system chooser

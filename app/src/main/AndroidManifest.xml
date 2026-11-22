@@ -80,6 +80,11 @@
         android:supportsRtl="true"
         tools:targetApi="31">
 
+        <!-- PPSSPP (PSP emulator, :ppsspp library, package org.ppsspp.ppsspp): its 4 activities (PpssppActivity with the .iso / .cso / .chd / .elf / .pbp
+             open-with filters, ShortcutActivity, ImageResultProxyActivity, DocumentResultProxyActivity) come from the library manifest and are merged
+             here automatically; nothing is repeated in this file. PpssppActivity is singleInstance (own task) and has no LAUNCHER filter:
+             it opens from the Start menu, the Home screen, rizwans2://ppsspp and the File Manager. See ppsspp/README.md step 4. -->
+
         <!-- On-device debug log viewer (also opened from Quick Settings and the crash dialog) -->
         <activity
             android:name=".DebugLogActivity"
@@ -114,7 +119,7 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, chooser, start, quick).
+            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, ppsspp, chooser, start, quick).
                  By number: rizwans2://1, rizwans2://#1 or rizwans2://app/1 opens app number 1 of the Start menu's "All apps" list. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
