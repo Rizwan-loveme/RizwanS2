@@ -23,7 +23,6 @@
 # BlackReflection classes (black.android.*, black.com.*, black.java.* ...) are looked up by name at run time
 -keep class black.** { *; }
 -keep class mirror.** { *; }
--keep class com.winlator.** { *; }
 -keep class ru.playsoftware.** { *; }
 -keep class ru.woesss.** { *; }
 -keep class javax.microedition.** { *; }
@@ -82,7 +81,7 @@
 -dontwarn org.openjsse.**
 -dontwarn okhttp3.internal.platform.**
 
-# ---- :winlator (zstd-jni has native code, commons-compress looks codecs up by class name) ----
+# ---- Winlator libraries (its own classes are kept by winlator/consumer-rules.pro) (zstd-jni has native code, commons-compress looks codecs up by class name) ----
 -keep class com.github.luben.zstd.** { *; }
 -keep class org.tukaani.xz.** { *; }
 -keep class org.apache.commons.compress.** { *; }
