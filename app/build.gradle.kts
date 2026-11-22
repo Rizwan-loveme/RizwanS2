@@ -24,11 +24,8 @@ android {
 
     buildTypes {
         release {
-            // R8 code shrink + resource shrink. Crash-safe on purpose: proguard-rules.pro turns off renaming and
-            // optimizing (only unused code / resources go) and keeps everything JNI / reflection / WebView reaches.
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
     compileOptions {
