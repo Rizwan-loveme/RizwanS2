@@ -1069,7 +1069,7 @@ class MainActivity : AppCompatActivity() {
         if (activeSection != "desktop") switchToSection("desktop")
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "rizwans2") {
             handleDeepLink(intent.data!!)
