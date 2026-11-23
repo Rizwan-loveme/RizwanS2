@@ -1,0 +1,822 @@
+name: Android Release Build (Signed, choose modules)
+
+# Builds a signed release APK and publishes it to GitHub Releases.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   Signing : KEYSTORE_BASE64, KEY_ALIAS, KEYSTORE_PASSWORD, KEY_PASSWORD
+#
+# CHOOSE MODULES: when you press "Run workflow" every optional module has a tick box (ticked = included, unticked = left out):
+#   Winlator (:winlator, about 140 MB of rootfs/wine assets), PPSSPP (:ppsspp), MAME (:mame), RetroArch (:retroarch), J2ME (:j2me + :j2me-dexlib).
+# For every unticked module this run, in its temporary checkout only: deletes the module folder, removes it from settings.gradle.kts and
+# app/build.gradle.kts, replaces its launcher file in :app (WinlatorLauncher.kt, PpssppLauncher.kt, MameLauncher.kt, RetroArchLauncher.kt,
+# J2meLauncher.kt) with a tiny stub (same function names, "not supported"), and hides its Start menu entry and Home icon. The fetch / cache / ccache
+# steps and the APK checks of that module are skipped too (a build without PPSSPP / RetroArch / MAME is much faster and smaller).
+# Always built (the rest of the app depends on them): BlackBox (:Bcore, parallel apps), YouTube, Video, Gallery, Camera, Chooser.
+# Nothing is committed, so your repo (with all modules) is untouched. Release tags are "release-custom-N" so they never clash with the normal
+# workflow's "release-N". Extra switch: "Publish to GitHub Releases" (unticked = the APK is only attached to the run as a workflow artifact).
+#
+# PPSSPP (:ppsspp): the C++ core + assets are cloned at build time (ppsspp/UPSTREAM_VERSION, cached) and built with ccache;
+# the run fails if libppsspp_jni.so or the PPSSPP assets are missing from the APK. Timeout is 120 minutes because of that native build.
+#
+# MAME (:mame): the MAME core (367 MB) and files.zip (64 MB) are downloaded at build time by mame/tools/fetch-upstream.sh (SHA-256 checked against
+# mame/UPSTREAM_SHA256). The run fails if libMAME4droid.so (exact pinned size), libmame4droid-jni.so, files.zip or the help pages are missing from the APK.
+# The APK grows by about 170 MB; a GitHub release file may be up to 2 GiB, so the release upload still fits.
+#
+# RetroArch (:retroarch): the C frontend is cloned at build time at the tag pinned in retroarch/UPSTREAM_VERSION and the commit in retroarch/UPSTREAM_COMMIT
+# (retroarch/tools/fetch-upstream.sh stops if the commit differs; cached) and built by upstream's Android.mk (ndk-build) with ccache. The run fails if
+# lib/arm64-v8a/libretroarch-activity.so is missing from the APK, or if the merged manifest has no RetroArch activity in the own process :retroarch.
+# Cores are NOT bundled (RetroArch's Online Updater downloads them), so there are no RetroArch assets or cores to check. The timeout stays 120 minutes.
+#
+# Package rename: the old -> new replacement happens only inside this run's
+# temporary checkout. Nothing is committed or pushed, so your repo is untouched.
+#
+# Build error log: if the build/sign step fails, a sanitized text file
+# (build-error-log.txt) is uploaded as a run artifact. The build really uses the
+# NEW package name, but in that txt every NEW package reference (dotted,
+# slash path and JNI underscore forms) is rewritten back to the OLD package name.
+#
+# Troubleshooting "Wrong password / BadPaddingException": usually a hidden
+# newline or space pasted into a secret. The keystore decode step already strips
+# whitespace. Set the `debug_signing` input to true to run a safe diagnostic
+# (it prints lengths and whitespace flags only, never secret characters).
+
+on:
+  workflow_dispatch:
+    inputs:
+      old_package_name:
+        description: 'Old package name (current applicationId, case-sensitive)'
+        required: true
+        default: 'com.srizwan.win11'
+        type: string
+      new_package_name:
+        description: 'New package name (e.g. com.example.newapp, case-sensitive)'
+        required: true
+        type: string
+      include_winlator:
+        description: 'Winlator (run PC .exe files) - tick = include, untick = leave out'
+        required: false
+        default: true
+        type: boolean
+      include_ppsspp:
+        description: 'PPSSPP (PSP emulator, long C++ build) - tick = include'
+        required: false
+        default: true
+        type: boolean
+      include_mame:
+        description: 'MAME (arcade emulator, +170 MB) - tick = include'
+        required: false
+        default: true
+        type: boolean
+      include_retroarch:
+        description: 'RetroArch (libretro frontend, long C build) - tick = include'
+        required: false
+        default: true
+        type: boolean
+      include_j2me:
+        description: 'J2ME (Java ME games, .jar / .jad) - tick = include'
+        required: false
+        default: true
+        type: boolean
+      publish_release:
+        description: 'Publish to GitHub Releases (untick = only a workflow artifact)'
+        required: false
+        default: true
+        type: boolean
+      debug_signing:
+        description: 'Run signing diagnostics (no secrets are printed)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  APP_NAME: Parallel
+  NDK_VERSION: '29.0.13846066'   # keep in sync with ext.ndkVer in build.gradle
+
+concurrency:
+  group: signed-release-custom-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & Sign Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Winlator assets + PPSSPP source + the 367 MB MAME core (copied several times while the APK is packed) + several native builds need a lot of disk: free the runner's unused big toolchains first.
+      # RetroArch adds a 330 MB source clone and one more big native build (Vulkan / glslang); the preinstalled Docker images are not needed either.
+      - name: Free disk space
+        run: |
+          df -h / | tail -n 1
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/share/swift /opt/hostedtoolcache/CodeQL || true
+          sudo docker image prune --all --force > /dev/null 2>&1 || true
+          df -h / | tail -n 1
+
+      # Runs BEFORE the package rename, so the stubs are renamed together with the rest of the code.
+      # One block per module; a block runs only when its tick box is off. Every block ends with a check that nothing outside the
+      # module still uses its classes (the build stops here, early, with a clear message, instead of failing in Kotlin later).
+      - name: Remove the modules that are not ticked
+        env:
+          INC_WINLATOR: ${{ inputs.include_winlator }}
+          INC_PPSSPP: ${{ inputs.include_ppsspp }}
+          INC_MAME: ${{ inputs.include_mame }}
+          INC_RETROARCH: ${{ inputs.include_retroarch }}
+          INC_J2ME: ${{ inputs.include_j2me }}
+        run: |
+          set -e
+          KT=app/src/main/kotlin
+          SUMMARY=""
+
+          # stub FILE_NAME  (the stub body comes on stdin; the package line of the original file is put on top)
+          stub() {
+            local f pkg
+            f=$(find app/src -name "$1" | head -n 1)
+            if [ -z "$f" ]; then echo "::error::$1 not found under app/src"; exit 1; fi
+            pkg=$(grep -m1 '^package ' "$f")
+            { echo "$pkg"; echo; cat; } > "$f"
+            echo "stub written: $f"
+          }
+          # drop_module NAME [NAME...]: delete the folder and its Gradle wiring
+          drop_module() {
+            for m in "$@"; do
+              rm -rf "$m"
+              sed -i "/include(\":$m\")/d" settings.gradle.kts
+              sed -i "/project(\":$m\")/d" app/build.gradle.kts
+            done
+          }
+          # no_refs LABEL REGEX: the app and the kept engine modules must not use the removed module any more
+          no_refs() {
+            if grep -rnE "$2" app Bcore black-reflection compiler chooser video gallery camera youtube \
+                 --include="*.kt" --include="*.java" --include="*.xml" --include="*.kts" \
+                 | grep -vE '^\S+:[0-9]+:\s*(//|\*|/\*|<!--)' ; then
+              echo "::error::Code outside the $1 module still uses it - stopping build"
+              exit 1
+            fi
+          }
+          hide_entry() {  # hide_entry SECTION: no Home screen icon
+            sed -i "/desktopIcon(VectorIconView\.[A-Z0-9_]*, \"[^\"]*\", \"$1\")/d" "$KT"/com/*/*/Win11Shell.kt 2>/dev/null || true
+          }
+
+          if [ "$INC_WINLATOR" != "true" ]; then
+            echo "== Removing :winlator =="
+            drop_module winlator
+            stub WinlatorLauncher.kt <<'STUB'
+          import android.app.Activity
+          import android.content.Context
+          import android.widget.Toast
+          import java.io.File
+
+          /** Build without Winlator: same API as the real launcher, but Winlator is never offered. */
+          object WinlatorLauncher {
+              const val SECTION = "winlator"
+
+              fun installLogBridge() {}
+              fun isSupported(): Boolean = false
+              fun isWindowsProgram(name: String): Boolean = false
+
+              fun open(ctx: Context, extras: android.os.Bundle? = null): Boolean {
+                  Toast.makeText(ctx, "Winlator is not included in this build", Toast.LENGTH_SHORT).show()
+                  return false
+              }
+
+              fun runFile(activity: Activity, file: File, pickContainer: Boolean = false) {
+                  Toast.makeText(activity, "Winlator is not included in this build", Toast.LENGTH_SHORT).show()
+              }
+
+              fun isDrawerIconEnabled(ctx: Context): Boolean = false
+              fun setDrawerIconEnabled(ctx: Context, enabled: Boolean) {}
+              fun drawerMenuText(ctx: Context): String = ""
+          }
+          STUB
+            no_refs Winlator 'com\.winlator'
+            SUMMARY="$SUMMARY no-Winlator"
+          fi
+
+          if [ "$INC_PPSSPP" != "true" ]; then
+            echo "== Removing :ppsspp =="
+            drop_module ppsspp
+            stub PpssppLauncher.kt <<'STUB'
+          import android.widget.Toast
+          import java.io.File
+
+          /** Build without PPSSPP: same function names as the real launcher, nothing is offered. */
+          internal fun MainActivity.openPpsspp() {
+              Toast.makeText(this, "PPSSPP is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          internal fun isPpssppFile(name: String): Boolean = false
+          internal fun MainActivity.openPpssppFile(file: File) {
+              Toast.makeText(this, "PPSSPP is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          STUB
+            # Start menu entry (the last element of the built-in list) and Home screen icon
+            python3 - <<'PY'
+          import re,glob
+          f=glob.glob("app/src/main/kotlin/**/StartApps.kt",recursive=True)[0]
+          t=open(f).read()
+          n=re.sub(r'\n        // Built-in PPSSPP app[^\n]*\n        AppEntry\(.*?section = "ppsspp"\n        \)','',t,count=1,flags=re.S)
+          assert n!=t, "PPSSPP entry not found in StartApps.kt"
+          open(f,"w").write(n)
+          PY
+            hide_entry ppsspp
+            no_refs PPSSPP 'org\.ppsspp'
+            SUMMARY="$SUMMARY no-PPSSPP"
+          fi
+
+          if [ "$INC_MAME" != "true" ]; then
+            echo "== Removing :mame =="
+            drop_module mame
+            stub MameLauncher.kt <<'STUB'
+          import android.widget.Toast
+
+          /** Build without MAME: same function names as the real launcher, nothing is offered. */
+          internal fun isMameSupported(): Boolean = false
+          internal fun MainActivity.openMame() {
+              Toast.makeText(this, "MAME is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          STUB
+            no_refs MAME 'com\.seleuco'
+            SUMMARY="$SUMMARY no-MAME"
+          fi
+
+          if [ "$INC_RETROARCH" != "true" ]; then
+            echo "== Removing :retroarch =="
+            drop_module retroarch
+            stub RetroArchLauncher.kt <<'STUB'
+          import android.content.Context
+          import android.widget.Toast
+          import java.io.File
+
+          /** Build without RetroArch: same function names as the real launcher, nothing is offered. */
+          internal fun isRetroarchSupported(ctx: Context): Boolean = false
+          internal fun MainActivity.openRetroarch() {
+              Toast.makeText(this, "RetroArch is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          internal fun isRetroarchFile(name: String): Boolean = false
+          internal fun MainActivity.openRetroarchFile(file: File) {
+              Toast.makeText(this, "RetroArch is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          STUB
+            # the core picker belongs to the real launcher only
+            find app/src -name RetroArchCores.kt -delete
+            no_refs RetroArch 'com\.retroarch|RetroarchCores'
+            SUMMARY="$SUMMARY no-RetroArch"
+          fi
+
+          if [ "$INC_J2ME" != "true" ]; then
+            echo "== Removing :j2me =="
+            drop_module j2me j2me-dexlib
+            stub J2meLauncher.kt <<'STUB'
+          import android.widget.Toast
+          import java.io.File
+
+          /** Build without J2ME: same function names as the real launcher, nothing is offered. */
+          internal fun MainActivity.openJ2me() {
+              Toast.makeText(this, "J2ME is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          internal fun isJ2meFile(name: String): Boolean = false
+          internal fun MainActivity.openJ2meFile(file: File) {
+              Toast.makeText(this, "J2ME is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          STUB
+            # App.kt calls EmulatorApplication (J2ME's Application glue) in two places; Start menu entry and Home icon
+            python3 - <<'PY'
+          import re,glob
+          f=glob.glob("app/src/main/kotlin/**/App.kt",recursive=True)[0]
+          t=open(f).read()
+          n=t.replace("ru.playsoftware.j2meloader.EmulatorApplication.attachMidletProcess(this)","// (J2ME is not in this build)")
+          n=n.replace("ru.playsoftware.j2meloader.EmulatorApplication.attach(this)","// (J2ME is not in this build)")
+          assert "ru.playsoftware" not in n.replace("\n","\n") or True
+          open(f,"w").write(n)
+          f=glob.glob("app/src/main/kotlin/**/StartApps.kt",recursive=True)[0]
+          t=open(f).read()
+          n=re.sub(r'\n        // Built-in J2ME app[^\n]*\n        AppEntry\(.*?section = "j2me"\n        \),','',t,count=1,flags=re.S)
+          assert n!=t, "J2ME entry not found in StartApps.kt"
+          open(f,"w").write(n)
+          PY
+            hide_entry j2me
+            no_refs J2ME 'ru\.playsoftware|j2meloader'
+            SUMMARY="$SUMMARY no-J2ME"
+          fi
+
+          echo "== Verify Gradle no longer includes a removed module =="
+          for pair in "winlator:$INC_WINLATOR" "ppsspp:$INC_PPSSPP" "mame:$INC_MAME" "retroarch:$INC_RETROARCH" "j2me:$INC_J2ME"; do
+            m="${pair%%:*}"; on="${pair##*:}"
+            if [ "$on" != "true" ] && grep -rn "project(\":$m\")\|include(\":$m\")" --include="*.kts" --include="*.gradle" --exclude-dir=.git --exclude-dir=build . ; then
+              echo "::error::Gradle still references the removed :$m module"; exit 1
+            fi
+          done
+          echo "Done. Removed:${SUMMARY:- nothing (all modules ticked)}"
+          {
+            echo "### Modules in this build"
+            echo "| Module | Included |"; echo "|---|---|"
+            echo "| Winlator | $INC_WINLATOR |"; echo "| PPSSPP | $INC_PPSSPP |"; echo "| MAME | $INC_MAME |"
+            echo "| RetroArch | $INC_RETROARCH |"; echo "| J2ME | $INC_J2ME |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate & Apply Package Rename
+        env:
+          OLD_PKG: ${{ inputs.old_package_name }}
+          NEW_PKG: ${{ inputs.new_package_name }}
+        run: |
+          set -e
+
+          echo "== Validating package names =="
+          PKG_REGEX='^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$'
+
+          if [[ ! "$OLD_PKG" =~ $PKG_REGEX ]]; then
+            echo "::error::OLD package name '$OLD_PKG' is not a valid format (e.g. com.example.app)"
+            exit 1
+          fi
+          if [[ ! "$NEW_PKG" =~ $PKG_REGEX ]]; then
+            echo "::error::NEW package name '$NEW_PKG' is not a valid format (e.g. com.example.app)"
+            exit 1
+          fi
+          if [ "$OLD_PKG" == "$NEW_PKG" ]; then
+            echo "::error::OLD and NEW package names must differ."
+            exit 1
+          fi
+
+          echo "Renaming package: $OLD_PKG -> $NEW_PKG"
+
+          OLD_PATH=$(echo "$OLD_PKG" | tr '.' '/')
+          NEW_PATH=$(echo "$NEW_PKG" | tr '.' '/')
+
+          echo "== Step 1: Moving Kotlin/Java source directories =="
+          MOVED_ANY=0
+          for SRC_ROOT in \
+            app/src/main/kotlin app/src/main/java \
+            app/src/test/kotlin app/src/test/java \
+            app/src/androidTest/kotlin app/src/androidTest/java
+          do
+            OLD_DIR="$SRC_ROOT/$OLD_PATH"
+            if [ -d "$OLD_DIR" ]; then
+              NEW_DIR="$SRC_ROOT/$NEW_PATH"
+              echo "Moving: $OLD_DIR -> $NEW_DIR"
+              mkdir -p "$(dirname "$NEW_DIR")"
+              mv "$OLD_DIR" "$NEW_DIR"
+              MOVED_ANY=1
+
+              # Remove parent folders left empty by the move
+              OLD_PARENT=$(dirname "$OLD_DIR")
+              while [ "$OLD_PARENT" != "$SRC_ROOT" ] && [ -d "$OLD_PARENT" ] && [ -z "$(ls -A "$OLD_PARENT")" ]; do
+                rmdir "$OLD_PARENT"
+                OLD_PARENT=$(dirname "$OLD_PARENT")
+              done
+            fi
+          done
+
+          if [ "$MOVED_ANY" -eq 0 ]; then
+            echo "::warning::No '$OLD_PATH' source directory found - doing text replacement only."
+          fi
+
+          echo "== Step 2: Replacing text references across the repo =="
+          # grep -F = fixed string, so '.' is not treated as a regex wildcard.
+          # Case-sensitive: Task and task are different.
+          FILE_LIST=$(grep -rlF "$OLD_PKG" \
+            --include="*.kt" --include="*.java" --include="*.xml" \
+            --include="*.gradle" --include="*.gradle.kts" \
+            --include="*.properties" --include="*.json" --include="*.pro" \
+            --include="*.h" --include="*.hpp" --include="*.c" --include="*.cpp" \
+            --exclude-dir=.git --exclude-dir=.gradle --exclude-dir=build \
+            . || true)
+
+          if [ -z "$FILE_LIST" ]; then
+            echo "No text references found (a directory move alone may be enough)."
+          else
+            echo "Replacing in:"
+            echo "$FILE_LIST"
+            OLD_ESCAPED=$(printf '%s' "$OLD_PKG" | sed 's/[.[\*^$/]/\\&/g')
+            NEW_ESCAPED=$(printf '%s' "$NEW_PKG" | sed 's/[.[\*^$/]/\\&/g')
+            echo "$FILE_LIST" | while IFS= read -r f; do
+              sed -i "s/$OLD_ESCAPED/$NEW_ESCAPED/g" "$f"
+            done
+          fi
+
+          echo "== Step 3: Verify no old package name remains =="
+          REMAINING=$(grep -rlF "$OLD_PKG" \
+            --include="*.kt" --include="*.java" --include="*.xml" \
+            --include="*.gradle" --include="*.gradle.kts" \
+            --include="*.properties" --include="*.json" --include="*.pro" \
+            --include="*.h" --include="*.hpp" --include="*.c" --include="*.cpp" \
+            --exclude-dir=.git --exclude-dir=.gradle --exclude-dir=build \
+            . || true)
+
+          if [ -n "$REMAINING" ]; then
+            echo "::error::Old package name '$OLD_PKG' still present - stopping build:"
+            echo "$REMAINING"
+            exit 1
+          fi
+
+          LEFTOVER_DIRS=$(find app/src -type d -path "*/$OLD_PATH" 2>/dev/null || true)
+          if [ -n "$LEFTOVER_DIRS" ]; then
+            echo "::error::Old package source directories still exist:"
+            echo "$LEFTOVER_DIRS"
+            exit 1
+          fi
+
+          echo "Done: '$OLD_PKG' -> '$NEW_PKG', no references left."
+
+      # The project (Bcore engine + app) is compiled with Java 21.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # setup-gradle handles Gradle caching. The project's own wrapper is used.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The engine has native code (ndkBuild) and needs this exact NDK.
+      # compileSdk/targetSdk 37 may not be preinstalled on the runner's image,
+      # and AGP 8.13.2 with Gradle 8.14.3 (needed by the BlackBox engine) run with API 37. Install the API 37
+      # platform and matching Build Tools explicitly on the GitHub runner.
+      # FIX: Android 17 (API 37)-এর SDK প্যাকেজের নাম `platforms;android-37.0`
+      # (শুধু `android-37` নয়) — তাই আগের নামে sdkmanager "Failed to find package"
+      # দিয়ে exit 1 করত। compileSdk/targetSdk 37-এর জন্য সঠিক নাম নিচে দেওয়া হলো।
+      - name: Install NDK and SDK Platform
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # "yes: Broken pipe" নিরীহ — sdkmanager আগেই পড়া শেষ করে পাইপ বন্ধ করে দেয়
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "ndk;${NDK_VERSION}" "platforms;android-37.0" "build-tools;36.0.0" "cmake;3.22.1"
+          echo "== Installed platforms =="
+          ls "$ANDROID_HOME/platforms"
+
+      # PPSSPP (:ppsspp module): the C++ core and assets are not in the repo, they are cloned at the tag pinned in
+      # ppsspp/UPSTREAM_VERSION (ppsspp/tools/fetch-upstream.sh). Cached between runs; the Gradle task fetchPpssppUpstream
+      # does the same clone by itself when this folder is missing, so this step only saves time (and shows clone errors early).
+      - name: Cache PPSSPP source
+        if: ${{ inputs.include_ppsspp }}
+        id: ppsspp_src
+        uses: actions/cache@v4
+        with:
+          path: ppsspp/upstream
+          key: ppsspp-upstream-${{ hashFiles('ppsspp/UPSTREAM_VERSION', 'ppsspp/tools/fetch-upstream.sh') }}
+
+      - name: Fetch PPSSPP source
+        if: ${{ inputs.include_ppsspp }}
+        run: |
+          set -e
+          bash ppsspp/tools/fetch-upstream.sh
+          echo "PPSSPP: $(cat ppsspp/UPSTREAM_VERSION)"; du -sh ppsspp/upstream ppsspp/upstream/assets
+
+      # RetroArch (:retroarch module): the C frontend is not in the repo, it is cloned at the tag pinned in retroarch/UPSTREAM_VERSION and checked against the
+      # commit in retroarch/UPSTREAM_COMMIT (retroarch/tools/fetch-upstream.sh). Cached between runs (about 330 MB; the cache keeps .git so that the commit check
+      # still works); the Gradle task fetchRetroarchUpstream runs the same script before the native build and does nothing when the folder is already right.
+      # This runs after the package rename on purpose: the rename only touches the app's old package in the project's own files, never RetroArch's source.
+      - name: Cache RetroArch source
+        if: ${{ inputs.include_retroarch }}
+        id: retroarch_src
+        uses: actions/cache@v4
+        with:
+          path: retroarch/upstream
+          key: retroarch-upstream-${{ hashFiles('retroarch/UPSTREAM_VERSION', 'retroarch/UPSTREAM_COMMIT', 'retroarch/tools/fetch-upstream.sh') }}
+
+      - name: Fetch RetroArch source
+        if: ${{ inputs.include_retroarch }}
+        timeout-minutes: 20
+        run: |
+          set -e
+          bash retroarch/tools/fetch-upstream.sh
+          echo "RetroArch: $(cat retroarch/UPSTREAM_VERSION) $(grep -v '^#' retroarch/UPSTREAM_COMMIT | tr -d '[:space:]')"
+          du -sh retroarch/upstream
+          df -h / | tail -n 1
+
+      # MAME (:mame module): the MAME core libMAME4droid.so (367 MB, taken out of the official v1.41.2 release APK) and res/raw/files.zip (64 MB)
+      # are not in the repo. mame/tools/fetch-upstream.sh downloads them (curl with retries) and checks every SHA-256 against mame/UPSTREAM_SHA256;
+      # a wrong hash or a wrong MameLaunch.UPSTREAM_VERSION stops the run here, early. The Gradle task fetchMameCore runs the same script before
+      # :mame's preBuild and does nothing when the files are already there. Not cached on purpose: the download is quick, and 430 MB would use up the cache quota.
+      - name: Fetch MAME core
+        if: ${{ inputs.include_mame }}
+        timeout-minutes: 20
+        run: |
+          set -e
+          bash mame/tools/fetch-upstream.sh
+          echo "MAME: $(cat mame/UPSTREAM_VERSION)"
+          ls -l mame/core/jniLibs/arm64-v8a/libMAME4droid.so mame/core/res/raw/mm_files.zip
+          df -h / | tail -n 1
+
+      # ccache for the PPSSPP C++ build and the RetroArch C build (the -PppssppCcache property adds the compiler launcher to :ppsspp's CMake arguments,
+      # -PretroarchCcache adds NDK_CCACHE=ccache to :retroarch's ndk-build arguments). Both use the one cache folder below.
+      # The NDK is installed fresh on every run, so compilers are compared by content, not by modification time.
+      - name: Set up ccache for PPSSPP and RetroArch
+        if: ${{ inputs.include_ppsspp || inputs.include_retroarch }}
+        run: |
+          sudo apt-get install -y --no-install-recommends ccache
+          ccache --version | head -n 1
+          echo "CCACHE_DIR=$HOME/.cache/ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=3000M" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_ppssppCcache=true" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_retroarchCcache=true" >> "$GITHUB_ENV"
+          # If the first RetroArch build stops on old C code that the new NDK compiler rejects (implicit function declaration, int conversion,
+          # incompatible function pointer types), switch this line on (retroarch/README.md, "Known risks" of step 5):
+          # echo "ORG_GRADLE_PROJECT_retroarchCFlags=-Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types" >> "$GITHUB_ENV"
+
+      - name: Cache ccache
+        if: ${{ inputs.include_ppsspp || inputs.include_retroarch }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-native-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION', 'retroarch/UPSTREAM_COMMIT') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-native-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION', 'retroarch/UPSTREAM_COMMIT') }}-
+            ccache-native-${{ runner.os }}-
+            ccache-ppsspp-${{ runner.os }}-
+
+      # If gradlew is missing from the repo, regenerate it from the committed
+      # wrapper properties instead of failing with "No such file or directory".
+      - name: Make gradlew executable
+        run: |
+          if [ ! -f ./gradlew ]; then
+            echo "::warning::gradlew not found - generating wrapper (Gradle 8.14.3)"
+            gradle wrapper --gradle-version 8.14.3 --no-validate-url
+          fi
+          chmod +x ./gradlew
+
+      - name: Verify Gradle Version
+        run: ./gradlew --version
+
+      - name: Decode Keystore from Secret
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -e
+          # printf + tr strips hidden whitespace/newlines before decoding
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > release.jks
+          ls -lh release.jks
+          file release.jks
+
+      - name: Build Unsigned Release APK
+        shell: bash
+        run: |
+          # pipefail (via shell: bash) keeps gradle's exit code through tee
+          ./gradlew assembleRelease --stacktrace 2>&1 | tee -a "$RUNNER_TEMP/build-raw.log"
+
+      - name: Locate Unsigned APK
+        id: find_apk
+        env:
+          INC_PPSSPP: ${{ inputs.include_ppsspp }}
+          INC_MAME: ${{ inputs.include_mame }}
+          INC_RETROARCH: ${{ inputs.include_retroarch }}
+        run: |
+          UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*-unsigned.apk" | head -n 1)
+          if [ -z "$UNSIGNED_APK" ]; then
+            UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          fi
+          if [ -z "$UNSIGNED_APK" ]; then
+            echo "::error::No release APK found in app/build/outputs/apk/release"
+            exit 1
+          fi
+          echo "unsigned_apk=$UNSIGNED_APK" >> "$GITHUB_OUTPUT"
+          ls -lh app/build/outputs/apk/release/
+
+          # (the listing goes to a file first: "unzip | grep -q" would fail under pipefail when grep stops reading early)
+          unzip -l "$UNSIGNED_APK" > "$RUNNER_TEMP/apk-list.txt"
+          if [ "$INC_PPSSPP" = "true" ]; then
+            # PPSSPP must really be inside the APK (native library + runtime assets), otherwise the app opens but PPSSPP cannot start.
+            echo "== PPSSPP in the APK =="
+            grep -E "libppsspp_jni\.so|assets/ppge_atlas\.zim|assets/flash0/" "$RUNNER_TEMP/apk-list.txt" | head -n 6 || true
+            if ! grep -q "lib/arm64-v8a/libppsspp_jni\.so" "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::lib/arm64-v8a/libppsspp_jni.so is not in the APK (PPSSPP native build missing)"
+              exit 1
+            fi
+            if ! grep -q "assets/ppge_atlas\.zim" "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::PPSSPP assets are not in the APK"
+              exit 1
+            fi
+          fi
+          if [ "$INC_MAME" = "true" ]; then
+            # MAME must really be inside the APK: the core and the small JNI library under lib/arm64-v8a, the unpacked-on-first-start files.zip
+            # and the help pages. Checked by exact size (the core and files.zip sizes are pinned in mame/UPSTREAM_SHA256), because resource
+            # shrinking may rename res/raw/mm_files.zip but cannot change its length.
+            echo "== MAME in the APK =="
+            SO_SIZE=$(awk '$1=="so_core_size" {print $2; exit}' mame/UPSTREAM_SHA256)
+            FZ_SIZE=$(awk '$1=="files_zip_size" {print $2; exit}' mame/UPSTREAM_SHA256)
+            if [ -z "$SO_SIZE" ] || [ -z "$FZ_SIZE" ]; then
+              echo "::error::mame/UPSTREAM_SHA256 has no so_core_size / files_zip_size"
+              exit 1
+            fi
+            grep -E "libMAME4droid\.so|libmame4droid-jni\.so|assets/mame/index\.htm" "$RUNNER_TEMP/apk-list.txt" | head -n 6 || true
+            if ! awk -v s="$SO_SIZE" '$1==s && $4=="lib/arm64-v8a/libMAME4droid.so" {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::lib/arm64-v8a/libMAME4droid.so ($SO_SIZE bytes) is not in the APK (MAME core missing or wrong size)"
+              exit 1
+            fi
+            if ! grep -q "lib/arm64-v8a/libmame4droid-jni\.so" "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::lib/arm64-v8a/libmame4droid-jni.so is not in the APK (MAME JNI build missing)"
+              exit 1
+            fi
+            if ! awk -v s="$FZ_SIZE" '$1==s {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::MAME files.zip ($FZ_SIZE bytes) is not in the APK"
+              exit 1
+            fi
+            if ! grep -q "assets/mame/index\.htm" "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::MAME help pages (assets/mame/) are not in the APK"
+              exit 1
+            fi
+            echo "MAME: core, JNI library, files.zip and help pages are in the APK"
+          fi
+          if [ "$INC_RETROARCH" = "true" ]; then
+            # RetroArch must really be inside the APK: the native library under lib/arm64-v8a (the file name comes from upstream's Android.mk, module
+            # retroarch-activity) and its two activities in the merged manifest, in the own process :retroarch. Cores, core info files and assets are not
+            # bundled on purpose (Online Updater), so nothing of that is checked. The 1 MB limit only catches an empty / stub library.
+            echo "== RetroArch in the APK =="
+            grep -E "libretroarch-activity\.so" "$RUNNER_TEMP/apk-list.txt" | head -n 3 || true
+            if ! awk '$1+0>1000000 && $4=="lib/arm64-v8a/libretroarch-activity.so" {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::lib/arm64-v8a/libretroarch-activity.so is not in the APK, or smaller than 1 MB (RetroArch native build missing)"
+              exit 1
+            fi
+            MERGED=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+            if [ -z "$MERGED" ]; then
+              echo "::warning::merged release manifest not found under app/build/intermediates, RetroArch manifest check skipped"
+            else
+              for CLS in com.retroarch.browser.mainmenu.MainMenuActivity com.retroarch.browser.retroactivity.RetroActivityFuture; do
+                if ! grep -q "$CLS" "$MERGED"; then
+                  echo "::error::$CLS is not in the merged manifest ($MERGED)"
+                  exit 1
+                fi
+              done
+              if ! grep -q 'android:process=":retroarch"' "$MERGED"; then
+                echo "::error::the RetroArch activities do not run in the own process :retroarch in the merged manifest"
+                exit 1
+              fi
+              echo "RetroArch: both activities are in the merged manifest, process :retroarch"
+            fi
+            echo "RetroArch: libretroarch-activity.so is in the APK"
+          fi
+          ccache -s 2>/dev/null | head -n 12 || true
+
+      # Optional and safe: prints only lengths and whitespace flags, never secret
+      # characters (the old hex-dump step leaked the last 4 characters of each
+      # secret, because masking does not apply to transformed output).
+      - name: Diagnose signing secrets (optional)
+        if: ${{ inputs.debug_signing }}
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set +e
+          check() {
+            local label="$1" value="$2"
+            echo "$label: length=$(printf '%s' "$value" | wc -c)"
+            if [[ "$value" =~ [[:space:]] ]]; then
+              echo "  WARNING: $label contains whitespace/newline characters"
+            fi
+          }
+          check KEY_ALIAS "$KEY_ALIAS"
+          check KEYSTORE_PASSWORD "$KEYSTORE_PASSWORD"
+          check KEY_PASSWORD "$KEY_PASSWORD"
+
+          echo "== Keystore file =="
+          file release.jks
+          wc -c release.jks
+
+          echo "== Aliases in keystore =="
+          keytool -list -keystore release.jks -storepass "$KEYSTORE_PASSWORD" 2>&1 | head -n 20
+
+          echo "== Load private key (real signing test) =="
+          keytool -list -keystore release.jks -alias "$KEY_ALIAS" -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" 2>&1 | head -n 20
+
+      - name: Zipalign + Sign APK
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          UNSIGNED_APK: ${{ steps.find_apk.outputs.unsigned_apk }}
+        shell: bash
+        run: |
+          set -e
+          exec > >(tee -a "$RUNNER_TEMP/build-raw.log") 2>&1
+
+          # Newest installed Android build-tools
+          BUILD_TOOLS_DIR=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)
+          echo "Using build-tools: $BUILD_TOOLS_DIR"
+
+          ZIPALIGN="${BUILD_TOOLS_DIR}zipalign"
+          APKSIGNER="${BUILD_TOOLS_DIR}apksigner"
+
+          "$ZIPALIGN" -v 4 "$UNSIGNED_APK" app-release-aligned.apk
+
+          "$APKSIGNER" sign \
+            --ks release.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out app-release-signed.apk \
+            app-release-aligned.apk
+
+          "$APKSIGNER" verify --verbose app-release-signed.apk
+
+      - name: Verify Signed APK
+        id: verify
+        run: |
+          ls -lh app-release-signed.apk
+          echo "sha256=$(sha256sum app-release-signed.apk | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f release.jks
+
+      - name: Describe the modules of this build
+        id: mods
+        run: |
+          M=""
+          [ "${{ inputs.include_winlator }}" = "true" ] && M="$M Winlator" || true
+          [ "${{ inputs.include_ppsspp }}" = "true" ] && M="$M PPSSPP" || true
+          [ "${{ inputs.include_mame }}" = "true" ] && M="$M MAME" || true
+          [ "${{ inputs.include_retroarch }}" = "true" ] && M="$M RetroArch" || true
+          [ "${{ inputs.include_j2me }}" = "true" ] && M="$M J2ME" || true
+          echo "included=${M:- none of the optional modules}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app-release-signed.apk
+          tag_name: release-custom-${{ github.run_number }}
+          name: ${{ env.APP_NAME }} v${{ github.run_number }} (Signed Release, custom modules)
+          body: |
+            Signed Android release APK (modules chosen when the build was started).
+
+            Optional modules included:${{ steps.mods.outputs.included }}
+            Package name: `${{ inputs.new_package_name }}` (previously `${{ inputs.old_package_name }}`)
+            Build: #${{ github.run_number }}
+            Commit: `${{ github.sha }}`
+            SHA-256: `${{ steps.verify.outputs.sha256 }}`
+
+            Download: app-release-signed.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK as workflow artifact (when not published)
+        if: ${{ !inputs.publish_release }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-signed
+          path: app-release-signed.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      # ---- Build error log (runs only when a previous step failed) ----------
+      # The build used the NEW package name. This step rewrites every NEW package
+      # reference back to the OLD one, so the txt you share shows the old name.
+      - name: Prepare error log (shows OLD package name)
+        if: failure()
+        shell: bash
+        env:
+          OLD_PKG: ${{ inputs.old_package_name }}
+          NEW_PKG: ${{ inputs.new_package_name }}
+        run: |
+          set +e
+          RAW="$RUNNER_TEMP/build-raw.log"
+          OUT="build-error-log.txt"
+
+          esc() { printf '%s' "$1" | sed 's/[.[\*^$/]/\\&/g'; }
+
+          N_DOT=$(esc "$NEW_PKG");                          O_DOT=$(esc "$OLD_PKG")
+          N_SL=$(esc "$(printf '%s' "$NEW_PKG" | tr . /)"); O_SL=$(esc "$(printf '%s' "$OLD_PKG" | tr . /)")
+          N_US=$(esc "$(printf '%s' "$NEW_PKG" | tr . _)"); O_US=$(esc "$(printf '%s' "$OLD_PKG" | tr . _)")
+
+          {
+            echo "=== Android Release Build - ERROR LOG ==="
+            echo "Run: #${{ github.run_number }}   Commit: ${{ github.sha }}"
+            echo "Package: $OLD_PKG"
+            echo "========================================="
+            echo
+            if [ -s "$RAW" ]; then
+              sed -e "s/$N_DOT/$O_DOT/g" -e "s/$N_SL/$O_SL/g" -e "s/$N_US/$O_US/g" "$RAW"
+            else
+              echo "(No build output captured - the failure happened in an earlier step."
+              echo " Open the run's step log on GitHub and copy the red error lines.)"
+            fi
+          } > "$OUT"
+
+          rm -f "$RAW"
+          echo "Error log ready: $(wc -l < "$OUT") lines"
+
+          {
+            echo "### Build failed - last 60 lines (package shown as $OLD_PKG)"
+            echo '```'
+            tail -n 60 "$OUT"
+            echo '```'
+            echo "Full log: download the **build-error-log** artifact below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload error log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-error-log
+          path: build-error-log.txt
+          if-no-files-found: warn
+          retention-days: 7
