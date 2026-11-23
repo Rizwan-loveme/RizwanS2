@@ -52,6 +52,8 @@ The "All apps" numbers (`rizwans2://N`) shift by one for the apps after **RetroA
 
 **Moving to a newer RetroArch**: change `UPSTREAM_VERSION` and `UPSTREAM_COMMIT` together (`git ls-remote --tags https://github.com/libretro/RetroArch.git 'v*'`), run `./gradlew :retroarch:fetchRetroarchUpstream`, then `bash retroarch/tools/diff-upstream-java.sh` (3 changed files expected; re-merge by hand if upstream changed them), re-check the manifest against upstream's, compare `Android.mk` flags, and do a full CI build.
 
+**First CI run result (2026-11-23): one C error, fixed.** `:retroarch:buildNdkBuildRelease[arm64-v8a]` failed in `griffin.c` -> `input/drivers/android_input.c:1641`: `'ALooper_pollAll' is unavailable: obsoleted in Android 1` (NDK 29 removed it; upstream v1.22.2 was written for NDK r22). Fix: `tools/fetch-upstream.sh` now runs `apply_ndk_patches` (after a fresh clone, on a cached clone and on a hand-placed one), which changes `ALooper_pollAll(` to `ALooper_pollOnce(` (same signature, inside a `while (... >= 0)` loop, so all events are still drained; same change as upstream master). The commit check is not affected (only the working tree changes). `ASensorManager_getInstance` is only a deprecation warning. The compiler stops at the first failing file, so other NDK 29 errors in files not reached yet are possible: send the next log.
+
 **If the first CI run fails** (most likely first)
 | Symptom in the log | Likely cause | First thing to try |
 |--------------------|--------------|--------------------|

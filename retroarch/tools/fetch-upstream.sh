@@ -48,16 +48,34 @@ check_layout() {
   return $missing
 }
 
+
+# Patches for the newer NDK (r29 / clang 21; upstream's tag v1.22.2 was written for NDK r22). Applied to the working tree only (HEAD stays the pinned
+# commit, so the commit check is not affected). Idempotent: safe to run on a fresh clone, a cached clone or a hand-placed one.
+#   1) input/drivers/android_input.c: NDK r29's <android/looper.h> marks ALooper_pollAll "unavailable: obsoleted in Android 1" (hard compile error).
+#      ALooper_pollOnce has the same signature; the call sits inside `while ((ident = ...) >= 0)`, so the loop still drains all events (upstream
+#      master made the same change). ASensorManager_getInstance is only a deprecation warning and is left alone.
+apply_ndk_patches() {
+  local f="$DEST/input/drivers/android_input.c"
+  if [ -f "$f" ] && grep -q 'ALooper_pollAll' "$f"; then
+    sed -i 's/ALooper_pollAll(/ALooper_pollOnce(/g' "$f"
+    echo "Patched $f: ALooper_pollAll -> ALooper_pollOnce (NDK r29)"
+  fi
+  if [ -f "$f" ] && grep -q 'ALooper_pollAll' "$f"; then
+    echo "::error::ALooper_pollAll is still in $f after patching" >&2; return 1
+  fi
+}
+
 # 1) already there
 if [ -d "$DEST/.git" ]; then
   HAVE="$(git -C "$DEST" rev-parse HEAD 2>/dev/null || true)"
   if [ "$HAVE" = "$COMMIT" ] && check_layout 2>/dev/null; then
+    apply_ndk_patches
     echo "RetroArch $TAG ($COMMIT) already present in $DEST"; exit 0
   fi
   echo "RetroArch in $DEST is not $TAG / $COMMIT (found '${HAVE:-unknown}'): fetching again"
 elif [ -f "$DEST/pkg/android/phoenix-common/jni/Android.mk" ]; then
   echo "::warning::$DEST has no .git: using it as it is, the commit cannot be checked against UPSTREAM_COMMIT" >&2
-  check_layout; echo "RetroArch (hand-placed) found in $DEST"; exit 0
+  check_layout; apply_ndk_patches; echo "RetroArch (hand-placed) found in $DEST"; exit 0
 fi
 
 # 2) shallow clone of the tag, 3 tries (GitHub / network hiccups)
@@ -84,4 +102,5 @@ fi
 
 # 4) layout
 if ! check_layout; then rm -rf "$DEST"; exit 1; fi
+apply_ndk_patches
 echo "RetroArch $TAG ($COMMIT) ready in $DEST"
