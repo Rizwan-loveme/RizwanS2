@@ -24,12 +24,16 @@ import java.io.File
  * The built-in MAME app (:mame, MAME4droid) runs all its screens in its own process (":mame", see mame/README.md step 4).
  * Like ":midlet" it is neither the launcher nor an engine process, so nothing is started there at all: no BlackBox attach
  * (it would hook the system services of the emulator), no J2ME start-up, no launcher log / crash handler (step 7).
+ *
+ * The built-in RetroArch app (:retroarch) runs its two activities in its own process (":retroarch", see retroarch/README.md step 6):
+ * upstream ends it with System.exit(0) / exit(0), which must not close the launcher. Same treatment as ":mame": nothing is started there.
  */
 class App : Application() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
         if (isMameProcess()) return // step 7: MAME has no need of the Win11 engines
+        if (isRetroarchProcess()) return // RetroArch (step 6) neither
         if (isMidletProcess()) {
             ru.playsoftware.j2meloader.EmulatorApplication.attachMidletProcess(this)
             return
@@ -53,7 +57,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (isMameProcess() || isMidletProcess()) return
+        if (isMameProcess() || isMidletProcess() || isRetroarchProcess()) return
         try {
             BlackBoxCore.get().doCreate()
         } catch (e: Throwable) {
@@ -71,6 +75,9 @@ class App : Application() {
 
     /** true in the MAME process (process name == package name + ":mame"; every activity of :mame has android:process=":mame"). */
     private fun isMameProcess(): Boolean = currentProcessName() == "$packageName:mame"
+
+    /** true in the RetroArch process (process name == package name + ":retroarch"; both activities of :retroarch have android:process=":retroarch"). */
+    private fun isRetroarchProcess(): Boolean = currentProcessName() == "$packageName:retroarch"
 
     private fun currentProcessName(): String? = try {
         if (Build.VERSION.SDK_INT >= 28) getProcessName()

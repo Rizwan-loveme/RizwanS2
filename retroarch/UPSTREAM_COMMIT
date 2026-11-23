@@ -1,0 +1,12 @@
+# Exact commit behind the tag in UPSTREAM_VERSION (RetroArch https://github.com/libretro/RetroArch).
+# Checked on 2026-11-23 with `git ls-remote --tags` (tag v1.22.2 is a lightweight tag, so the tag points straight at this commit).
+# tools/fetch-upstream.sh (step 4) must stop the build if `git rev-parse HEAD` of the clone does not print the commit below:
+# a moved or re-created tag must never change the build silently.
+#
+# tag      v1.22.2  (newest stable tag; before it v1.22.1, v1.22.0, v1.21.0)
+# date     2025-11-20T00:17:08Z  ("Fetch translations from Crowdin")
+# repo     no .gitmodules at the tag -> one shallow clone is enough (no --recurse-submodules needed)
+# licence  GPL-3.0
+#
+# The next line is the only non-comment line: the commit, nothing else.
+69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576

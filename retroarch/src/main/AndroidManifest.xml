@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Library manifest of :retroarch (upstream: RetroArch v1.22.2, pkg/android/phoenix/AndroidManifest.xml), package com.retroarch (namespace in build.gradle.kts).
+  Differences from upstream (step 6 of 12, see retroarch/README.md):
+   - resources renamed with the ra_ prefix (ra_app_name, ra_ic_launcher, ra_banner, ra_document_provider_enabled)
+   - no MAIN / LAUNCHER / LEANBACK_LAUNCHER / OUYA GAME filter: RetroArch is opened from the Start menu, the Home screen, the rizwans2://retroarch
+     deep link and the File Manager (step 8), not from its own launcher icon
+   - no <application> attributes (name = RetroArchApplication, allowBackup, requestLegacyExternalStorage, extractNativeLibs, isGame, allowAudioPlaybackCapture,
+     hasCode, icon, label, banner) and no versionCode / versionName / installLocation: those belong to :app. icon / label / banner are on the activities instead
+   - both activities run in their own process ":retroarch" and their own task (taskAffinity): upstream ends the app with System.exit(0) / exit(0)
+     (RetroActivityFuture.onNewIntent when another game is opened, native exit, "quit on focus loss") which would otherwise close the whole Win11 app
+     (same idea as :mame and :midlet)
+   - exported="false" on both activities (upstream: true): only Win11 starts RetroArch. The LIBRETRO extra is the path of a .so that the native code
+     dlopen()s, so another app must not be able to send it. The explicit Intents of :app (same uid) are not affected
+   - MainMenuActivity gets an explicit framework theme (upstream relies on the device default; here the application theme of :app would apply)
+   - CoreSideloadActivity (debug only, exported, loads a core from a given path) is dropped
+   - RetroDocumentsProvider is kept but DISABLED (bool ra_document_provider_enabled = false): it would show the data folder of the whole Win11 app in the
+     system file picker. Authority ${applicationId}.documents is unique (j2me: .documentProvider, BlackBox: .blackbox.*)
+   - Step 6 merge review (see README): permissions overlap with :app (storage, INTERNET) and the other modules (VIBRATE); the android.hardware.* /
+     leanback features are all required="false"; the only hard requirement is glEsVersion 0x00020000 (also required by :ppsspp)
+   - no play-core / dynamic feature modules (the play-core stub is used), no flavors
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:glEsVersion="0x00020000" />
+    <uses-feature android:name="android.hardware.type.pc" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application>
+        <!-- Entry point for the Win11 hooks (step 8): checks the storage permission, writes retroarch.cfg, then starts RetroActivityFuture -->
+        <activity
+            android:name="com.retroarch.browser.mainmenu.MainMenuActivity"
+            android:process=":retroarch"
+            android:taskAffinity="com.retroarch.retroarch"
+            android:label="@string/ra_app_name"
+            android:icon="@mipmap/ra_ic_launcher"
+            android:banner="@drawable/ra_banner"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:launchMode="singleInstance"
+            android:exported="false" />
+        <!-- The RetroArch frontend itself: a NativeActivity that loads lib/<abi>/libretroarch-activity.so (built in step 5) -->
+        <activity
+            android:name="com.retroarch.browser.retroactivity.RetroActivityFuture"
+            android:process=":retroarch"
+            android:taskAffinity="com.retroarch.retroarch"
+            android:label="@string/ra_app_name"
+            android:icon="@mipmap/ra_ic_launcher"
+            android:banner="@drawable/ra_banner"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:launchMode="singleInstance"
+            android:exported="false">
+            <meta-data android:name="android.app.lib_name" android:value="retroarch-activity" />
+            <meta-data android:name="android.app.func_name" android:value="ANativeActivity_onCreate" />
+        </activity>
+        <!-- Upstream's documents provider (RetroArch's files in the system file picker). Switched off, see res/values/ra_bools.xml -->
+        <provider
+            android:name="com.retroarch.browser.provider.RetroDocumentsProvider"
+            android:authorities="${applicationId}.documents"
+            android:grantUriPermissions="true"
+            android:enabled="@bool/ra_document_provider_enabled"
+            android:exported="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+    </application>
+
+</manifest>

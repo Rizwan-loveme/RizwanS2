@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- upstream sets string/app_name per flavor with resValue ("RetroArch" for the "normal" flavor); :winlator already has an app_name, hence ra_app_name.
+         Used by the activity labels (AndroidManifest.xml) and by RetroDocumentsProvider (R.string.ra_app_name). -->
+    <string name="ra_app_name" translatable="false">RetroArch</string>
+</resources>

@@ -108,6 +108,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_J2ME = "builtin.j2me"
         private const val BUILTIN_CLS_PPSSPP = "builtin.ppsspp"
         private const val BUILTIN_CLS_MAME = "builtin.mame"
+        private const val BUILTIN_CLS_RETROARCH = "builtin.retroarch"
+        /** Game pad with a hollow d-pad and two buttons (even-odd fill): the built-in RetroArch app (:retroarch module, package com.retroarch). */
+        private const val RETROARCH_PATH =
+            "M7,7H17C19.76,7 22,9.24 22,12V13C22,15.21 20.21,17 18,17C16.9,17 16,16.1 15,15H9C8,16.1 7.1,17 6,17C3.79,17 2,15.21 2,13V12C2,9.24 4.24,7 7,7ZM6.4,9.6H7.6V11.4H9.4V12.6H7.6V14.4H6.4V12.6H4.6V11.4H6.4ZM14.4,12.8a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0ZM16.9,11a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0Z"
         /** Arcade joystick (even-odd fill: ball, stick, base with a hollow button): the built-in MAME app (:mame module, package com.seleuco.mame4droid). */
         private const val MAME_PATH =
             "M5.5,6a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0ZM8,9.5H10V14H8ZM3,14H21V20C21,20.55 20.55,21 20,21H4C3.45,21 3,20.55 3,20ZM14.7,17.5a1.8,1.8 0 1,0 3.6,0a1.8,1.8 0 1,0 -3.6,0Z"
@@ -308,6 +312,16 @@ class AppRepository(private val ctx: Context) {
                 "MAME", ctx.packageName, BUILTIN_CLS_MAME,
                 BuiltInIconDrawable(MAME_PATH, Color.parseColor("#F25F5C"), evenOdd = true),
                 section = "mame"
+            )
+        ) else emptyList()
+    ) + (
+        // Built-in RetroArch app (:retroarch module, com.retroarch.browser.mainmenu.MainMenuActivity), vector icon only. 64-bit ARM only (the native library is
+        // arm64-v8a): no entry on other phones or when the build has no native library (-PretroarchNative=false).
+        if (isRetroarchSupported(ctx)) listOf(
+            AppEntry(
+                "RetroArch", ctx.packageName, BUILTIN_CLS_RETROARCH,
+                BuiltInIconDrawable(RETROARCH_PATH, Color.parseColor("#2EC4B6"), evenOdd = true),
+                section = "retroarch"
             )
         ) else emptyList()
     )

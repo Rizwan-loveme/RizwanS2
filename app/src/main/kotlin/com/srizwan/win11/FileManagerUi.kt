@@ -99,6 +99,8 @@ internal fun MainActivity.openFile(file: File) {
         isJ2meFile(file.name) -> openJ2meFile(file)
         // .iso .cso .chd .pbp .elf .ppdmp: PSP games start in the built-in PPSSPP (:ppsspp module), see PpssppLauncher.kt
         isPpssppFile(file.name) -> openPpssppFile(file)
+        // .nes .sfc .smc .gb .gbc .gba .n64 .z64 .gen .smd .sms .gg .pce .nds ... (console ROMs, see RetroArchLauncher.kt): start in the built-in RetroArch (:retroarch module)
+        isRetroarchFile(file.name) -> openRetroarchFile(file)
         // .exe .msi .bat .lnk: PC software runs in the built-in Winlator (Wine + Box64)
         WinlatorLauncher.isWindowsProgram(file.name) -> WinlatorLauncher.runFile(this, file)
         // Chooser step 5: no built-in viewer -> our own glass "Open with" sheet (saved "Always" app first), never the system chooser

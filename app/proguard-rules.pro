@@ -7,7 +7,7 @@
 #   * -dontoptimize  : no risky code rewriting (inlining etc.), only unused code is removed.
 #   * -ignorewarnings: a class that is only missing at build time (hidden Android API,
 #                      optional library) must not stop the build; it was equally missing in debug.
-# Library modules add their own rules through consumer-rules (Bcore, winlator, youtube, j2me, ppsspp, mame).
+# Library modules add their own rules through consumer-rules (Bcore, winlator, youtube, j2me, ppsspp, mame, retroarch).
 # =====================================================================================
 -dontobfuscate
 -dontoptimize
@@ -98,3 +98,9 @@
 # libmame4droid-jni.so and libMAME4droid.so call Java by name (JNI); the settings screen (res/xml/mm_userpreferences.xml) and the manifest name its classes as strings.
 # The same rule is in mame/consumer-rules.pro; repeated here so it holds even if the consumer file is ever dropped.
 -keep class com.seleuco.mame4droid.** { *; }
+
+# ---- :retroarch (RetroArch) ----
+# libretroarch-activity.so calls Java by name (JNI) and NativeActivity loads RetroActivityFuture from the manifest.
+# The same rule is in retroarch/consumer-rules.pro; repeated here so it holds even if the consumer file is ever dropped.
+-keep class com.retroarch.** { *; }
+-keep class com.libretro.common.vfs.** { *; }

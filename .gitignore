@@ -13,3 +13,6 @@ ppsspp/upstream/
 # MAME core + frontend source are fetched at build time (mame/tools/fetch-upstream.sh, step 3)
 mame/upstream/
 mame/core/
+
+# RetroArch source is fetched at build time (retroarch/tools/fetch-upstream.sh, step 4)
+retroarch/upstream/

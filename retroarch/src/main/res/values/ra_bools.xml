@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- upstream: bool/document_provider_enabled (false in values/, true in values-v19/). DISABLED here on purpose:
+         RetroDocumentsProvider exposes getFilesDir().getParent(), which in Win11 is the data folder of the WHOLE app (browser, Winlator,
+         BlackBox, PPSSPP, MAME ... all share one package), not only RetroArch's files, to the system file picker (read + create).
+         To switch it on anyway (e.g. for a private build): set true. Only the manifest flag changes, the Java stays compiled. -->
+    <bool name="ra_document_provider_enabled">false</bool>
+</resources>

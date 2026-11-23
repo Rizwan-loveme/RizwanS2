@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- upstream: color/ic_launcher_background (pkg/android/phoenix-common/res/values/colors.xml), renamed: :app and :winlator have the same name -->
+    <color name="ra_ic_launcher_background">#333333</color>
+</resources>

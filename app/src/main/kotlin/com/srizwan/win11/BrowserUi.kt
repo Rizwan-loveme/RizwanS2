@@ -17,6 +17,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
+import android.content.res.ColorStateList
+import android.text.InputType
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -1094,33 +1096,120 @@ internal fun MainActivity.enqueueDownload(
     updateDownloadBadge()
 }
 
-/** Dialog with size + editable file name, shared by normal and blob downloads. */
+/**
+ * File name for a download. Replaces URLUtil.guessFileName, which swaps a real extension for the one of the MIME type:
+ * GitHub release files (served as application/octet-stream) became "Surah-045-4K.bin" instead of "Surah-045-4K.mp4".
+ * Order: Content-Disposition (filename* / filename), the "response-content-disposition" query parameter that
+ * GitHub / S3 style redirects carry, then the last part of the URL path. The name's own extension is always kept;
+ * an extension from the MIME type is added only when the name has none (and the type is a real one).
+ */
+internal fun guessDownloadName(url: String, contentDisposition: String?, mimetype: String?): String {
+    fun fromDisposition(cd: String?): String {
+        if (cd.isNullOrBlank()) return ""
+        Regex("filename\\*\\s*=\\s*([^']*)'[^']*'([^;]+)", RegexOption.IGNORE_CASE).find(cd)?.let { m ->
+            val v = m.groupValues[2].trim().trim('"')
+            val dec = try { java.net.URLDecoder.decode(v.replace("+", "%2B"), m.groupValues[1].ifBlank { "UTF-8" }) } catch (e: Exception) { v }
+            if (dec.isNotBlank()) return dec
+        }
+        Regex("filename\\s*=\\s*\"?([^\";]+)\"?", RegexOption.IGNORE_CASE).find(cd)?.let { m ->
+            val v = m.groupValues[1].trim()
+            if (v.isNotBlank()) return try { Uri.decode(v) } catch (e: Exception) { v }
+        }
+        return ""
+    }
+    var name = fromDisposition(contentDisposition)
+    if (name.isBlank()) {
+        name = try { fromDisposition(Uri.parse(url).getQueryParameter("response-content-disposition")) } catch (e: Exception) { "" }
+    }
+    if (name.isBlank()) {
+        name = try { Uri.decode(Uri.parse(url).path.orEmpty().trimEnd('/').substringAfterLast('/')) } catch (e: Exception) { "" }
+    }
+    name = name.substringAfterLast('/').substringAfterLast('\\').trim().trim('.')
+    if (name.isBlank()) name = "download"
+    if (!name.contains('.')) {
+        val type = mimetype.orEmpty().substringBefore(';').trim().lowercase()
+        if (type.isNotEmpty() && type != "application/octet-stream" && type != "binary/octet-stream") {
+            val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(type)
+            if (!ext.isNullOrEmpty()) name = "$name.$ext"
+        }
+    }
+    return name
+}
+
+private fun EditText.onTextChanged(cb: () -> Unit) {
+    addTextChangedListener(object : android.text.TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+        override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) { cb() }
+        override fun afterTextChanged(s: android.text.Editable?) {}
+    })
+}
+
+/**
+ * Dialog with size, save folder (the user can pick any folder; it is remembered), editable file name and
+ * optional batch numbering (000.mp3, 001.mp3, 002.mp3 ... the number moves on after every download).
+ * Shared by normal and blob downloads; [onConfirm] gets the final file name.
+ */
 
 internal fun MainActivity.showDownloadDialog(
     sizeText: String, defaultName: String, onConfirm: (String) -> Unit
 ) {
+    val muted = Color.parseColor("#B8C0D0")
+    val accent = Color.parseColor("#4CC2FF")
     val dialogView = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(20), dp(16), dp(20), dp(8))
     }
     dialogView.addView(TextView(this).apply {
         text = "Size: $sizeText"
-        iconStart(R.drawable.ic_w_box, 14, Color.parseColor("#555555"), 6)
+        iconStart(R.drawable.ic_w_box, 14, muted, 6)
         textSize = 13f
-        setTextColor(Color.parseColor("#555555"))
+        setTextColor(muted)
         setPadding(0, 0, 0, dp(4))
     })
-    dialogView.addView(TextView(this).apply {
-        text = "Saved to: Downloads"
-        iconStart(R.drawable.ic_w_folder, 14, Color.parseColor("#555555"), 6)
+
+    // ── save folder: shows where the file goes, "Change" opens the system folder picker ──
+    val folderText = TextView(this).apply {
+        iconStart(R.drawable.ic_w_folder, 14, muted, 6)
         textSize = 13f
-        setTextColor(Color.parseColor("#555555"))
-        setPadding(0, 0, 0, dp(12))
+        setTextColor(muted)
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+    }
+    fun chip(label: String, onClick: () -> Unit) = TextView(this).apply {
+        text = label; textSize = 12.5f; setTextColor(accent)
+        typeface = Typeface.DEFAULT_BOLD
+        setPadding(dp(10), dp(6), dp(10), dp(6))
+        setOnClickListener { onClick() }
+    }
+    var refreshFolder: () -> Unit = {}
+    val changeBtn = chip("Change") {
+        dlFolderCallback = { refreshFolder() }
+        try {
+            dlFolderLauncher.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION))
+        } catch (e: Exception) {
+            Toast.makeText(this, "No folder picker found on this phone", Toast.LENGTH_SHORT).show()
+        }
+    }
+    val resetBtn = chip("Default") { DlEngine.destTree = ""; refreshFolder() }
+    refreshFolder = {
+        folderText.text = "Saved to: " + DlEngine.folderLabel()
+        resetBtn.visibility = if (DlEngine.activeDestTree().isEmpty()) View.GONE else View.VISIBLE
+    }
+    refreshFolder()
+    dialogView.addView(LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, 0, 0, dp(8))
+        addView(folderText)
+        addView(resetBtn)
+        addView(changeBtn)
     })
+
     dialogView.addView(TextView(this).apply {
         text = "File name (editable):"
         textSize = 13f
-        setTextColor(Color.parseColor("#333333"))
+        setTextColor(Color.parseColor("#E6E9F0"))
         typeface = Typeface.DEFAULT_BOLD
         setPadding(0, 0, 0, dp(4))
     })
@@ -1128,11 +1217,137 @@ internal fun MainActivity.showDownloadDialog(
         setText(defaultName); textSize = 14f; setSingleLine(true); post { selectAll() }
     }.glassStyle()
     dialogView.addView(fileNameInput)
-    W11Dialog.Builder(this).setTitle("Download File").setIcon(R.drawable.ic_w_download).setView(dialogView)
+
+    // ── batch numbering ──
+    fun digitsOnly(t: CharSequence) = t.filter { it.isDigit() }.take(9).toString()
+    fun padded(n: Long, pad: Int) = n.toString().padStart(pad, '0')
+    val batchCheck = CheckBox(this).apply {
+        text = "Batch numbering (000, 001, 002 …)"
+        textSize = 13f
+        setTextColor(Color.parseColor("#E6E9F0"))
+        buttonTintList = ColorStateList.valueOf(accent)
+        isChecked = DlEngine.batchOn
+        setPadding(dp(4), dp(6), 0, dp(6))
+    }
+    dialogView.addView(batchCheck, LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+
+    val prefixInput = EditText(this).apply {
+        hint = "Prefix (optional)"; setText(DlEngine.batchPrefix); textSize = 14f; setSingleLine(true)
+    }.glassStyle()
+    val startInput = EditText(this).apply {
+        hint = "Start from"; inputType = InputType.TYPE_CLASS_NUMBER
+        setText(padded(DlEngine.batchNext, DlEngine.batchPad)); textSize = 14f; setSingleLine(true)
+    }.glassStyle()
+    val preview = TextView(this).apply {
+        textSize = 12.5f; setTextColor(accent); setPadding(0, dp(6), 0, 0)
+    }
+    val batchBox = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(LinearLayout(this@showDownloadDialog).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(prefixInput, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { rightMargin = dp(8) })
+            addView(startInput, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        })
+        addView(preview)
+    }
+    dialogView.addView(batchBox)
+
+    /** Final name for batch mode: prefix + number (zero padding = the digits typed in "Start from") + the extension above. */
+    fun batchName(): Pair<String, Long>? {
+        val digits = digitsOnly(startInput.text)
+        if (digits.isEmpty()) return null
+        val n = digits.toLongOrNull() ?: return null
+        val ext = fileNameInput.text.toString().trim().substringAfterLast('.', "")
+        val base = prefixInput.text.toString().trim() + padded(n, digits.length)
+        return (if (ext.isNotEmpty() && ext.length <= 10) "$base.$ext" else base) to n
+    }
+    fun updateBatchUi() {
+        batchBox.visibility = if (batchCheck.isChecked) View.VISIBLE else View.GONE
+        val bn = batchName()
+        preview.text = if (bn == null) "Type the number to start from" else "Will save as: ${bn.first}  (next: ${padded(bn.second + 1, digitsOnly(startInput.text).length)})"
+        fileNameInput.alpha = if (batchCheck.isChecked) 0.6f else 1f
+    }
+    batchCheck.setOnCheckedChangeListener { _, _ -> updateBatchUi() }
+    fileNameInput.onTextChanged { updateBatchUi() }
+    prefixInput.onTextChanged { updateBatchUi() }
+    startInput.onTextChanged { updateBatchUi() }
+    updateBatchUi()
+
+    val scroller = ScrollView(this).apply { addView(dialogView) }
+    W11Dialog.Builder(this).setTitle("Download File").setIcon(R.drawable.ic_w_download).setView(scroller)
         .setPositiveButton("Download") { _, _ ->
-            val inputName = fileNameInput.text.toString().trim()
-            onConfirm(sanitizeFileName(inputName.ifBlank { defaultName }))
+            val bn = if (batchCheck.isChecked) batchName() else null
+            val wanted = if (bn != null) sanitizeFileName(bn.first)
+            else sanitizeFileName(fileNameInput.text.toString().trim().ifBlank { defaultName })
+            val digits = digitsOnly(startInput.text)
+            val prefix = prefixInput.text.toString().trim()
+            // same name already in the folder (or being downloaded)? -> rename / overwrite dialog first
+            resolveNameConflict(wanted) { finalName, overwrite ->
+                if (bn != null) {
+                    DlEngine.batchOn = true
+                    DlEngine.batchPrefix = prefix
+                    DlEngine.batchPad = digits.length
+                    DlEngine.batchNext = bn.second + 1
+                } else DlEngine.batchOn = false
+                DlEngine.overwriteOnce = overwrite
+                try { onConfirm(finalName) } finally { DlEngine.overwriteOnce = false }
+            }
         }.setNegativeButton("Cancel", null).show()
+}
+
+/**
+ * Checks [name] against the save folder (and against downloads that are still running). No clash: [onResolved] gets
+ * (name, false) at once. Clash: a dialog offers Rename (type a new name, " (1)" is suggested), Overwrite
+ * (the old file is replaced when the new download has finished) or Cancel; [onResolved] is not called on Cancel.
+ */
+internal fun MainActivity.resolveNameConflict(name: String, onResolved: (finalName: String, overwrite: Boolean) -> Unit) {
+    Thread {
+        val taken = try { DlEngine.nameTaken(name) } catch (e: Exception) { false }
+        if (!taken) { runOnUiThread { onResolved(name, false) }; return@Thread }
+        val free = try { DlEngine.freeName(name) } catch (e: Exception) { name }
+        runOnUiThread { showNameConflictDialog(name, free, onResolved) }
+    }.start()
+}
+
+private fun MainActivity.showNameConflictDialog(
+    name: String, suggested: String, onResolved: (finalName: String, overwrite: Boolean) -> Unit
+) {
+    val muted = Color.parseColor("#B8C0D0")
+    var dlg: W11Dialog? = null
+    val box = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(20), dp(12), dp(20), dp(8))
+    }
+    box.addView(TextView(this).apply {
+        text = "\"$name\" already exists in ${DlEngine.folderLabel()} (or is being downloaded right now)."
+        textSize = 13.5f; setTextColor(Color.parseColor("#E6E9F0")); setPadding(0, 0, 0, dp(10))
+    })
+    box.addView(TextView(this).apply {
+        text = "Rename the new file:"; textSize = 12.5f; setTextColor(muted); setPadding(0, 0, 0, dp(4))
+    })
+    val nameInput = EditText(this).apply { setText(suggested); textSize = 14f; setSingleLine(true) }.glassStyle()
+    box.addView(nameInput)
+    box.addView(TextView(this).apply {
+        text = "Overwrite"
+        textSize = 13.5f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
+        setTextColor(Color.WHITE)
+        background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(8).toFloat(); setColor(Color.parseColor("#C0392B"))
+        }
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        setOnClickListener { dlg?.dismiss(); onResolved(name, true) }
+    }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(14) })
+    box.addView(TextView(this).apply {
+        text = "Overwrite replaces the old file once the new download has finished."
+        textSize = 11.5f; setTextColor(muted); setPadding(0, dp(4), 0, 0)
+    })
+    dlg = W11Dialog.Builder(this).setTitle("File already exists").setIcon(R.drawable.ic_w_download).setView(box)
+        .setPositiveButton("Rename") { _, _ ->
+            val typed = sanitizeFileName(nameInput.text.toString().trim().ifBlank { suggested })
+            resolveNameConflict(typed, onResolved)   // the new name may clash too: check again
+        }
+        .setNegativeButton("Cancel", null).show()
 }
 
 
@@ -1141,7 +1356,7 @@ internal fun MainActivity.downloadWithManager(
     mimetype: String, contentLength: Long, webView: WebView
 ) {
     try {
-        val rawName = URLUtil.guessFileName(url, contentDisposition, mimetype)
+        val rawName = guessDownloadName(url, contentDisposition, mimetype)
         val defaultFileName = sanitizeFileName(rawName)
         val cookies = CookieManager.getInstance().getCookie(url) ?: ""
         val ua = if (userAgentStr.isBlank()) {
@@ -1245,7 +1460,7 @@ internal fun MainActivity.downloadManually(
     contentDisposition: String, mimetype: String, customFileName: String? = null
 ) {
     val fileName = customFileName
-        ?: sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimetype))
+        ?: sanitizeFileName(guessDownloadName(url, contentDisposition, mimetype))
     Toast.makeText(this, "Manual download: $fileName", Toast.LENGTH_SHORT).show()
     Thread {
         var connection: HttpURLConnection? = null

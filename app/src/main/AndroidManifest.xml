@@ -92,6 +92,12 @@
              All of them run in the process ":mame" (MAME4droid also has its own task), are not exported and have no LAUNCHER filter: MAME opens from the
              Start menu, the Home screen and rizwans2://mame (MameLauncher.kt). App.kt starts no engine in the ":mame" process. See mame/README.md step 7. -->
 
+        <!-- RetroArch (libretro frontend, :retroarch library, package com.retroarch): MainMenuActivity and RetroActivityFuture (a NativeActivity that loads
+             libretroarch-activity.so) and the permissions come from the library manifest and are merged here automatically; nothing is repeated in this file.
+             Both run in the process ":retroarch" (own task, singleInstance), are not exported and have no LAUNCHER filter: RetroArch opens from the Start menu,
+             the Home screen, rizwans2://retroarch and the File Manager (console ROM files, RetroArchLauncher.kt, step 8). App.kt starts no engine in the ":retroarch" process. RetroDocumentsProvider
+             is merged too but disabled (bool ra_document_provider_enabled). See retroarch/README.md step 6. -->
+
         <!-- On-device debug log viewer (also opened from Quick Settings and the crash dialog) -->
         <activity
             android:name=".DebugLogActivity"

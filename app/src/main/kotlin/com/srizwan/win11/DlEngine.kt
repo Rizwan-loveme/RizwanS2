@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -18,6 +19,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Base64
@@ -84,6 +86,10 @@ class DlTask(val id: Long) {
     var createdAt = System.currentTimeMillis()
     var savedUri = ""
     var savedPath = ""
+    /** Folder chosen by the user (SAF tree uri) when this download was queued; "" = the Downloads folder. */
+    var destTree = ""
+    /** The user chose "Overwrite" for a file name that already exists: the old file is replaced when this one is saved. */
+    var overwrite = false
     @Volatile var speed = 0L
     @Volatile var gen = 0
 
@@ -140,6 +146,175 @@ object DlEngine {
         get() = prefs.getInt("parallel", 3)
         set(v) { prefs.edit().putInt("parallel", v.coerceIn(1, 5)).apply(); pump() }
 
+    // ── Save folder + batch numbering (settings kept between runs) ──
+
+    /** SAF tree uri of the folder the user picked for new downloads; "" = Downloads. */
+    var destTree: String
+        get() = if (inited) prefs.getString("dest_tree", "") ?: "" else ""
+        set(v) {
+            if (!inited) return
+            val old = prefs.getString("dest_tree", "") ?: ""
+            if (old.isNotEmpty() && old != v) {
+                try {
+                    app.contentResolver.releasePersistableUriPermission(
+                        Uri.parse(old), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                } catch (e: Exception) { }
+            }
+            prefs.edit().putString("dest_tree", v).apply()
+        }
+
+    /** The picked folder, or "" when none is set or the permission for it is gone (then Downloads is used). */
+    fun activeDestTree(): String {
+        val s = destTree
+        if (s.isEmpty()) return ""
+        return try {
+            val u = Uri.parse(s)
+            if (app.contentResolver.persistedUriPermissions.any { it.uri == u && it.isWritePermission }) s else ""
+        } catch (e: Exception) { "" }
+    }
+
+    /** Readable name of the save folder for the dialog: "Downloads", "Internal storage/Music/Audio", "SD card (1A2B-3C4D)/..." */
+    fun folderLabel(): String {
+        val s = activeDestTree()
+        if (s.isEmpty()) return "Downloads"
+        return try {
+            val id = DocumentsContract.getTreeDocumentId(Uri.parse(s))
+            val vol = id.substringBefore(':')
+            val path = id.substringAfter(':', "")
+            val root = if (vol == "primary") "Internal storage" else "SD card ($vol)"
+            if (path.isEmpty()) root else "$root/$path"
+        } catch (e: Exception) { "Custom folder" }
+    }
+
+    var batchOn: Boolean
+        get() = inited && prefs.getBoolean("batch_on", false)
+        set(v) { if (inited) prefs.edit().putBoolean("batch_on", v).apply() }
+    /** The number the next batch download starts with (moves on after every confirmed download). */
+    var batchNext: Long
+        get() = if (inited) prefs.getLong("batch_next", 0L) else 0L
+        set(v) { if (inited) prefs.edit().putLong("batch_next", v).apply() }
+    /** Zero padding of the batch number: 3 = 000, 001, 002 ... */
+    var batchPad: Int
+        get() = if (inited) prefs.getInt("batch_pad", 3).coerceIn(1, 9) else 3
+        set(v) { if (inited) prefs.edit().putInt("batch_pad", v.coerceIn(1, 9)).apply() }
+    var batchPrefix: String
+        get() = if (inited) prefs.getString("batch_prefix", "") ?: "" else ""
+        set(v) { if (inited) prefs.edit().putString("batch_prefix", v).apply() }
+
+    /**
+     * Set by the "file already exists" dialog right before a download is queued: the next [enqueue] / [beginBlob]
+     * takes it (and clears it), so the new task replaces the old file instead of getting a " (1)" name.
+     */
+    @Volatile var overwriteOnce = false
+
+    private fun treePermOk(tree: String): Boolean = try {
+        val u = Uri.parse(tree)
+        app.contentResolver.persistedUriPermissions.any { it.uri == u && it.isWritePermission }
+    } catch (e: Exception) { false }
+
+    /** (document id, display name) of every file in the picked folder. */
+    private fun treeChildren(tree: Uri): List<Pair<String, String>> {
+        val out = ArrayList<Pair<String, String>>()
+        try {
+            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+            app.contentResolver.query(
+                children,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                null, null, null
+            )?.use {
+                while (it.moveToNext()) {
+                    val id = it.getString(0) ?: continue
+                    out.add(id to (it.getString(1) ?: ""))
+                }
+            }
+        } catch (e: Exception) { }
+        return out
+    }
+
+    private fun existsInTarget(name: String, tree: String): Boolean {
+        if (tree.isNotEmpty() && treePermOk(tree)) {
+            return treeChildren(Uri.parse(tree)).any { it.second.equals(name, true) }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                app.contentResolver.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.MediaColumns._ID),
+                    "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                    arrayOf(Environment.DIRECTORY_DOWNLOADS + "/", name), null
+                )?.use { if (it.count > 0) return true }
+            } catch (e: Exception) { }
+        }
+        return try { File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), name).exists() }
+        catch (e: Exception) { false }
+    }
+
+    /**
+     * true when a file with this name is already in the save folder, or another download that is not finished
+     * yet is going to be saved under this name. Does file / provider work: call it on a background thread.
+     */
+    fun nameTaken(name: String): Boolean {
+        if (!inited) return false
+        val tree = activeDestTree()
+        val pending = tasks.any {
+            (it.status == QUEUED || it.status == RUNNING || it.status == PAUSED || it.status == SAVING) &&
+                it.fileName.equals(name, true) && (if (it.destTree.isNotEmpty() && !treePermOk(it.destTree)) "" else it.destTree) == tree
+        }
+        return pending || existsInTarget(name, tree)
+    }
+
+    /** "name (1).ext", "name (2).ext" ... : the first variant of [name] that is free (background thread). */
+    fun freeName(name: String): String {
+        val base = name.substringBeforeLast('.', name)
+        val ext = if (name.contains('.')) "." + name.substringAfterLast('.') else ""
+        var i = 1
+        while (i < 1000) {
+            val cand = "$base ($i)$ext"
+            if (!nameTaken(cand)) return cand
+            i++
+        }
+        return "$base (${System.currentTimeMillis()})$ext"
+    }
+
+    /** Deletes the old file(s) called [name] in the save folder (for "Overwrite"). Best effort. */
+    private fun deleteExisting(name: String, tree: String) {
+        val cr = app.contentResolver
+        if (tree.isNotEmpty()) {
+            val t = Uri.parse(tree)
+            for ((id, n) in treeChildren(t)) {
+                if (!n.equals(name, true)) continue
+                try { DocumentsContract.deleteDocument(cr, DocumentsContract.buildDocumentUriUsingTree(t, id)) } catch (e: Exception) { }
+            }
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val ids = ArrayList<Long>()
+                cr.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.MediaColumns._ID),
+                    "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                    arrayOf(Environment.DIRECTORY_DOWNLOADS + "/", name), null
+                )?.use { while (it.moveToNext()) ids.add(it.getLong(0)) }
+                for (id in ids) {
+                    try { cr.delete(ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id), null, null) }
+                    catch (e: Exception) { }   // a file of another app cannot be deleted: the new one then gets a " (1)" name
+                }
+            } catch (e: Exception) { }
+        }
+        try {
+            val f = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), name)
+            if (f.exists()) f.delete()
+        } catch (e: Exception) { }
+    }
+
+    private fun isDocUri(u: Uri): Boolean = try { DocumentsContract.isDocumentUri(app, u) } catch (e: Exception) { false }
+
+    /** Deletes the finished file: SAF document or MediaStore row. */
+    private fun deleteSaved(t: DlTask) {
+        val u = Uri.parse(t.savedUri)
+        if (isDocUri(u)) DocumentsContract.deleteDocument(app.contentResolver, u)
+        else app.contentResolver.delete(u, null, null)
+    }
+
     // ── Init / persistence ──────────────────────────────────────
 
     @Synchronized
@@ -162,7 +337,7 @@ object DlEngine {
         put("cookie", t.cookie); put("ua", t.ua); put("ref", t.referer)
         put("blob", t.isBlob); put("status", t.status); put("total", t.total)
         put("range", t.rangeOk); put("created", t.createdAt)
-        put("uri", t.savedUri); put("path", t.savedPath); put("err", t.error)
+        put("uri", t.savedUri); put("path", t.savedPath); put("err", t.error); put("tree", t.destTree); put("ow", t.overwrite)
         put("ss", JSONArray(t.segStart.toList()))
         put("se", JSONArray(t.segEnd.toList()))
         put("sp", JSONArray(t.segPos.toList()))
@@ -178,6 +353,7 @@ object DlEngine {
         t.isBlob = o.optBoolean("blob"); t.total = o.optLong("total", -1)
         t.rangeOk = o.optBoolean("range"); t.createdAt = o.optLong("created", System.currentTimeMillis())
         t.savedUri = o.optString("uri"); t.savedPath = o.optString("path"); t.error = o.optString("err")
+        t.destTree = o.optString("tree"); t.overwrite = o.optBoolean("ow")
         t.segStart = longs(o.optJSONArray("ss")); t.segEnd = longs(o.optJSONArray("se"))
         t.segPos = longs(o.optJSONArray("sp"))
         var st = o.optInt("status", FAILED)
@@ -238,6 +414,8 @@ object DlEngine {
     ): DlTask {
         val t = DlTask(nextId++)
         t.url = url; t.fileName = fileName
+        t.destTree = activeDestTree()
+        t.overwrite = overwriteOnce; overwriteOnce = false
         t.mime = if (mime.isBlank() || mime.endsWith("/*")) guessMime(fileName) else mime
         t.cookie = cookie; t.ua = ua; t.referer = referer
         t.total = totalHint
@@ -281,7 +459,7 @@ object DlEngine {
     fun deleteFinishedFile(id: Long) {
         val t = find(id) ?: return
         try {
-            if (t.savedUri.isNotEmpty()) app.contentResolver.delete(android.net.Uri.parse(t.savedUri), null, null)
+            if (t.savedUri.isNotEmpty()) deleteSaved(t)
             else if (t.savedPath.startsWith("/")) File(t.savedPath).delete()
         } catch (e: Exception) { }
         cancel(id)
@@ -311,7 +489,7 @@ object DlEngine {
             for (t in victims) {
                 if (t.savedUri.isEmpty() && t.savedPath.isEmpty()) continue
                 try {
-                    if (t.savedUri.isNotEmpty()) app.contentResolver.delete(Uri.parse(t.savedUri), null, null)
+                    if (t.savedUri.isNotEmpty()) deleteSaved(t)
                     fileFor(t)?.let { if (it.exists()) it.delete() }
                 } catch (e: Exception) { }
             }
@@ -364,6 +542,21 @@ object DlEngine {
     }
 
     private fun doRename(t: DlTask, wanted: String): Pair<Boolean, String> {
+        if (t.savedUri.isNotEmpty() && isDocUri(Uri.parse(t.savedUri))) {   // file in a folder the user picked (SAF)
+            val cr = app.contentResolver
+            val renamed = DocumentsContract.renameDocument(cr, Uri.parse(t.savedUri), wanted)
+                ?: return false to "Cannot rename in this folder"
+            var real = wanted
+            try {
+                cr.query(renamed, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                    if (it.moveToFirst()) it.getString(0)?.let { v -> real = v }
+                }
+            } catch (e: Exception) { }
+            t.savedUri = renamed.toString()
+            t.savedPath = t.savedPath.substringBeforeLast('/', "") .let { if (it.isEmpty()) real else "$it/$real" }
+            applyRenamed(t, real)
+            return true to real
+        }
         if (t.savedUri.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val uri = Uri.parse(t.savedUri)
             val cr = app.contentResolver
@@ -466,7 +659,7 @@ object DlEngine {
         if (t.savedUri.isNotEmpty()) {
             try {
                 val uri = Uri.parse(t.savedUri)
-                val proj = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                val proj = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !isDocUri(uri))
                     arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE, MediaStore.MediaColumns.RELATIVE_PATH)
                 else arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
                 val cr = app.contentResolver
@@ -806,6 +999,53 @@ object DlEngine {
         return f
     }
 
+    /** A name that does not exist yet in the picked folder: "name.ext", "name (1).ext", "name (2).ext" ... */
+    private fun uniqueTreeName(tree: Uri, wanted: String): String {
+        val used = HashSet<String>()
+        for ((_, n) in treeChildren(tree)) used.add(n.lowercase())
+        if (wanted.lowercase() !in used) return wanted
+        val base = wanted.substringBeforeLast('.', wanted)
+        val ext = if (wanted.contains('.')) "." + wanted.substringAfterLast('.') else ""
+        var i = 1
+        while ("$base ($i)$ext".lowercase() in used) i++
+        return "$base ($i)$ext"
+    }
+
+    /**
+     * Copies the finished temp file into the folder the user picked (Storage Access Framework).
+     * Returns false when that is not possible (permission gone, folder deleted ...): the caller then uses Downloads.
+     */
+    private fun saveToTree(t: DlTask, temp: File, name: String): Boolean {
+        val tree = Uri.parse(t.destTree)
+        val cr = app.contentResolver
+        if (cr.persistedUriPermissions.none { it.uri == tree && it.isWritePermission }) return false
+        val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        val finalName = uniqueTreeName(tree, name)
+        var doc = DocumentsContract.createDocument(cr, parent, guessMime(finalName), finalName) ?: return false
+        try {
+            cr.openOutputStream(doc, "w")?.use { out ->
+                temp.inputStream().use { it.copyTo(out, 128 * 1024) }
+            } ?: throw IOException("Cannot write file")
+        } catch (e: Exception) {
+            try { DocumentsContract.deleteDocument(cr, doc) } catch (x: Exception) { }
+            throw e
+        }
+        var real = finalName
+        try {
+            cr.query(doc, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0)?.let { v -> real = v }
+            }
+        } catch (e: Exception) { }
+        // some providers add an extension of their own (name.xyz -> name.xyz.bin): put the wanted name back
+        if (real != finalName) {
+            try { DocumentsContract.renameDocument(cr, doc, finalName)?.let { doc = it; real = finalName } } catch (e: Exception) { }
+        }
+        t.fileName = real
+        t.savedUri = doc.toString()
+        t.savedPath = folderLabel() + "/" + real
+        return true
+    }
+
     private fun finish(t: DlTask) {
         t.status = SAVING
         t.speed = 0
@@ -813,7 +1053,16 @@ object DlEngine {
         val temp = tempFile(t)
         val name = t.fileName.ifBlank { "download_${t.id}" }
         val mime = t.mime.ifBlank { guessMime(name) }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (t.overwrite) {   // "Overwrite": the old file goes only now, after the new one was downloaded completely
+            try {
+                deleteExisting(name, if (t.destTree.isNotEmpty() && treePermOk(t.destTree)) t.destTree else "")
+                tasks.removeAll { it !== t && it.status == DONE && it.fileName.equals(name, true) && it.destTree == t.destTree }
+            } catch (e: Exception) { }
+        }
+        val savedToTree = t.destTree.isNotEmpty() && try { saveToTree(t, temp, name) } catch (e: Exception) { false }
+        if (savedToTree) {
+            // saved into the folder the user picked
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val cv = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, name)
                 put(MediaStore.Downloads.MIME_TYPE, mime)
@@ -860,6 +1109,8 @@ object DlEngine {
     fun beginBlob(fileName: String, mime: String, size: Long): DlTask {
         val t = DlTask(nextId++)
         t.fileName = fileName
+        t.destTree = activeDestTree()
+        t.overwrite = overwriteOnce; overwriteOnce = false
         t.mime = if (mime.isBlank()) guessMime(fileName) else mime
         t.isBlob = true
         t.total = size

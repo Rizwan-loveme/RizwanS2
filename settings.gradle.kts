@@ -49,7 +49,14 @@ include(":camera")
 // Resources prefixed "pp_". Used by the Start menu, the Home screen, the rizwans2://ppsspp deep link and the File Manager (.iso / .cso / .pbp), built step by step, see ppsspp/README.md.
 include(":ppsspp")
 // MAME (arcade emulator) as the built-in "MAME" app: MAME4droid (Current) v1.41.2 by Seleuco, MAME core 0.289, package com.seleuco.mame4droid (upstream package kept: the JNI names depend on it).
-// Upstream: https://github.com/seleuco/MAME4droid-Current (GPL-2.0), pinned in mame/UPSTREAM_VERSION + mame/UPSTREAM_SHA256, see NOTICE-MAME4droid.md.
+// Upstream: https://github.com/seleuco/MAME4droid-Current (GPL-2.0-or-later: the source headers say "version 2 or any later version"), pinned in mame/UPSTREAM_VERSION + mame/UPSTREAM_SHA256, see NOTICE-MAME4droid.md.
 // The Java frontend is in the project; the MAME core libMAME4droid.so (367 MB) and res/raw/files.zip (64 MB) are NOT in the project zip: mame/tools/fetch-upstream.sh downloads them (SHA-256 checked) before every build.
 // Resources prefixed "mm_". Built step by step, see mame/README.md. Start menu / Home icon / rizwans2://mame hooks: app/.../MameLauncher.kt (step 7).
 include(":mame")
+// RetroArch (libretro frontend) as the built-in "RetroArch" app, package com.retroarch (upstream package kept: the native code calls the Java classes by name).
+// Upstream: https://github.com/libretro/RetroArch (GPL-3.0), pinned in retroarch/UPSTREAM_VERSION (v1.22.2) + retroarch/UPSTREAM_COMMIT, see retroarch/README.md and NOTICE-RetroArch.md (licence files + GPL-3.0 compatibility note, step 9).
+// Cores are NOT bundled: RetroArch's own Online Updater (Core Downloader) fetches them at run time (works because :app keeps targetSdk 28).
+// All 12 steps done (step 12 = final static checks; docs step 11; CI: cache, fetch step, ccache and APK check in both workflows, step 10): the C source is NOT in the project zip: retroarch/tools/fetch-upstream.sh (step 4) clones it into retroarch/upstream/ (commit-checked) before every build.
+// The native library libretroarch-activity.so is built from it by upstream's Android.mk (ndk-build, step 5; -PretroarchNative=false switches it off).
+// The small Java part (10 files incl. the SAF VFS and the play-core stub), resources (prefix "ra_") and the library manifest are IN the project (step 6): RetroArch runs in its own process ":retroarch" (upstream calls System.exit / exit), activities not exported. App hooks (step 8): app/.../RetroArchLauncher.kt = Start menu entry, Home icon, rizwans2://retroarch and File Manager (console ROM files); 64-bit ARM only.
+include(":retroarch")

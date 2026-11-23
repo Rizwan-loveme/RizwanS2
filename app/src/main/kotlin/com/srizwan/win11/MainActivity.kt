@@ -204,6 +204,23 @@ class MainActivity : AppCompatActivity() {
             initUI()
         }
 
+    /** Folder picker for downloads (system "choose folder" screen); the choice is kept in DlEngine.destTree. */
+    internal var dlFolderCallback: (() -> Unit)? = null
+    internal val dlFolderLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            val uri = r.data?.data
+            if (r.resultCode == android.app.Activity.RESULT_OK && uri != null) {
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    DlEngine.destTree = uri.toString()
+                } catch (e: Exception) {
+                    Toast.makeText(this, "This folder cannot be used: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            dlFolderCallback?.invoke()
+        }
+
     internal val defaultLauncherLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (isDefaultLauncher()) {
@@ -729,6 +746,8 @@ class MainActivity : AppCompatActivity() {
                     openPpsspp()
                 } else if (section == "mame") {
                     openMame()
+                } else if (section == "retroarch") {
+                    openRetroarch()
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -886,7 +905,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | mame | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | mame | retroarch | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -924,6 +943,7 @@ class MainActivity : AppCompatActivity() {
                 "j2me" -> openJ2me()
                 "ppsspp" -> openPpsspp()
                 "mame" -> openMame()
+                "retroarch" -> openRetroarch()
                 // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
                 "chooser" -> com.srizwan.chooser.settings.ChooserSettings.open(this)
                 else -> { // "open" and anything unknown

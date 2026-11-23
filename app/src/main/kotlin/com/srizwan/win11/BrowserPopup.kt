@@ -20,11 +20,13 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.webkit.CookieManager
 import android.webkit.JsPromptResult
 import android.webkit.JsResult
@@ -117,6 +119,33 @@ private var lastBlockedToast = 0L
 internal fun webViewFriendlyUa(ua: String): String =
     ua.replace("; wv)", ")").replace(Regex("Version/\\d+(\\.\\d+)? "), "")
 
+/**
+ * Root view of the floating pop-up window. An overlay window (over other apps) is not focusable by default, so the
+ * soft keyboard cannot open in it. This view tells the pop-up when the window gets / loses focus, when the user touches
+ * outside it and when Back is pressed, so the pop-up can switch keyboard focus on while the user types and off again.
+ */
+private class FloatFrame(
+    ctx: Context,
+    private val onLeave: () -> Unit,
+    private val onFocused: () -> Unit
+) : FrameLayout(ctx) {
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_OUTSIDE) { onLeave(); return true }
+        return super.dispatchTouchEvent(ev)
+    }
+    override fun dispatchKeyEvent(ev: KeyEvent): Boolean {
+        if (ev.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (ev.action == KeyEvent.ACTION_UP) onLeave()
+            return true
+        }
+        return super.dispatchKeyEvent(ev)
+    }
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (hasWindowFocus) onFocused() else onLeave()
+    }
+}
+
 /** Small diagonal grip drawn in the corner of a floating popup; dragging it resizes the window. */
 private class GripView(ctx: Context) : View(ctx) {
     private val d = resources.displayMetrics.density
@@ -159,6 +188,11 @@ internal class BrowserPopup(
     private var floatX = 0
     private var floatY = 0
     private var overlayLp: WindowManager.LayoutParams? = null
+
+    // keyboard support for the floating window
+    private var overlayTyping = false          // overlay window is currently focusable (keyboard can open)
+    private var yBeforeTyping = -1             // position to go back to when typing ends (-1 = none)
+    private var layerListener: View.OnLayoutChangeListener? = null
 
     /** true while the floating window is a system overlay window (over other apps), false when it sits inside the app */
     var floatInOverlay = false
@@ -340,7 +374,7 @@ internal class BrowserPopup(
         val body0 = floatBody
         if (existing != null && body0 != null) return existing to body0
 
-        val fv = FrameLayout(act).apply {
+        val fv = FloatFrame(act, { leaveTyping() }, { onOverlayFocused() }).apply {
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#FF1E2230"))
                 cornerRadius = act.dp(10).toFloat()
@@ -403,7 +437,7 @@ internal class BrowserPopup(
         var ox = 0f; var oy = 0f
         header.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { ox = floatX - ev.rawX; oy = floatY - ev.rawY }
+                MotionEvent.ACTION_DOWN -> { ox = floatX - ev.rawX; oy = floatY - ev.rawY; yBeforeTyping = -1 }
                 MotionEvent.ACTION_MOVE -> {
                     val (lw, lh) = layerSize()
                     val minY = act.dp(24)
@@ -414,6 +448,12 @@ internal class BrowserPopup(
                 }
             }
             true
+        }
+
+        // a touch in the page asks for keyboard focus (overlay window only; inside the app the activity window has it)
+        webView.setOnTouchListener { _, ev ->
+            if (ev.actionMasked == MotionEvent.ACTION_DOWN) enterTyping()
+            false
         }
 
         floatView = fv; floatBody = body; floatTitle = t
@@ -455,6 +495,10 @@ internal class BrowserPopup(
     /** Takes the floating window off the screen, wherever it is (overlay window or app layer). */
     private fun removeFloatView() {
         val fv = floatView ?: return
+        layerListener?.let { try { floatLayer().removeOnLayoutChangeListener(it) } catch (e: Exception) { } }
+        layerListener = null
+        overlayTyping = false
+        yBeforeTyping = -1
         if (floatInOverlay) {
             try { act.applicationContext.windowManager().removeViewImmediate(fv) } catch (e: Exception) { }
         } else {
@@ -471,9 +515,13 @@ internal class BrowserPopup(
             else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
             val lp = WindowManager.LayoutParams(
                 floatW, floatH, type,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT
-            ).apply { gravity = Gravity.TOP or Gravity.START; x = floatX; y = floatY }
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START; x = floatX; y = floatY
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+            }
             act.applicationContext.windowManager().addView(fv, lp)
             overlayLp = lp
             floatInOverlay = true
@@ -510,9 +558,74 @@ internal class BrowserPopup(
         if (!(overlay && addOverlay(fv))) {
             layer.addView(fv, FrameLayout.LayoutParams(floatW, floatH))
             fv.x = floatX.toFloat(); fv.y = floatY.toFloat()
+            // the keyboard shrinks the app window (adjustResize): keep the floating window above it
+            val l = View.OnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom, _ ->
+                if (bottom - top != oldBottom - oldTop) fv.post { fitInAppFloat() }
+            }
+            layerListener = l
+            layer.addOnLayoutChangeListener(l)
         }
         fv.alpha = 0f
         fv.animate().alpha(1f).setDuration(140).start()
+    }
+
+    /** Inside the app: keeps the window on screen when the keyboard shrinks the app area, and puts it back afterwards. */
+    private fun fitInAppFloat() {
+        val fv = floatView ?: return
+        if (floatInOverlay || released) return
+        val layer = floatLayer()
+        val minY = act.dp(24)
+        val maxY = (layer.height - fv.height).coerceAtLeast(minY)
+        fv.y = floatY.coerceIn(minY, maxY).toFloat()
+    }
+
+    /**
+     * Overlay window: the user touched the page, so the window must become focusable for the keyboard to open.
+     * The window also moves to the top of the screen so the keyboard does not cover it.
+     */
+    private fun enterTyping() {
+        val fv = floatView ?: return
+        val lp = overlayLp ?: return
+        if (!floatInOverlay || overlayTyping || released) return
+        overlayTyping = true
+        lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        val topY = act.dp(24)
+        if (floatY > topY && floatH <= act.resources.displayMetrics.heightPixels / 2) {
+            yBeforeTyping = floatY
+            floatY = topY
+            lp.y = topY
+        }
+        try { act.applicationContext.windowManager().updateViewLayout(fv, lp) } catch (e: Exception) { overlayTyping = false }
+    }
+
+    /** The overlay window got keyboard focus: focus the page and open the keyboard if a text field is selected. */
+    private fun onOverlayFocused() {
+        if (!overlayTyping || released) return
+        webView.postDelayed({
+            if (!overlayTyping || released) return@postDelayed
+            webView.requestFocus()
+            try {
+                (act.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
+            } catch (e: Exception) { }
+        }, 80)
+    }
+
+    /** Typing ended (touch outside, Back, another app took focus): hide the keyboard and make the overlay non-focusable again. */
+    private fun leaveTyping() {
+        val fv = floatView ?: return
+        val lp = overlayLp ?: return
+        if (!overlayTyping) return
+        overlayTyping = false
+        try {
+            (act.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(fv.windowToken, 0)
+        } catch (e: Exception) { }
+        try { webView.clearFocus() } catch (e: Exception) { }
+        lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        if (yBeforeTyping >= 0) { floatY = yBeforeTyping; lp.y = yBeforeTyping }
+        yBeforeTyping = -1
+        if (floatInOverlay) try { act.applicationContext.windowManager().updateViewLayout(fv, lp) } catch (e: Exception) { }
     }
 
     /** Permission was granted while this window floats inside the app: move it to the overlay (called when the app comes back). */
@@ -539,6 +652,7 @@ internal class BrowserPopup(
     fun detachWebView(): WebView {
         released = true
         try { root.animate().cancel(); floatView?.animate()?.cancel() } catch (e: Exception) { }
+        try { webView.setOnTouchListener(null) } catch (e: Exception) { }
         try { (webView.parent as? ViewGroup)?.removeView(webView) } catch (e: Exception) { }
         try { (root.parent as? ViewGroup)?.removeView(root) } catch (e: Exception) { }
         removeFloatView()

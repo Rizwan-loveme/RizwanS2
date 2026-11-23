@@ -86,6 +86,8 @@ dependencies {
     implementation(project(":ppsspp"))
     // MAME: built-in arcade emulator (MAME4droid, package com.seleuco.mame4droid). Start menu, Home icon and rizwans2://mame (MameLauncher.kt; 64-bit ARM phones only) were added in step 7, see mame/README.md
     implementation(project(":mame"))
+    // RetroArch: built-in libretro frontend (package com.retroarch). All 12 steps done (native lib, Java, resources, manifest; runs in its own process :retroarch). Start menu, Home icon, rizwans2://retroarch and File Manager (console ROM files) hooks: RetroArchLauncher.kt (64-bit ARM phones only), see retroarch/README.md
+    implementation(project(":retroarch"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

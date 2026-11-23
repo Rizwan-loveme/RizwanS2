@@ -94,6 +94,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         const val J2ME = "j2me"
         const val PPSSPP = "ppsspp"
         const val MAME = "mame"
+        const val RETROARCH = "retroarch"
 
         private fun data(type: String): String? = when (type) {
             FILES -> "M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z"
@@ -117,6 +118,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             CAMERA -> "M9,2L7.17,4H4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2H9zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"
             J2ME -> "M21,6H3c-1.1,0 -2,0.9 -2,2v8c0,1.1 0.9,2 2,2h18c1.1,0 1.99,-0.9 1.99,-2L23,8c0,-1.1 -0.9,-2 -2,-2zM11,13H8v3H6v-3H3v-2h3V8h2v3h3v2zM15.5,15c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5zM19.5,12c-0.83,0 -1.5,-0.67 -1.5,-1.5S18.67,9 19.5,9s1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z"
             PPSSPP -> "M5,6H19C20.66,6 22,7.34 22,9V15C22,16.66 20.66,18 19,18H5C3.34,18 2,16.66 2,15V9C2,7.34 3.34,6 5,6ZM8,8H16C16.55,8 17,8.45 17,9V15C17,15.55 16.55,16 16,16H8C7.45,16 7,15.55 7,15V9C7,8.45 7.45,8 8,8ZM3.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0ZM18.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0Z"
+            RETROARCH -> "M7,7H17C19.76,7 22,9.24 22,12V13C22,15.21 20.21,17 18,17C16.9,17 16,16.1 15,15H9C8,16.1 7.1,17 6,17C3.79,17 2,15.21 2,13V12C2,9.24 4.24,7 7,7ZM6.4,9.6H7.6V11.4H9.4V12.6H7.6V14.4H6.4V12.6H4.6V11.4H6.4ZM14.4,12.8a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0ZM16.9,11a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0Z"
             MAME -> "M5.5,6a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0ZM8,9.5H10V14H8ZM3,14H21V20C21,20.55 20.55,21 20,21H4C3.45,21 3,20.55 3,20ZM14.7,17.5a1.8,1.8 0 1,0 3.6,0a1.8,1.8 0 1,0 -3.6,0Z"
             else -> null
         }
@@ -135,6 +137,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             J2ME -> Color.parseColor("#FF9F43")
             PPSSPP -> Color.parseColor("#4C8DFF")
             MAME -> Color.parseColor("#F25F5C")
+            RETROARCH -> Color.parseColor("#2EC4B6")
             START -> Color.parseColor("#4CC2FF")
             else -> Color.WHITE
         }
@@ -146,6 +149,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         if (type == WINLATOR) path?.fillType = Path.FillType.EVEN_ODD // hollow wine glass
         if (type == PPSSPP) path?.fillType = Path.FillType.EVEN_ODD // hollow screen of the handheld
         if (type == MAME) path?.fillType = Path.FillType.EVEN_ODD // hollow button of the arcade joystick
+        if (type == RETROARCH) path?.fillType = Path.FillType.EVEN_ODD // hollow d-pad and buttons of the game pad
     }
 
     fun setIconColor(c: Int) {
@@ -1530,6 +1534,8 @@ class Win11Shell(
         column.addView(desktopIcon(VectorIconView.PPSSPP, "PPSSPP", "ppsspp"))
         // Home screen icon of the built-in MAME app (:mame module, MAME4droid); 64-bit ARM phones only (like Winlator)
         if (isMameSupported()) column.addView(desktopIcon(VectorIconView.MAME, "MAME", "mame"))
+        // Home screen icon of the built-in RetroArch app (:retroarch module); 64-bit ARM phones only
+        if (isRetroarchSupported(ctx)) column.addView(desktopIcon(VectorIconView.RETROARCH, "RetroArch", "retroarch"))
         if (WinlatorLauncher.isSupported()) column.addView(desktopIcon(VectorIconView.WINLATOR, "Winlator", WinlatorLauncher.SECTION))
         // Seven icons no longer always fit under each other on a short screen (landscape, split screen): the column scrolls.
         desktop.addView(android.widget.ScrollView(ctx).apply {
