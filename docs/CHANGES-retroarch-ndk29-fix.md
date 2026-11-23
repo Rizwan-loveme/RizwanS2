@@ -29,3 +29,9 @@ The compiler stopped at the first failing file (`griffin.c`). Other NDK 29 error
 - `:retroarch` native build now passes (ALooper fix worked).
 - New error, `:app:compileReleaseKotlin`: `BrowserPopup.kt:562` the `View.OnLayoutChangeListener` lambda had 10 parameters, the interface has 9
   (`v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom`). Removed the extra trailing `_`.
+
+## Update 3: UltimateBuild_NoWinlator.yml now has a tick box per module
+Run workflow -> tick / untick: Winlator, PPSSPP, MAME, RetroArch, J2ME (all ticked by default), "Publish to GitHub Releases" and the signing diagnostics.
+An unticked module is deleted from the temporary checkout (folder, settings.gradle.kts, app/build.gradle.kts), its launcher in :app becomes a stub, its
+Start menu entry / Home icon are hidden, and its fetch / cache / ccache / APK-check steps are skipped. Release tag: `release-custom-N`.
+Not switchable (the rest of the app uses them): :Bcore (BlackBox), YouTube, Video, Gallery, Camera, Chooser.
