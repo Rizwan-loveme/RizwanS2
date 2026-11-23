@@ -20,11 +20,16 @@ import java.io.File
  * The built-in J2ME app (:j2me, J2ME Loader) runs each Java game in its own process (":midlet"). That process is
  * neither the launcher nor an engine process, so BlackBox is NOT attached there (it would treat the process as a
  * cloned app and hook the system services). It only gets J2ME's own start-up (crash dialog, saved theme).
+ *
+ * The built-in MAME app (:mame, MAME4droid) runs all its screens in its own process (":mame", see mame/README.md step 4).
+ * Like ":midlet" it is neither the launcher nor an engine process, so nothing is started there at all: no BlackBox attach
+ * (it would hook the system services of the emulator), no J2ME start-up, no launcher log / crash handler (step 7).
  */
 class App : Application() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
+        if (isMameProcess()) return // step 7: MAME has no need of the Win11 engines
         if (isMidletProcess()) {
             ru.playsoftware.j2meloader.EmulatorApplication.attachMidletProcess(this)
             return
@@ -48,7 +53,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (isMidletProcess()) return
+        if (isMameProcess() || isMidletProcess()) return
         try {
             BlackBoxCore.get().doCreate()
         } catch (e: Throwable) {
@@ -63,6 +68,9 @@ class App : Application() {
 
     /** true in the J2ME game process (process name == package name + ":midlet"). */
     private fun isMidletProcess(): Boolean = currentProcessName() == "$packageName:midlet"
+
+    /** true in the MAME process (process name == package name + ":mame"; every activity of :mame has android:process=":mame"). */
+    private fun isMameProcess(): Boolean = currentProcessName() == "$packageName:mame"
 
     private fun currentProcessName(): String? = try {
         if (Build.VERSION.SDK_INT >= 28) getProcessName()

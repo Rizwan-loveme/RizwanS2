@@ -727,6 +727,8 @@ class MainActivity : AppCompatActivity() {
                     openJ2me()
                 } else if (section == "ppsspp") {
                     openPpsspp()
+                } else if (section == "mame") {
+                    openMame()
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -884,7 +886,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | mame | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -921,6 +923,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 "j2me" -> openJ2me()
                 "ppsspp" -> openPpsspp()
+                "mame" -> openMame()
                 // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
                 "chooser" -> com.srizwan.chooser.settings.ChooserSettings.open(this)
                 else -> { // "open" and anything unknown

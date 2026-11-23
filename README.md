@@ -1519,3 +1519,34 @@ both workflow files parse as YAML, bracket balance of the Gradle files. **Build 
 Test on a device: Start menu → **PPSSPP** (also the Home icon and `rizwans2://ppsspp`) → PPSSPP's game browser opens → pick a `.iso` / `.cso` → the game runs; File Manager → tap a `.iso` → the game starts directly;
 rotate, back button, close and open again. Keep PPSSPP closed before starting a second game from the File Manager (upstream does not switch games while running).
 "All apps" numbers (`rizwans2://N`) shift by one for the apps after **PPSSPP** (the list is sorted by name).
+
+## MAME (MAME4droid) — plan, all 9 steps done (details: `docs/MAME4DROID-STEP1-ANALYSIS.md`)
+
+Planned built-in app **MAME** (arcade emulator) from [MAME4droid (Current)](https://github.com/seleuco/MAME4droid-Current) (GPL-2.0, v1.41.2, MAME core 0.289), same pattern as `:ppsspp` (module `:mame`, resources `mm_`, source fetched at build time, not in the zip).
+Step 1 (reading this project and the upstream) is done; no code or Gradle file was changed. Findings: the MAME core `libMAME4droid.so` is not in the upstream repo (it is built separately; plan: take it from the official release APK in CI),
+upstream minSdk is 29 (this project 26), arm64-v8a only, Java package `com.seleuco.mame4droid` must stay (JNI names), licence is GPL-2.0 (no non-commercial clause). Steps 2-9 are listed in the docs file.
+Step 2 (done): core source = plan A, the prebuilt `libMAME4droid.so` (367 MB) is taken from the official v1.41.2 release APK at build time and checked against the SHA-256 in `mame/UPSTREAM_SHA256`; version pinned in `mame/UPSTREAM_VERSION`;
+`NOTICE-MAME4droid.md` and `LICENSE-MAME4droid` added; still no Gradle change. Details and the size decision for step 3: `mame/README.md`.
+
+Step 3 (done): module `:mame` (`mame/`, namespace `com.seleuco.mame4droid`, minSdk 26) added to `settings.gradle.kts` and `:app` (`implementation(project(":mame"))`): upstream Java (50 files), resources renamed `mm_`, help pages under `assets/mame/`,
+library manifest (6 activities, no launcher icon, no zip filter), ndk-build of the small JNI library, `mame/tools/fetch-upstream.sh` + Gradle task `fetchMameCore` (downloads and hash-checks the 367 MB core and the 64 MB `files.zip` into git-ignored `mame/core/`, packed into the APK).
+Two unguarded API 28 / 29 calls were guarded for minSdk 26. Not built here (no SDK / NDK / device). Nothing opened MAME after step 3 (step 7 added the hooks). Details: `mame/README.md`.
+
+Step 4 (done): ROM folder (SAF folder picker, kept from upstream) and MAME's own game list are kept as they are; added `MameLaunch` (entry point for step 7). Fixed two step-3 defects: MAME now runs in its own process `:mame` + own task (upstream kills the process on exit, which would have closed Win11),
+and its settings use their own file `mame4droid_settings` (`MamePrefs`) instead of the app-wide default one. Details and what was not checked: `mame/README.md`.
+
+Step 5 (done): emulation screen, touch controls and gamepad are upstream's and were kept (checked for use inside Win11: no host-app dependence, 16 KB-aligned libraries). Fixed: the version sent to the core / NetPlay lobby was Win11's `versionName`; it is now `MameLaunch.UPSTREAM_VERSION`
+(= `mame/UPSTREAM_VERSION`, enforced by `fetch-upstream.sh`). Details and what needs a device: `mame/README.md`.
+
+Step 6 (done): upstream's settings screen kept (168 keys, own file `mame4droid_settings`). Fixed: the 30 slider rows used the hidden platform class `android.preference.SeekBarPreference` (not in the SDK, unsure below Android 10); replaced by `MameSeekBarPreference`.
+XML consistency checked (keys, dependencies, lists). Not seen on a device. No Bengali translation exists (possible later). Details: `mame/README.md`.
+
+Step 7 (done): hooks in `:app`: `MameLauncher.kt` (`openMame()`), Start menu entry **MAME**, Home icon and `rizwans2://mame`, all with a vector joystick icon, only on 64-bit ARM phones (like Winlator). ProGuard keep rule added; the 6 `:mame` activities and permissions merge from the library manifest.
+File Manager does not open `.zip` / `.7z` in MAME on purpose (too many non-ROM zips). Fixed: `App.kt` would have attached the BlackBox engine in the `:mame` process; it now starts nothing there (like `:midlet`). "All apps" numbers (`rizwans2://N`) shift by one for the apps sorting after **MAME**.
+Not built or run here (no SDK / device). Details and checks: `mame/README.md` step 7.
+
+Step 8 (done): both build workflows (`UltimateBuild.yml`, `UltimateBuild_NoWinlator.yml`) got a step "Fetch MAME core" (`mame/tools/fetch-upstream.sh`, SHA-256 checked, 20-minute limit) and an APK check: the run fails unless `libMAME4droid.so` (exact pinned size), `libmame4droid-jni.so`, `files.zip` (by size) and the help pages are inside the APK.
+Also more disk is freed on the runner. No cache for the core (quota), timeout unchanged (120 minutes). The check was tested on fake APKs; no real run here. Details: `mame/README.md` step 8.
+
+Step 9 (done): details updated, static checks run (XML, `mm_` prefixes, resource references, version constant, manifest, hooks, scripts, workflows), final flat zip `RizwanS2-youtube-step7.zip`. All 9 steps are done; the app was not built or run here (no Gradle / SDK / NDK / GitHub / phone).
+Summary, what to test on a phone first and what to look at if the build fails: `mame/README.md` step 9.

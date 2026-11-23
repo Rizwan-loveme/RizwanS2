@@ -1,0 +1,16 @@
+# Pinned upstream for the MAME core (plan A: take the prebuilt core out of the official release APK).
+# Checked on 2026-11-23. The fetch script (step 3) must stop the build if one of these hashes does not match.
+tag            v1.41.2 (commit 9df33ca197df96d8e206740b94fc54be4e379550, released 2026-09-16)
+mame_core      0.289 (source: https://github.com/mamedev/mame tag mame0289)
+apk_url        https://github.com/seleuco/MAME4droid-Current/releases/download/v1.41.2/MAME4droid.2026-1.41.2-release.apk
+apk_size       169562047
+apk_sha256     b2e05497f4c7b8b0d5ac84a4755569050f60a4c9c69c7e219f6783bd9c5bb2ad
+so_core_path   lib/arm64-v8a/libMAME4droid.so
+so_core_size   366992944
+so_core_sha256 ab587eec36db170387baa743d1078912927d6b9c0e2fe8057d56225739d62d71
+so_jni_path    lib/arm64-v8a/libmame4droid-jni.so (not used: built from source by ndk-build, step 3)
+so_jni_sha256  a7dea2fc4fb73a7a57fccb5ffc2dca3faf53ac11b7f54b1337b04da09edaf108
+files_zip_url    https://raw.githubusercontent.com/seleuco/MAME4droid-Current/v1.41.2/android-MAME4droid/app/src/main/res/raw/files.zip
+files_zip_size   64029794
+files_zip_sha256 d92d988caddbdad006e6dd7fb030f553ba65e09287c41a19d4dcfb5e39355eae
+# files_zip = upstream's res/raw/files.zip (MAME support files unpacked on first start, 64 MB). Not in the project zip; saved as core/res/raw/mm_files.zip.

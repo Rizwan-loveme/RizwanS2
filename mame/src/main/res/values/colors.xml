@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<!-- 
+<color name="mm_emu_back_color">#303030</color>
+ -->
+ <color name="mm_emu_back_color">#000000</color>
+ 
+ <color name="mm_white">#ffffffff</color>
+
+
+ <color name="mm_yellow">#FFFF00</color>
+ <color name="mm_fuchsia">#FF00FF</color>
+ <color name="mm_red">#FF0000</color>
+ <color name="mm_silver">#C0C0C0</color>
+ <color name="mm_gray">#808080</color>
+ <color name="mm_olive">#808000</color>
+ <color name="mm_purple">#800080</color>
+ <color name="mm_maroon">#800000</color>
+ <color name="mm_aqua">#00FFFF</color>
+ <color name="mm_lime">#00FF00</color>
+ <color name="mm_teal">#008080</color>
+ <color name="mm_green">#008000</color>
+ <color name="mm_blue">#0000FF</color>
+ <color name="mm_navy">#000080</color>
+ <color name="mm_black">#000000</color>
+  
+</resources>

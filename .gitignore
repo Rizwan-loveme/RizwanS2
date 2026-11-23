@@ -9,3 +9,7 @@ local.properties
 *.keystore
 # PPSSPP C++ core is fetched at build time (ppsspp/tools/fetch-upstream.sh)
 ppsspp/upstream/
+
+# MAME core + frontend source are fetched at build time (mame/tools/fetch-upstream.sh, step 3)
+mame/upstream/
+mame/core/

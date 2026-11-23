@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id= "@+id/netplay_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" >
+
+<LinearLayout
+    android:id="@+id/netplay_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="10dp"  
+    android:visibility="visible" >
+
+    <Button
+        android:id="@+id/StartGameBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"            
+        android:text="@string/mm_start_game" />
+    <Button
+        android:id="@+id/PublicRoomsBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/mm_np_public_rooms" />
+    <Button
+        android:id="@+id/JoinPeerGameBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/mm_join_peer_game" />
+    <Button
+        android:id="@+id/ChatBtn"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:enabled="false"
+        android:text="@string/mm_np_btn_chat" />
+    <Button
+        android:id="@+id/ResyncBtn"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:enabled="false"
+        android:text="@string/mm_resync" />
+    <!-- Last: it ends the session, so it must not sit next to the buttons
+         used during play (a mis-tap here costs the game). -->
+    <Button
+        android:id="@+id/DisconnectBtn"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:enabled="false"
+        android:text="@string/mm_disconnect" />
+
+</LinearLayout>
+
+</ScrollView>

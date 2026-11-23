@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+	<style name="mm_ListText">
+		<item name="android:textSize">26sp</item>
+		<item name="android:textColor">@color/mm_white</item>
+	</style>
+
+	<style name="mm_ListTextSmall">
+		<item name="android:textSize">18sp</item>
+		<item name="android:textColor">@color/mm_white</item>
+	</style>
+
+    <style name="mm_Theme.MAME4droid" parent="android:Theme.Black.NoTitleBar.Fullscreen">
+            <item name="android:windowBackground">@null</item>
+	</style>
+
+    <style name="mm_Theme.MAME4droid.TitleBar" parent="android:Theme.Black.NoTitleBar.Fullscreen">
+          <item name="android:windowNoTitle">false</item>
+    </style>
+
+</resources>

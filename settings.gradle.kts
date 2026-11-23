@@ -48,3 +48,8 @@ include(":camera")
 // The C++ core is NOT in the project zip: ppsspp/tools/fetch-upstream.sh clones it into ppsspp/upstream/ at build time.
 // Resources prefixed "pp_". Used by the Start menu, the Home screen, the rizwans2://ppsspp deep link and the File Manager (.iso / .cso / .pbp), built step by step, see ppsspp/README.md.
 include(":ppsspp")
+// MAME (arcade emulator) as the built-in "MAME" app: MAME4droid (Current) v1.41.2 by Seleuco, MAME core 0.289, package com.seleuco.mame4droid (upstream package kept: the JNI names depend on it).
+// Upstream: https://github.com/seleuco/MAME4droid-Current (GPL-2.0), pinned in mame/UPSTREAM_VERSION + mame/UPSTREAM_SHA256, see NOTICE-MAME4droid.md.
+// The Java frontend is in the project; the MAME core libMAME4droid.so (367 MB) and res/raw/files.zip (64 MB) are NOT in the project zip: mame/tools/fetch-upstream.sh downloads them (SHA-256 checked) before every build.
+// Resources prefixed "mm_". Built step by step, see mame/README.md. Start menu / Home icon / rizwans2://mame hooks: app/.../MameLauncher.kt (step 7).
+include(":mame")

@@ -107,6 +107,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_CAMERA = "builtin.camera"
         private const val BUILTIN_CLS_J2ME = "builtin.j2me"
         private const val BUILTIN_CLS_PPSSPP = "builtin.ppsspp"
+        private const val BUILTIN_CLS_MAME = "builtin.mame"
+        /** Arcade joystick (even-odd fill: ball, stick, base with a hollow button): the built-in MAME app (:mame module, package com.seleuco.mame4droid). */
+        private const val MAME_PATH =
+            "M5.5,6a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0ZM8,9.5H10V14H8ZM3,14H21V20C21,20.55 20.55,21 20,21H4C3.45,21 3,20.55 3,20ZM14.7,17.5a1.8,1.8 0 1,0 3.6,0a1.8,1.8 0 1,0 -3.6,0Z"
         /** Handheld console with a screen and two buttons (even-odd fill makes the hollow screen): the built-in PPSSPP app (:ppsspp module, package org.ppsspp.ppsspp). */
         private const val PPSSPP_PATH =
             "M5,6H19C20.66,6 22,7.34 22,9V15C22,16.66 20.66,18 19,18H5C3.34,18 2,16.66 2,15V9C2,7.34 3.34,6 5,6ZM8,8H16C16.55,8 17,8.45 17,9V15C17,15.55 16.55,16 16,16H8C7.45,16 7,15.55 7,15V9C7,8.45 7.45,8 8,8ZM3.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0ZM18.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0Z"
@@ -295,6 +299,15 @@ class AppRepository(private val ctx: Context) {
                 "Winlator", ctx.packageName, BUILTIN_CLS_WINLATOR,
                 BuiltInIconDrawable(WINLATOR_PATH, Color.parseColor("#C77DFF"), evenOdd = true),
                 section = WinlatorLauncher.SECTION
+            )
+        ) else emptyList()
+    ) + (
+        // Built-in MAME app (:mame module, com.seleuco.mame4droid.MAME4droid), vector icon only. Its core is 64-bit ARM only: no entry on other phones.
+        if (isMameSupported()) listOf(
+            AppEntry(
+                "MAME", ctx.packageName, BUILTIN_CLS_MAME,
+                BuiltInIconDrawable(MAME_PATH, Color.parseColor("#F25F5C"), evenOdd = true),
+                section = "mame"
             )
         ) else emptyList()
     )

@@ -84,6 +84,8 @@ dependencies {
     implementation(project(":j2me"))
     // PPSSPP: built-in PSP emulator (package org.ppsspp.ppsspp), Start menu, Home icon, rizwans2://ppsspp, File Manager (.iso / .cso / .pbp)
     implementation(project(":ppsspp"))
+    // MAME: built-in arcade emulator (MAME4droid, package com.seleuco.mame4droid). Start menu, Home icon and rizwans2://mame (MameLauncher.kt; 64-bit ARM phones only) were added in step 7, see mame/README.md
+    implementation(project(":mame"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")
