@@ -559,7 +559,7 @@ internal class BrowserPopup(
             layer.addView(fv, FrameLayout.LayoutParams(floatW, floatH))
             fv.x = floatX.toFloat(); fv.y = floatY.toFloat()
             // the keyboard shrinks the app window (adjustResize): keep the floating window above it
-            val l = View.OnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom, _ ->
+            val l = View.OnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
                 if (bottom - top != oldBottom - oldTop) fv.post { fitInAppFloat() }
             }
             layerListener = l

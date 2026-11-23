@@ -24,3 +24,8 @@ ALooper_pollAll may ignore wakes. Use ALooper_pollOnce instead.
 
 ## Open
 The compiler stopped at the first failing file (`griffin.c`). Other NDK 29 errors may appear in later files: send the next log.
+
+## Update 2 (second build log)
+- `:retroarch` native build now passes (ALooper fix worked).
+- New error, `:app:compileReleaseKotlin`: `BrowserPopup.kt:562` the `View.OnLayoutChangeListener` lambda had 10 parameters, the interface has 9
+  (`v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom`). Removed the extra trailing `_`.
