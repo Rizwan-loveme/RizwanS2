@@ -17,6 +17,15 @@ name: Android Release Build (Signed, without Winlator)
 # PPSSPP (:ppsspp): the C++ core + assets are cloned at build time (ppsspp/UPSTREAM_VERSION, cached) and built with ccache;
 # the run fails if libppsspp_jni.so or the PPSSPP assets are missing from the APK. Timeout is 120 minutes because of that native build.
 #
+# MAME (:mame): the MAME core (367 MB) and files.zip (64 MB) are downloaded at build time by mame/tools/fetch-upstream.sh (SHA-256 checked against
+# mame/UPSTREAM_SHA256). The run fails if libMAME4droid.so (exact pinned size), libmame4droid-jni.so, files.zip or the help pages are missing from the APK.
+# The APK grows by about 170 MB; a GitHub release file may be up to 2 GiB, so the release upload still fits.
+#
+# RetroArch (:retroarch): the C frontend is cloned at build time at the tag pinned in retroarch/UPSTREAM_VERSION and the commit in retroarch/UPSTREAM_COMMIT
+# (retroarch/tools/fetch-upstream.sh stops if the commit differs; cached) and built by upstream's Android.mk (ndk-build) with ccache. The run fails if
+# lib/arm64-v8a/libretroarch-activity.so is missing from the APK, or if the merged manifest has no RetroArch activity in the own process :retroarch.
+# Cores are NOT bundled (RetroArch's Online Updater downloads them), so there are no RetroArch assets or cores to check. The timeout stays 120 minutes.
+#
 # Package rename: the old -> new replacement happens only inside this run's
 # temporary checkout. Nothing is committed or pushed, so your repo is untouched.
 #
@@ -69,11 +78,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Winlator assets + PPSSPP source + several native builds need a lot of disk: free the runner's unused big toolchains first.
+      # Winlator assets + PPSSPP source + the 367 MB MAME core (copied several times while the APK is packed) + several native builds need a lot of disk: free the runner's unused big toolchains first.
+      # RetroArch adds a 330 MB source clone and one more big native build (Vulkan / glslang); the preinstalled Docker images are not needed either.
       - name: Free disk space
         run: |
           df -h / | tail -n 1
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/share/swift /opt/hostedtoolcache/CodeQL || true
+          sudo docker image prune --all --force > /dev/null 2>&1 || true
           df -h / | tail -n 1
 
       # Runs BEFORE the package rename, so the stub is renamed together with the rest of the code.
@@ -287,24 +298,63 @@ jobs:
           bash ppsspp/tools/fetch-upstream.sh
           echo "PPSSPP: $(cat ppsspp/UPSTREAM_VERSION)"; du -sh ppsspp/upstream ppsspp/upstream/assets
 
-      # ccache for the PPSSPP C++ build only (the -PppssppCcache property adds the compiler launcher to :ppsspp's CMake arguments).
+      # RetroArch (:retroarch module): the C frontend is not in the repo, it is cloned at the tag pinned in retroarch/UPSTREAM_VERSION and checked against the
+      # commit in retroarch/UPSTREAM_COMMIT (retroarch/tools/fetch-upstream.sh). Cached between runs (about 330 MB; the cache keeps .git so that the commit check
+      # still works); the Gradle task fetchRetroarchUpstream runs the same script before the native build and does nothing when the folder is already right.
+      # This runs after the package rename on purpose: the rename only touches the app's old package in the project's own files, never RetroArch's source.
+      - name: Cache RetroArch source
+        id: retroarch_src
+        uses: actions/cache@v4
+        with:
+          path: retroarch/upstream
+          key: retroarch-upstream-${{ hashFiles('retroarch/UPSTREAM_VERSION', 'retroarch/UPSTREAM_COMMIT', 'retroarch/tools/fetch-upstream.sh') }}
+
+      - name: Fetch RetroArch source
+        timeout-minutes: 20
+        run: |
+          set -e
+          bash retroarch/tools/fetch-upstream.sh
+          echo "RetroArch: $(cat retroarch/UPSTREAM_VERSION) $(grep -v '^#' retroarch/UPSTREAM_COMMIT | tr -d '[:space:]')"
+          du -sh retroarch/upstream
+          df -h / | tail -n 1
+
+      # MAME (:mame module): the MAME core libMAME4droid.so (367 MB, taken out of the official v1.41.2 release APK) and res/raw/files.zip (64 MB)
+      # are not in the repo. mame/tools/fetch-upstream.sh downloads them (curl with retries) and checks every SHA-256 against mame/UPSTREAM_SHA256;
+      # a wrong hash or a wrong MameLaunch.UPSTREAM_VERSION stops the run here, early. The Gradle task fetchMameCore runs the same script before
+      # :mame's preBuild and does nothing when the files are already there. Not cached on purpose: the download is quick, and 430 MB would use up the cache quota.
+      - name: Fetch MAME core
+        timeout-minutes: 20
+        run: |
+          set -e
+          bash mame/tools/fetch-upstream.sh
+          echo "MAME: $(cat mame/UPSTREAM_VERSION)"
+          ls -l mame/core/jniLibs/arm64-v8a/libMAME4droid.so mame/core/res/raw/mm_files.zip
+          df -h / | tail -n 1
+
+      # ccache for the PPSSPP C++ build and the RetroArch C build (the -PppssppCcache property adds the compiler launcher to :ppsspp's CMake arguments,
+      # -PretroarchCcache adds NDK_CCACHE=ccache to :retroarch's ndk-build arguments). Both use the one cache folder below.
       # The NDK is installed fresh on every run, so compilers are compared by content, not by modification time.
-      - name: Set up ccache for PPSSPP
+      - name: Set up ccache for PPSSPP and RetroArch
         run: |
           sudo apt-get install -y --no-install-recommends ccache
           ccache --version | head -n 1
           echo "CCACHE_DIR=$HOME/.cache/ccache" >> "$GITHUB_ENV"
-          echo "CCACHE_MAXSIZE=1500M" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=3000M" >> "$GITHUB_ENV"
           echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
           echo "ORG_GRADLE_PROJECT_ppssppCcache=true" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_retroarchCcache=true" >> "$GITHUB_ENV"
+          # If the first RetroArch build stops on old C code that the new NDK compiler rejects (implicit function declaration, int conversion,
+          # incompatible function pointer types), switch this line on (retroarch/README.md, "Known risks" of step 5):
+          # echo "ORG_GRADLE_PROJECT_retroarchCFlags=-Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types" >> "$GITHUB_ENV"
 
       - name: Cache ccache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
-          key: ccache-ppsspp-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION') }}-${{ github.run_id }}
+          key: ccache-native-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION', 'retroarch/UPSTREAM_COMMIT') }}-${{ github.run_id }}
           restore-keys: |
-            ccache-ppsspp-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION') }}-
+            ccache-native-${{ runner.os }}-${{ hashFiles('ppsspp/UPSTREAM_VERSION', 'retroarch/UPSTREAM_COMMIT') }}-
+            ccache-native-${{ runner.os }}-
             ccache-ppsspp-${{ runner.os }}-
 
       # If gradlew is missing from the repo, regenerate it from the committed
@@ -363,6 +413,60 @@ jobs:
             echo "::error::PPSSPP assets are not in the APK"
             exit 1
           fi
+          # MAME must really be inside the APK: the core and the small JNI library under lib/arm64-v8a, the unpacked-on-first-start files.zip
+          # and the help pages. Checked by exact size (the core and files.zip sizes are pinned in mame/UPSTREAM_SHA256), because resource
+          # shrinking may rename res/raw/mm_files.zip but cannot change its length.
+          echo "== MAME in the APK =="
+          SO_SIZE=$(awk '$1=="so_core_size" {print $2; exit}' mame/UPSTREAM_SHA256)
+          FZ_SIZE=$(awk '$1=="files_zip_size" {print $2; exit}' mame/UPSTREAM_SHA256)
+          if [ -z "$SO_SIZE" ] || [ -z "$FZ_SIZE" ]; then
+            echo "::error::mame/UPSTREAM_SHA256 has no so_core_size / files_zip_size"
+            exit 1
+          fi
+          grep -E "libMAME4droid\.so|libmame4droid-jni\.so|assets/mame/index\.htm" "$RUNNER_TEMP/apk-list.txt" | head -n 6 || true
+          if ! awk -v s="$SO_SIZE" '$1==s && $4=="lib/arm64-v8a/libMAME4droid.so" {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::lib/arm64-v8a/libMAME4droid.so ($SO_SIZE bytes) is not in the APK (MAME core missing or wrong size)"
+            exit 1
+          fi
+          if ! grep -q "lib/arm64-v8a/libmame4droid-jni\.so" "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::lib/arm64-v8a/libmame4droid-jni.so is not in the APK (MAME JNI build missing)"
+            exit 1
+          fi
+          if ! awk -v s="$FZ_SIZE" '$1==s {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::MAME files.zip ($FZ_SIZE bytes) is not in the APK"
+            exit 1
+          fi
+          if ! grep -q "assets/mame/index\.htm" "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::MAME help pages (assets/mame/) are not in the APK"
+            exit 1
+          fi
+          echo "MAME: core, JNI library, files.zip and help pages are in the APK"
+          # RetroArch must really be inside the APK: the native library under lib/arm64-v8a (the file name comes from upstream's Android.mk, module
+          # retroarch-activity) and its two activities in the merged manifest, in the own process :retroarch. Cores, core info files and assets are not
+          # bundled on purpose (Online Updater), so nothing of that is checked. The 1 MB limit only catches an empty / stub library.
+          echo "== RetroArch in the APK =="
+          grep -E "libretroarch-activity\.so" "$RUNNER_TEMP/apk-list.txt" | head -n 3 || true
+          if ! awk '$1+0>1000000 && $4=="lib/arm64-v8a/libretroarch-activity.so" {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+            echo "::error::lib/arm64-v8a/libretroarch-activity.so is not in the APK, or smaller than 1 MB (RetroArch native build missing)"
+            exit 1
+          fi
+          MERGED=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+          if [ -z "$MERGED" ]; then
+            echo "::warning::merged release manifest not found under app/build/intermediates, RetroArch manifest check skipped"
+          else
+            for CLS in com.retroarch.browser.mainmenu.MainMenuActivity com.retroarch.browser.retroactivity.RetroActivityFuture; do
+              if ! grep -q "$CLS" "$MERGED"; then
+                echo "::error::$CLS is not in the merged manifest ($MERGED)"
+                exit 1
+              fi
+            done
+            if ! grep -q 'android:process=":retroarch"' "$MERGED"; then
+              echo "::error::the RetroArch activities do not run in the own process :retroarch in the merged manifest"
+              exit 1
+            fi
+            echo "RetroArch: both activities are in the merged manifest, process :retroarch"
+          fi
+          echo "RetroArch: libretroarch-activity.so is in the APK"
           ccache -s 2>/dev/null | head -n 12 || true
 
       # Optional and safe: prints only lengths and whitespace flags, never secret
