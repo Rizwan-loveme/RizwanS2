@@ -95,6 +95,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         const val PPSSPP = "ppsspp"
         const val MAME = "mame"
         const val RETROARCH = "retroarch"
+        const val SEAL = "seal"
 
         private fun data(type: String): String? = when (type) {
             FILES -> "M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z"
@@ -119,6 +120,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             J2ME -> "M21,6H3c-1.1,0 -2,0.9 -2,2v8c0,1.1 0.9,2 2,2h18c1.1,0 1.99,-0.9 1.99,-2L23,8c0,-1.1 -0.9,-2 -2,-2zM11,13H8v3H6v-3H3v-2h3V8h2v3h3v2zM15.5,15c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5zM19.5,12c-0.83,0 -1.5,-0.67 -1.5,-1.5S18.67,9 19.5,9s1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z"
             PPSSPP -> "M5,6H19C20.66,6 22,7.34 22,9V15C22,16.66 20.66,18 19,18H5C3.34,18 2,16.66 2,15V9C2,7.34 3.34,6 5,6ZM8,8H16C16.55,8 17,8.45 17,9V15C17,15.55 16.55,16 16,16H8C7.45,16 7,15.55 7,15V9C7,8.45 7.45,8 8,8ZM3.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0ZM18.5,12a1,1 0 1,0 2,0a1,1 0 1,0 -2,0Z"
             RETROARCH -> "M7,7H17C19.76,7 22,9.24 22,12V13C22,15.21 20.21,17 18,17C16.9,17 16,16.1 15,15H9C8,16.1 7.1,17 6,17C3.79,17 2,15.21 2,13V12C2,9.24 4.24,7 7,7ZM6.4,9.6H7.6V11.4H9.4V12.6H7.6V14.4H6.4V12.6H4.6V11.4H6.4ZM14.4,12.8a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0ZM16.9,11a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0Z"
+            SEAL -> "M19.35,10.04C18.67,6.59 15.64,4 12,4 9.11,4 6.6,5.64 5.35,8.04 2.34,8.36 0,10.91 0,14c0,3.31 2.69,6 6,6h13c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96zM17,13l-5,5 -5,-5h3V9h4v4h3z"
             MAME -> "M5.5,6a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0ZM8,9.5H10V14H8ZM3,14H21V20C21,20.55 20.55,21 20,21H4C3.45,21 3,20.55 3,20ZM14.7,17.5a1.8,1.8 0 1,0 3.6,0a1.8,1.8 0 1,0 -3.6,0Z"
             else -> null
         }
@@ -138,6 +140,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             PPSSPP -> Color.parseColor("#4C8DFF")
             MAME -> Color.parseColor("#F25F5C")
             RETROARCH -> Color.parseColor("#2EC4B6")
+            SEAL -> Color.parseColor("#B8E35A")
             START -> Color.parseColor("#4CC2FF")
             else -> Color.WHITE
         }
@@ -1532,6 +1535,8 @@ class Win11Shell(
         column.addView(desktopIcon(VectorIconView.J2ME, "J2ME", "j2me"))
         // Home screen icon of the built-in PPSSPP app (:ppsspp module)
         column.addView(desktopIcon(VectorIconView.PPSSPP, "PPSSPP", "ppsspp"))
+        // Home screen icon of the built-in Downloader app (:seal module = Seal; shown as "Downloader")
+        column.addView(desktopIcon(VectorIconView.SEAL, SEAL_NAME, "seal"))
         // Home screen icon of the built-in MAME app (:mame module, MAME4droid); 64-bit ARM phones only (like Winlator)
         if (isMameSupported()) column.addView(desktopIcon(VectorIconView.MAME, "MAME", "mame"))
         // Home screen icon of the built-in RetroArch app (:retroarch module); 64-bit ARM phones only

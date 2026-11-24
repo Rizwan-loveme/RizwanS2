@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sl_version">ସଂସ୍କରଣ</string>
+    <string name="sl_credits">ଶ୍ରେୟ</string>
+    <string name="sl_follow_system">ସିଷ୍ଟମ୍</string>
+    <string name="sl_on">ଚାଲୁ</string>
+    <string name="sl_defaults">ଡିଫଲ୍ଟ</string>
+    <string name="sl_settings">ସେଟିଂ</string>
+    <string name="sl_audio">ଅଡ଼ିଓ</string>
+    <string name="sl_about">ସମ୍ବନ୍ଧରେ</string>
+    <string name="sl_general_settings">ସାଧାରଣ</string>
+    <string name="sl_advanced_settings">ଵିକଶିତ</string>
+    <string name="sl_video">ଵିଡ଼ିଓ</string>
+    <string name="sl_edit">ସମ୍ପାଦନା</string>
+    <string name="sl_display">ପ୍ରଦର୍ଶନ</string>
+    <string name="sl_off">ବନ୍ଦ</string>
+    <string name="sl_options">ଵିକଳ୍ପ</string>
+    <string name="sl_translate">ଅନୁଵାଦ କରନ୍ତୁ</string>
+    <string name="sl_status_error">ତ୍ରୁଟି</string>
+    <string name="sl_private_mode">ଅପରିଚିତ ମୋଡ୍</string>
+    <string name="sl_download_error_msg">ଫାଇଲ୍ ଡାଉନଲୋଡ୍ କରିହେଲା ନାହିଁ</string>
+    <string name="sl_extract_audio">ଅଡିଓ ଭାବରେ ସେଭ୍ କରନ୍ତୁ</string>
+    <string name="sl_download">ଡାଉନଲୋଡ୍</string>
+    <string name="sl_url_empty">ଲିଙ୍କ ଖାଲି ରହିପାରିବ ନାହିଁ</string>
+    <string name="sl_extract_audio_summary">ଭିଡିଓର ଅପେକ୍ଷା ଧ୍ୱନିକୁ ଡାଉନଲୋଡ୍ ଓ ସଞ୍ଚୟ କରନ୍ତୁ</string>
+    <string name="sl_create_thumbnail_summary">ଭିଡିଓର ଥମ୍ନେଲ୍‌କୁ ଏକ ଫାଇଲ୍ ଭାବରେ ସଞ୍ଚୟ କରନ୍ତୁ</string>
+    <string name="sl_yt_dlp_up_to_date">ନୂତନ ସଂସ୍କରଣର yt-dlp ବ୍ୟବହାର କରନ୍ତୁ</string>
+    <string name="sl_fetching_info">ଭିଡିଓ ସୂଚନା ଆହରଣ କରାଯାଉଛି…</string>
+    <string name="sl_fetch_info_error_msg">ଭିଡିଓ ସୂଚନା ଆହରଣ କରିପାରିଲା ନାହିଁ</string>
+    <string name="sl_language">ଭାଷା ଦେଖାନ୍ତୁ</string>
+    <string name="sl_permission_denied">ଅନୁମତି ଅସ୍ବୀକୃତ</string>
+    <string name="sl_download_success_msg">ଡାଉନଲୋଡ୍ ସମ୍ପୂର୍ଣ୍ଣ ହେଲା</string>
+</resources>

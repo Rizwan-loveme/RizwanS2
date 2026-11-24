@@ -30,6 +30,7 @@ import android.view.inputmethod.InputMethodManager
 import android.webkit.CookieManager
 import android.webkit.JsPromptResult
 import android.webkit.JsResult
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -198,6 +199,16 @@ internal class BrowserPopup(
     var floatInOverlay = false
         private set
 
+    // Keyboard / Touch toggles (icon-only buttons, blue = on, red = off). Both belong to this popup and survive DIALOG / FULL / FLOAT.
+    /** Keyboard on/off. Off: the page view cannot take focus, so the soft keyboard never opens in this popup (a floating overlay window also stays non-focusable). */
+    var keyboardOn = true
+        private set
+    /** Touch on/off. Off: every touch on the page view of this popup is swallowed (scroll, tap, zoom); the header buttons, drag and resize still work. */
+    var touchOn = true
+        private set
+    private val kbButtons = ArrayList<TextView>()
+    private val touchButtons = ArrayList<TextView>()
+
     var mode = PopupMode.DIALOG
         private set
 
@@ -217,6 +228,67 @@ internal class BrowserPopup(
             contentDescription = desc
             setOnClickListener { onClick() }
         }
+
+    /** Icon-only toggle button; its colour (blue on / red off) is set by [paintToggles]. */
+    private fun toggleBtn(res: Int, sizeDp: Int, boxDp: Int, list: MutableList<TextView>, onClick: () -> Unit): TextView =
+        btn(res, sizeDp, boxDp, "", onClick).also { it.tag = sizeDp; list.add(it); paintToggles() }
+
+    private fun paintToggles() {
+        val blue = Color.parseColor("#4CC2FF")
+        val red = Color.parseColor("#FF5252")
+        for (b in kbButtons) {
+            b.iconOnly(R.drawable.ic_popup_keyboard, (b.tag as? Int) ?: 18, if (keyboardOn) blue else red)
+            b.contentDescription = if (keyboardOn) "Keyboard on" else "Keyboard off"
+        }
+        for (b in touchButtons) {
+            b.iconOnly(R.drawable.ic_popup_touch, (b.tag as? Int) ?: 18, if (touchOn) blue else red)
+            b.contentDescription = if (touchOn) "Touch on" else "Touch off"
+        }
+    }
+
+    /** Keyboard toggle. Off: hide the keyboard now and make the page view unfocusable (no keyboard can attach to it). */
+    fun setKeyboardOn(on: Boolean) {
+        if (released || on == keyboardOn) return
+        keyboardOn = on
+        if (on) {
+            webView.isFocusable = true
+            webView.isFocusableInTouchMode = true
+        } else {
+            leaveTyping() // floating overlay: back to non-focusable, keyboard hidden
+            try {
+                (act.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .hideSoftInputFromWindow(webView.windowToken, 0)
+            } catch (e: Exception) { }
+            try { webView.clearFocus() } catch (e: Exception) { }
+            webView.isFocusable = false
+            webView.isFocusableInTouchMode = false
+        }
+        paintToggles()
+    }
+
+    /** Touch toggle. Off: the touch in progress is cancelled and later touches on the page view are swallowed. */
+    fun setTouchOn(on: Boolean) {
+        if (released || on == touchOn) return
+        touchOn = on
+        if (!on) {
+            val t = SystemClock.uptimeMillis()
+            val cancel = MotionEvent.obtain(t, t, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+            try { webView.onTouchEvent(cancel) } catch (e: Exception) { }
+            cancel.recycle()
+        }
+        paintToggles()
+    }
+
+    /** One touch listener for every mode: swallows touches when Touch is off, otherwise asks for keyboard focus (overlay window only). */
+    private fun installTouchGate() {
+        webView.setOnTouchListener { _, ev ->
+            if (!touchOn) true
+            else {
+                if (ev.actionMasked == MotionEvent.ACTION_DOWN) enterTyping()
+                false
+            }
+        }
+    }
 
     init {
         root.setBackgroundColor(Color.parseColor("#99000000"))
@@ -258,6 +330,8 @@ internal class BrowserPopup(
         texts.addView(titleView)
         texts.addView(hostView)
         bar.addView(texts)
+        bar.addView(toggleBtn(R.drawable.ic_popup_keyboard, 17, 36, kbButtons) { setKeyboardOn(!keyboardOn) })
+        bar.addView(toggleBtn(R.drawable.ic_popup_touch, 17, 36, touchButtons) { setTouchOn(!touchOn) })
         bar.addView(btn(R.drawable.ic_popup_minimize, 18, 40, "Minimize to a floating window") { setMode(PopupMode.FLOAT) })
         maxBtn.apply {
             iconOnly(R.drawable.ic_popup_maximize, 18, Color.WHITE)
@@ -293,6 +367,7 @@ internal class BrowserPopup(
         ).apply {
             setMargins(act.dp(10), act.dp(28), act.dp(10), act.dp(20))
         })
+        installTouchGate()
     }
 
     // ── page info ──
@@ -401,6 +476,8 @@ internal class BrowserPopup(
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         header.addView(t)
+        header.addView(toggleBtn(R.drawable.ic_popup_keyboard, 13, 27, kbButtons) { setKeyboardOn(!keyboardOn) })
+        header.addView(toggleBtn(R.drawable.ic_popup_touch, 13, 27, touchButtons) { setTouchOn(!touchOn) })
         header.addView(btn(R.drawable.ic_popup_maximize, 14, 30, "Restore pop-up") { act.restorePopup(this@BrowserPopup) })
         header.addView(btn(R.drawable.ic_popup_tab, 14, 30, "Open as a tab") { act.expandPopupToTab(this@BrowserPopup) })
         header.addView(btn(R.drawable.ic_qs_close, 12, 30, "Close pop-up") { act.closePopup(this@BrowserPopup) })
@@ -450,11 +527,9 @@ internal class BrowserPopup(
             true
         }
 
-        // a touch in the page asks for keyboard focus (overlay window only; inside the app the activity window has it)
-        webView.setOnTouchListener { _, ev ->
-            if (ev.actionMasked == MotionEvent.ACTION_DOWN) enterTyping()
-            false
-        }
+        // a touch in the page asks for keyboard focus (overlay window only; inside the app the activity window has it):
+        // done by the one touch gate of this popup (installTouchGate), which also swallows touches while Touch is off
+        installTouchGate()
 
         floatView = fv; floatBody = body; floatTitle = t
         return fv to body
@@ -586,7 +661,7 @@ internal class BrowserPopup(
     private fun enterTyping() {
         val fv = floatView ?: return
         val lp = overlayLp ?: return
-        if (!floatInOverlay || overlayTyping || released) return
+        if (!floatInOverlay || overlayTyping || released || !keyboardOn) return // Keyboard off: the window stays non-focusable
         overlayTyping = true
         lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
         val topY = act.dp(24)
@@ -653,6 +728,8 @@ internal class BrowserPopup(
         released = true
         try { root.animate().cancel(); floatView?.animate()?.cancel() } catch (e: Exception) { }
         try { webView.setOnTouchListener(null) } catch (e: Exception) { }
+        // popup -> tab: the page gets its normal focus and touch back, whatever the toggles said
+        try { webView.isFocusable = true; webView.isFocusableInTouchMode = true } catch (e: Exception) { }
         try { (webView.parent as? ViewGroup)?.removeView(webView) } catch (e: Exception) { }
         try { (root.parent as? ViewGroup)?.removeView(root) } catch (e: Exception) { }
         removeFloatView()
@@ -871,8 +948,8 @@ internal fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView
 
     wv.setDownloadListener { dlUrl, ua, cd, mime, len ->
         handleDownload(dlUrl, ua, cd, mime, len, wv)
-        // a popup that was opened only to start the download is no longer needed
-        if (!p.navigated) wv.post { closePopup(p) }
+        // A popup is never closed by itself (only the user closes it). It used to close here when it had been opened only to
+        // start the download; popups now come from "pop out" / "restore" of a tab the user chose, so that case cannot happen.
     }
 
     wv.webViewClient = object : WebViewClient() {
@@ -901,8 +978,17 @@ internal fun MainActivity.configurePopupWebView(p: BrowserPopup, opener: WebView
         override fun onProgressChanged(view: WebView?, newProgress: Int) = p.onProgress(newProgress)
         override fun onReceivedTitle(view: WebView?, title: String?) = p.onTitle(title)
         override fun onCloseWindow(window: WebView?) {
-            // window.close() — e.g. the Google sign-in window closes itself when finished
-            wv.post { closePopup(p) }
+            // window.close() of the page is ignored: a popup stays until the user closes it (close button).
+            // (window.close() of a script-opened window, e.g. the Google sign-in window, is handled by the tab that was opened for it.)
+            AppLog.d("BrowserPopup", "window.close() ignored, the popup stays open")
+        }
+        // <input type=file> inside the popup: same file picker as in a tab (own :chooser picker, camera button, capture)
+        override fun onShowFileChooser(
+            webView: WebView?, filePathCallback: ValueCallback<Array<Uri>>?, fileChooserParams: WebChromeClient.FileChooserParams?
+        ): Boolean {
+            // a floating overlay popup may be shown while the app is in the background: bring the app up for the picker
+            if (p.floatInOverlay) bringAppToFront()
+            return act.openFileChooser(filePathCallback, fileChooserParams)
         }
         override fun onCreateWindow(
             view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
@@ -955,12 +1041,12 @@ internal fun MainActivity.closePopup(p: BrowserPopup) {
     Handler(Looper.getMainLooper()).postDelayed({ p.release() }, 400)
 }
 
-/** Closes all popups of a tab at once (tab closed). */
-internal fun MainActivity.closePopupsOf(tab: WebTab) {
-    val mine = popupWindows.filter { it.owner == tab }
-    popupWindows.removeAll(mine.toSet())
-    mine.forEach { mediaPlayingViews.remove(it.webView); it.release() }
-    updatePopupService()
+/**
+ * A tab was closed: its popups are NOT closed with it any more (a popup is never closed by itself). They now belong to
+ * [newOwner], the tab that is shown next, so a dialog popup stays visible and a floating one is unaffected.
+ */
+internal fun MainActivity.reassignPopupsOf(tab: WebTab, newOwner: WebTab) {
+    popupWindows.filter { it.owner == tab }.forEach { it.owner = newOwner }
 }
 
 /** Activity is going away. */
@@ -1003,6 +1089,8 @@ internal fun MainActivity.refreshPopupVisibility() {
 
 /** App goes to the background: pause dialog popups, but NOT floating ones — they keep playing. */
 internal fun MainActivity.pausePopups() {
+    // a file picker is open (it was started from a popup or a tab): nothing is paused, so the popup stays exactly as it was
+    if (fileUploadCallback != null) return
     popupWindows.filter { it.mode != PopupMode.FLOAT && !isMediaPlaying(it.webView) }
         .forEach { try { it.webView.onPause() } catch (e: Exception) { } }
 }

@@ -835,6 +835,14 @@ internal fun MainActivity.showMediaGrabber() {
         addNewTab(url, switch = true)
     }
 
+    // Seal part 6: hand an address to the built-in Downloader (:seal, yt-dlp). A YouTube row goes by its watch page (yt-dlp picks the formats itself).
+    fun sealUrlOf(g: GrabItem): String = g.youtubePage ?: g.url
+    fun toDownloader(url: String) {
+        if (!isSealUrl(url)) { toast("$SEAL_NAME needs an http or https link"); return }
+        dialogRef?.dismiss()
+        openSealWithUrl(url)
+    }
+
     // ---- a raw find -> a row ----
     fun fileNameFor(url: String, ext: String): String {
         val seg = runCatching { Uri.decode(Uri.parse(url).lastPathSegment.orEmpty()) }.getOrDefault("")
@@ -914,14 +922,19 @@ internal fun MainActivity.showMediaGrabber() {
         ).apply { bottomMargin = dp(8) }
     }
 
-    fun pillRow(vararg pills: View): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
+    // Seal part 6: a row can now hold four pills (Play, Download, Downloader, Copy): it scrolls sideways on a narrow phone instead of cutting the last one off
+    fun pillRow(vararg pills: View): View = HorizontalScrollView(this).apply {
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = View.OVER_SCROLL_NEVER
         setPadding(0, dp(8), 0, 0)
-        pills.forEachIndexed { i, p ->
-            addView(p, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { if (i > 0) marginStart = dp(8) })
-        }
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            pills.forEachIndexed { i, p ->
+                addView(p, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { if (i > 0) marginStart = dp(8) })
+            }
+        })
     }
 
     fun detailOf(g: GrabItem): String {
@@ -947,11 +960,14 @@ internal fun MainActivity.showMediaGrabber() {
             GrabKind.EMBED -> {
                 if (g.youtubePage != null) pills.add(pill("Play", filled = true, small = true) { play(g) })
                 pills.add(pill("Open", filled = g.youtubePage == null, small = true) { openInTab(g.url) })
+                if (isSealUrl(sealUrlOf(g))) pills.add(pill(SEAL_NAME, filled = false, small = true) { toDownloader(sealUrlOf(g)) })
                 pills.add(pill("Copy", filled = false, small = true) { copy(g.url, "Link copied") })
             }
             else -> {
                 pills.add(pill("Play", filled = false, small = true) { play(g) })
                 if (g.fileName != null) pills.add(pill("Download", filled = true, small = true) { download(g) })
+                // streams (.m3u8 / .mpd) cannot be saved by the built-in download; yt-dlp can, so they get the Downloader pill too
+                if (isSealUrl(sealUrlOf(g))) pills.add(pill(SEAL_NAME, filled = g.fileName == null, small = true) { toDownloader(sealUrlOf(g)) })
                 pills.add(pill("Copy", filled = false, small = true) { copy(g.url, "Link copied") })
             }
         }
@@ -967,6 +983,7 @@ internal fun MainActivity.showMediaGrabber() {
         })
         addView(pillRow(
             pill("Open", filled = true, small = true) { openInTab(url) },
+            pill(SEAL_NAME, filled = false, small = true) { toDownloader(url) },
             pill("Copy", filled = false, small = true) { copy(url, "Link copied") }
         ))
     }
@@ -1081,6 +1098,11 @@ internal fun MainActivity.showMediaGrabber() {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { marginStart = dp(8) }
         )
+        // Seal part 6: the open page itself (a video page, a playlist, a channel ...) to the Downloader
+        if (isSealUrl(pageUrl)) actionRow.addView(pill("Page → $SEAL_NAME", filled = false, small = true) { toDownloader(pageUrl) },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = dp(8) })
         actionRow.addView(pill("Copy all", filled = false, small = true) {
             if (visibleUrls.isEmpty()) toast("Nothing to copy")
             else copy(visibleUrls.joinToString("\n"), "${visibleUrls.size} links copied")
@@ -1227,7 +1249,11 @@ internal fun MainActivity.showMediaGrabber() {
         addView(filterBox, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(8) })
-        addView(actionRow)
+        addView(HorizontalScrollView(context).apply { // four pills with "Page → Downloader": scrolls sideways when narrow
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(actionRow)
+        })
         addView(statusView)
     }
     val scroll = ScrollView(this).apply {

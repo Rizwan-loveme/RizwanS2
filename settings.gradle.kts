@@ -60,3 +60,9 @@ include(":mame")
 // The native library libretroarch-activity.so is built from it by upstream's Android.mk (ndk-build, step 5; -PretroarchNative=false switches it off).
 // The small Java part (10 files incl. the SAF VFS and the play-core stub), resources (prefix "ra_") and the library manifest are IN the project (step 6): RetroArch runs in its own process ":retroarch" (upstream calls System.exit / exit), activities not exported. App hooks (step 8): app/.../RetroArchLauncher.kt = Start menu entry, Home icon, rizwans2://retroarch and File Manager (console ROM files); 64-bit ARM only.
 include(":retroarch")
+// Seal (video / audio downloader, yt-dlp) as the built-in downloader app, package com.junkfood.seal (upstream package kept: the sources import its R / BuildConfig).
+// Upstream: https://github.com/JunkFood02/Seal (GPL-3.0), pinned in seal/UPSTREAM_VERSION + seal/UPSTREAM_COMMIT (v2.0.0-alpha.5), see NOTICE-Seal.md.
+// The Kotlin sources are IN the project (seal/src, seal-color/src); the yt-dlp engine (Python, yt-dlp, FFmpeg, aria2c) is a Maven library, so nothing is fetched at build time.
+// Resources prefixed "sl_". Built step by step, see seal/README.md. App hooks (Start menu, Home icon, rizwans2://seal, browser) come in part 6.
+include(":seal-color")
+include(":seal")

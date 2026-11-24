@@ -132,7 +132,7 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, ppsspp, mame, chooser, start, quick).
+            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, ppsspp, seal (also rizwans2://seal?url=https://... = the Downloader app with its download sheet for that link; alias downloader), mame, chooser, start, quick).
                  By number: rizwans2://1, rizwans2://#1 or rizwans2://app/1 opens app number 1 of the Start menu's "All apps" list. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

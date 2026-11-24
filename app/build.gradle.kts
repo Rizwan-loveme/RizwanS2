@@ -20,6 +20,13 @@ android {
         versionName = "2.5.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Seal part 7, optional: -PapkAbis=arm64-v8a,armeabi-v7a keeps only these ABIs in the APK (drops the x86 / x86_64 copies of the libraries that ship all four ABIs:
+        // the yt-dlp engine of :seal (Python, FFmpeg, aria2c), MMKV, ffmpeg-kit, oboe ...). Not set = nothing is filtered (unchanged build). It only filters what is packaged;
+        // the native builds of :ppsspp / :retroarch / :mame / :winlator / :j2me keep their own ABI settings. See seal/README.md "Part 7".
+        (findProperty("apkAbis") as String?)?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.takeIf { it.isNotEmpty() }?.let { abis ->
+            ndk { abiFilters += abis }
+        }
     }
 
     buildTypes {
@@ -41,6 +48,10 @@ android {
             useLegacyPackaging = true
             // :winlator and :j2me (ndk-build, c++_shared) / ffmpeg-kit / oboe each bring a libc++_shared.so
             pickFirsts += "**/libc++_shared.so"
+        }
+        // :seal (Seal's libraries ship duplicate licence files; upstream excludes the same two)
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
     
@@ -88,6 +99,8 @@ dependencies {
     implementation(project(":mame"))
     // RetroArch: built-in libretro frontend (package com.retroarch). All 12 steps done (native lib, Java, resources, manifest; runs in its own process :retroarch). Start menu, Home icon, rizwans2://retroarch and File Manager (console ROM files) hooks: RetroArchLauncher.kt (64-bit ARM phones only), see retroarch/README.md
     implementation(project(":retroarch"))
+    // Seal: built-in video / audio downloader (yt-dlp), package com.junkfood.seal. Part 3: the module is wired in; start-up code (part 4), manifest (part 5) and the Start menu / Home / deep-link hooks (part 6) follow, see seal/README.md
+    implementation(project(":seal"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

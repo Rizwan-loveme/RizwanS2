@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sl_video_directory">Video mapa</string>
+    <string name="sl_create_thumbnail">Shrani sličico</string>
+    <string name="sl_settings">Nastavite</string>
+    <string name="sl_extract_audio">Shrani kot avdio</string>
+</resources>

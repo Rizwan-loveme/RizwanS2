@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.junkfood.seal.SealInit
 import com.srizwan.win11.parallel.DaemonSetting
 import com.srizwan.win11.parallel.InstallInBoxSetting
 import top.niunaijun.blackbox.BlackBoxCore
@@ -27,6 +28,9 @@ import java.io.File
  *
  * The built-in RetroArch app (:retroarch) runs its two activities in its own process (":retroarch", see retroarch/README.md step 6):
  * upstream ends it with System.exit(0) / exit(0), which must not close the launcher. Same treatment as ":mame": nothing is started there.
+ *
+ * The built-in Seal downloader (:seal, package com.junkfood.seal) runs in the launcher's own process: SealInit.init(this) is called at the end of
+ * onCreate (launcher process only). Seal has no Application of its own and no second crash handler: the launcher's crash handler covers it.
  */
 class App : Application() {
 
@@ -68,6 +72,13 @@ class App : Application() {
         AppLog.installCrashHandler()
         WinlatorLauncher.installLogBridge()
         AppLog.i("App", "process start | ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+        // Seal (:seal, part 4): MMKV, Koin, download folders, notification channels; the yt-dlp engine unpacks in the background.
+        // A failure here must never stop the launcher, so it is only logged.
+        try {
+            SealInit.init(this) { AppLog.e("Seal", "yt-dlp engine init failed", it) }
+        } catch (e: Throwable) {
+            AppLog.e("App", "Seal init failed", e)
+        }
     }
 
     /** true in the J2ME game process (process name == package name + ":midlet"). */

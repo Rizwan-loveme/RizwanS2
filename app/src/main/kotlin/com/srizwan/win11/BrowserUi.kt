@@ -800,49 +800,7 @@ internal fun MainActivity.addNewTab(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?
-            ): Boolean {
-                fileUploadCallback?.onReceiveValue(null)
-                fileUploadCallback = filePathCallback
-                // Own glass file picker (:chooser, step 8) instead of the system's GET_CONTENT screen. The page's accept types and its
-                // "multiple" flag are passed on; the result is content:// uris from ChooserFileProvider, which the WebView reads.
-                val accept = fileChooserParams?.acceptTypes
-                    ?.flatMap { it.split(',') }?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
-                val multiple = fileChooserParams?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
-                uploadAccept = accept
-                // Camera step 7: <input type=file capture> goes straight to the built-in Camera (one photo / video back to the page);
-                // if the camera cannot start, the file picker below opens as before.
-                if (fileChooserParams?.isCaptureEnabled == true && uploadAcceptsMedia(accept)) {
-                    try {
-                        fileChooserLauncher.launch(uploadCameraIntent(accept))
-                        return true
-                    } catch (e: Exception) {
-                        AppLog.e("BrowserUi", "cannot open the camera for a capture upload", e)
-                    }
-                }
-                try {
-                    // the picker gets a Camera button when the page accepts photos / videos (it ends with RESULT_CAMERA, see MainActivity)
-                    fileChooserLauncher.launch(
-                        FilePicker.intent(
-                            this@addNewTab, multiple = multiple, mimeTypes = accept,
-                            cameraButton = uploadAcceptsMedia(accept)
-                        )
-                    )
-                } catch (e: Exception) {
-                    // the picker could not start: the system screen as before
-                    try {
-                        fileChooserLauncher.launch(
-                            Intent(Intent.ACTION_GET_CONTENT).apply {
-                                addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
-                            }
-                        )
-                    } catch (e2: Exception) {
-                        fileUploadCallback = null
-                        filePathCallback?.onReceiveValue(null)
-                        return false
-                    }
-                }
-                return true
-            }
+            ): Boolean = openFileChooser(filePathCallback, fileChooserParams) // shared with the pop-up windows (BrowserPopup.kt)
         }
 
         webView.addJavascriptInterface(BlobBridge(), "AndroidBlobDl")
@@ -940,7 +898,6 @@ internal fun MainActivity.closeTab(index: Int): Boolean {
     }
     val closing = webTabs[index]
     val wasCurrent = index == currentTabIndex
-    closePopupsOf(closing)
     mediaPlayingViews.remove(closing.webView)
     try {
         closing.webView.stopLoading()
@@ -954,6 +911,8 @@ internal fun MainActivity.closeTab(index: Int): Boolean {
     val openerIdx = if (wasCurrent) webTabs.indexOfFirst { it.webView == closing.openerWebView } else -1
     if (openerIdx >= 0) currentTabIndex = openerIdx
     currentTabIndex = currentTabIndex.coerceIn(0, webTabs.size - 1)
+    // popups of the closed tab are not closed with it (a popup never closes by itself): they move to the tab shown next
+    reassignPopupsOf(closing, webTabs[currentTabIndex])
     switchTab(currentTabIndex)
     updatePopupService()
     return true
@@ -1440,16 +1399,20 @@ internal fun MainActivity.downloadDataUrl(dataUrl: String, overrideMime: String 
 
 
 internal fun MainActivity.showLinkDialog(link: String, webView: WebView) {
-    val options = arrayOf("Open in new tab", "Download link", "Copy link")
+    // Seal part 6: "Download with Downloader" (the built-in :seal app, yt-dlp) only for http / https links
+    val withSeal = isSealUrl(link)
+    val options = if (withSeal) arrayOf("Open in new tab", "Download link", "Download with $SEAL_NAME", "Copy link")
+    else arrayOf("Open in new tab", "Download link", "Copy link")
     W11Dialog.Builder(this).setTitle(link).setItems(options) { _, which ->
-        when (which) {
-            0 -> addNewTab(link, switch = true)
-            1 -> {
+        when (options[which]) {
+            "Open in new tab" -> addNewTab(link, switch = true)
+            "Download link" -> {
                 if (link.startsWith("blob:")) downloadBlobUrl(link, webView)
                 else if (link.startsWith("data:")) downloadDataUrl(link)
                 else downloadWithManager(link, "", "", "", -1L, webView)
             }
-            2 -> copyText(link)
+            "Download with $SEAL_NAME" -> openSealWithUrl(link)
+            "Copy link" -> copyText(link)
         }
     }.setNegativeButton("Cancel", null).show()
 }
@@ -1724,4 +1687,56 @@ internal fun MainActivity.finishWebPermission() {
     } catch (e: Exception) {
         AppLog.e("BrowserUi", "web permission answer failed", e)
     }
+}
+
+/**
+ * <input type=file> of a page (a tab or a pop-up window): opens the own :chooser file picker (or the camera for `capture`).
+ * The page's accept types and its "multiple" flag are passed on; the result comes back through [MainActivity.fileChooserLauncher].
+ * Used by the WebChromeClient of the tabs (addNewTab) and of the pop-ups (configurePopupWebView in BrowserPopup.kt).
+ */
+internal fun MainActivity.openFileChooser(
+    filePathCallback: ValueCallback<Array<Uri>>?,
+    fileChooserParams: WebChromeClient.FileChooserParams?
+): Boolean {
+    fileUploadCallback?.onReceiveValue(null)
+    fileUploadCallback = filePathCallback
+    // Own glass file picker (:chooser, step 8) instead of the system's GET_CONTENT screen. The page's accept types and its
+    // "multiple" flag are passed on; the result is content:// uris from ChooserFileProvider, which the WebView reads.
+    val accept = fileChooserParams?.acceptTypes
+        ?.flatMap { it.split(',') }?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+    val multiple = fileChooserParams?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
+    uploadAccept = accept
+    // Camera step 7: <input type=file capture> goes straight to the built-in Camera (one photo / video back to the page);
+    // if the camera cannot start, the file picker below opens as before.
+    if (fileChooserParams?.isCaptureEnabled == true && uploadAcceptsMedia(accept)) {
+        try {
+            fileChooserLauncher.launch(uploadCameraIntent(accept))
+            return true
+        } catch (e: Exception) {
+            AppLog.e("BrowserUi", "cannot open the camera for a capture upload", e)
+        }
+    }
+    try {
+        // the picker gets a Camera button when the page accepts photos / videos (it ends with RESULT_CAMERA, see MainActivity)
+        fileChooserLauncher.launch(
+            FilePicker.intent(
+                this, multiple = multiple, mimeTypes = accept,
+                cameraButton = uploadAcceptsMedia(accept)
+            )
+        )
+    } catch (e: Exception) {
+        // the picker could not start: the system screen as before
+        try {
+            fileChooserLauncher.launch(
+                Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+                }
+            )
+        } catch (e2: Exception) {
+            fileUploadCallback = null
+            filePathCallback?.onReceiveValue(null)
+            return false
+        }
+    }
+    return true
 }

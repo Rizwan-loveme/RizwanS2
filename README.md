@@ -1444,6 +1444,13 @@ Camera's flash use the same hardware, so use one at a time.
 - **Limit**: the overlay window is not focusable, so the keyboard does not open in it; use Restore to type (login, forms). Playing and scrolling a page work.
 - Not built or run here (no Android SDK / Gradle). Test: minimize a pop-up (permission prompt, Allow), press Home (window stays, audio keeps playing), drag and resize it over another app, tap Restore (app comes to the front, pop-up is a dialog again), tap Open as tab, tap Close, and rotate the phone while it floats (a window outside the new screen can be dragged back by its header).
 
+## Browser pop-ups — step 9: Keyboard / Touch toggles, file picker in the pop-up, no automatic close (`BrowserPopup.kt`, `BrowserUi.kt`)
+
+- **Two icon-only toggle buttons** (no text) in the pop-up title bar and in the floating header, blue = on, red = off: **Keyboard** (off: the keyboard cannot open in this pop-up; the page view is made unfocusable and a floating overlay window stays non-focusable) and **Touch** (off: touches on the page view are swallowed; header buttons, drag and resize still work). State per pop-up, kept across dialog / full / floating, both start on. New icons `ic_popup_keyboard.xml`, `ic_popup_touch.xml`.
+- **File picker inside a pop-up** (it had none): the tab's `onShowFileChooser` body is now `MainActivity.openFileChooser()`, used by tabs and pop-ups; nothing is paused while a picker is open; an overlay pop-up brings the app to the front first.
+- **A pop-up never closes by itself:** page `window.close()` ignored, the "download-only pop-up" auto-close removed, closing the owner tab moves its pop-ups to the next tab instead of closing them. Still closes: its Close button, Back (dialog / full), the app being destroyed (Android killing the process cannot be prevented).
+- Details, table of what was found, test list: `docs/CHANGES-step9-popup-toggles-filepicker.md`. Not built or run (no SDK / Gradle here).
+
 ## PPSSPP — `:ppsspp` module (PPSSPP v1.20.4, package `org.ppsspp.ppsspp`)
 
 [PPSSPP](https://github.com/hrydgard/ppsspp) (pinned tag **v1.20.4**, GPL-2.0-or-later) is a PSP emulator. It is now a built-in app of Win11 in the same style as J2ME / Camera:
@@ -1569,3 +1576,42 @@ Also more disk is freed on the runner. No cache for the core (quota), timeout un
 
 Step 9 (done): details updated, static checks run (XML, `mm_` prefixes, resource references, version constant, manifest, hooks, scripts, workflows), final flat zip `RizwanS2-youtube-step7.zip`. All 9 steps are done; the app was not built or run here (no Gradle / SDK / NDK / GitHub / phone).
 Summary, what to test on a phone first and what to look at if the build fails: `mame/README.md` step 9.
+
+---
+
+# Seal — `:seal` module (built-in downloader "Downloader")
+
+Upstream https://github.com/JunkFood02/Seal, pinned in `seal/UPSTREAM_VERSION` (v2.0.0-alpha.5) + `seal/UPSTREAM_COMMIT`, GPL-3.0 (`NOTICE-Seal.md`, `LICENSE-Seal`). Same pattern as `:ppsspp`, built part by part, details in `seal/README.md`.
+
+| # | Part | Status |
+|---|------|--------|
+| 1 | Pin the source, analysis, notice + licence | done |
+| 2 | `:seal` / `:seal-color` folders, copy sources, `sl_` resource prefix, clash scan (34 -> 0) | done |
+| 3 | Gradle (plugins on Kotlin 2.2.10, dependencies, `:app` dependency) | done |
+| 4 | `SealInit` called from `App.kt`; no second crash handler; self-update removed | done |
+| 5 | Manifest merge (no own launcher / link filters) | done |
+| 6 | Hooks: Start menu, Home icon, `rizwans2://seal`, browser, download folder | done |
+| 7 | targetSdk 28, native libs, ABI, APK size | done |
+| 8 | CI yml (3 build workflows) | done |
+| 9 | README / docs | done |
+| 10 | Static checks, final flat zip | done |
+
+Part 10 (done): static checks over the whole project and the final flat zip `RizwanS2-main-seal-final.zip`. Documentation only (plus the new script `seal/tools/static-check.py`): XML (606 files), YAML (6 workflows, every `run:` step `bash -n`), brackets of 2336 `.kt` / `.kts` / `.java` files, resources (398 names), manifest, imports, host-to-Seal symbols, overlays, patch-script idempotency all pass; the 2 bracket reports are old non-Seal Java files that `javac` accepts (checker false positives). No source, manifest, Gradle or workflow file changed. Not built or run (no SDK / Gradle / CI here): the first compile of `:seal` is your next workflow run. Details: `docs/CHANGES-seal-part10.md`.
+
+Part 9 (done): documentation only. `seal/README.md` now starts with an overview (what it is, how the user reaches it, which workflow includes it, size estimate, file map, how to update upstream, open points), `NOTICE-Seal.md` lists parts 7 and 8, `docs/CHANGES-seal-part9.md` has the index of all Seal notes and the checks made. Short version for this README:
+- **Use:** Start menu / Home screen "Downloader", `rizwans2://seal[?url=<link>]`, Browser link menu and Media Grabber. Downloads go to the public Downloads folder (`Download/`, audio `Download/Audio`).
+- **Build:** `UltimateBuild.yml` and `UltimateBuild_NoWinlator.yml` always include it; `UltimateBuild_WithoutMe.yml` has the tick box `include_seal`; all three accept `apk_abis` (empty = unchanged) and check the APK after the build. Nothing is fetched at build time. Size about +50-100 MB (estimate, not measured).
+- **Open points (not run anywhere yet):** the first compile of `:seal` on Kotlin 2.2.10; `libc++_shared.so` `pickFirst`; Android 10 storage permission gap; GPL-3.0 for the combined app (general note, check before publishing).
+
+Part 8 (done): all three build workflows (`UltimateBuild.yml`, `UltimateBuild_NoWinlator.yml`, `UltimateBuild_WithoutMe.yml`) now check Seal inside the built APK: `seal/tools/check-apk-native.sh` (Python + MMKV libraries for arm64-v8a) and the new `seal/tools/check-merged-manifest.py` (Seal's activities / service / receiver / FileProvider are merged, none of its activities has an intent filter or a launcher category). No fetch / cache step is needed (engine from Maven). `UltimateBuild_WithoutMe.yml` has a new tick box **Downloader (Seal)** (default on; off = module folders deleted, `SealLauncher.kt` stub, start-up block, Start menu entry, Home icon removed in the temporary checkout), and all three have the optional input `apk_abis` (e.g. `arm64-v8a,armeabi-v7a`; empty = unchanged build; `arm64-v8a` required). A bug in `WithoutMe` was fixed on the way: unticking PPSSPP would have left `),,` in `StartApps.kt`. Tested here by running the workflow scripts on project copies and on fake APKs; GitHub Actions / Gradle / a real APK were not run. Details: `docs/CHANGES-seal-part8.md`.
+
+Part 7 (done): no source change was needed for targetSdk 28 (one gap: Android 10 only, see `seal/README.md` "Part 7"); native libraries are already extracted (`useLegacyPackaging` + `extractNativeLibs`) and `libc++_shared.so` is already `pickFirst`; new optional `-PapkAbis=arm64-v8a,armeabi-v7a` drops the x86 copies of the engine (default off); new `seal/tools/check-apk-native.sh APK [abi]` reports the engine libraries inside a built APK. Size not measured. Details: `docs/CHANGES-seal-part7.md`.
+
+Part 6 (done): the built-in app is shown as **Downloader** and can be opened from the Start menu, the Home screen, `rizwans2://seal` (`?url=<link>` opens its download sheet for that link) and the Browser (link long-press menu "Download with Downloader"; Media Grabber: a "Downloader" pill on every media / embed / link row and "Page -> Downloader"). Files now go to the public Downloads folder (audio `Download/Audio`, hidden temp `Download/.downloader-tmp`); Seal's language page is hidden; no share-sheet entry and no second icon. A link handed over by the launcher also opens the sheet on a cold start (patched in Seal's `MainActivity`). Details and caveats: `seal/README.md` "Part 6", `docs/CHANGES-seal-part6.md`.
+
+Part 5 (done): `seal/src/main/AndroidManifest.xml` (kept in `seal/tools/overlay-main/`): `MainActivity`, `QuickDownloadActivity`, `CrashReportActivity`, `DownloadService`, `NotificationActionReceiver` and `SealFileProvider` (own FileProvider subclass like the other modules), **all `exported=false`, no `intent-filter` at all** (no launcher icon, no share-sheet entry, no link handling; links come in through explicit intents). New permissions for the launcher: `FOREGROUND_SERVICE_SPECIAL_USE`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`; no `REQUEST_INSTALL_PACKAGES`. Details: `seal/README.md` "Part 5", `docs/CHANGES-seal-part5.md`.
+
+Part 4 (done): `SealInit` (MMKV, Koin, download folders, notification channels, yt-dlp / FFmpeg / aria2c engine in the background) is called from the launcher's `App.onCreate` (launcher process only, wrapped in try/catch); Seal's `App` is now only the holder of its shared fields; no second crash handler, no `DynamicColors`; the Seal self-update (AppUpdater, UpdateDialog, UpdatePage, GitHub release check / APK install) is removed, the yt-dlp updater stays. Details: `seal/README.md` "Part 4", `docs/CHANGES-seal-part4.md`. Nothing is visible yet (manifest = part 5, hooks = part 6).
+
+Part 1 (nothing built, no build file touched): Seal is Kotlin + Compose with the yt-dlp engine from Maven (no C++ and no assets, so no fetch step in CI).
+Upstream's README forbids other parties from using the name "Seal" for a downloader app (derivatives included), so the built-in app has a neutral display name, **"Downloader"** (done in part 6).

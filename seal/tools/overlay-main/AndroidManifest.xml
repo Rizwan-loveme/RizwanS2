@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Library manifest of :seal (upstream: Seal v2.0.0-alpha.5, app/src/main/AndroidManifest.xml, kept as seal/reference/AndroidManifest.upstream.xml), namespace com.junkfood.seal.
+  Written in part 5; merged into :app. Differences from upstream:
+   - no MAIN / LAUNCHER filter: Seal is opened from the Start menu, the Home screen, the rizwans2://seal deep link and the browser (part 6), not from its own launcher icon
+   - no SEND text/plain and no VIEW http / https / video / audio filters (on MainActivity and on QuickDownloadActivity): they would put Win11 into every share sheet and make it a handler for every link.
+     Links reach Seal through explicit intents (ACTION_SEND + EXTRA_TEXT or ACTION_VIEW + data), which MainActivity / QuickDownloadActivity already understand. Both activities are therefore exported="false".
+   - no <application> level attributes (name, allowBackup, requestLegacyExternalStorage, extractNativeLibs, enableOnBackInvokedCallback, icon, label, roundIcon, supportsRtl): they belong to :app.
+     icon / label are on MainActivity instead (since part 6 the label string sl_app_name reads "Downloader", see seal/tools/win11_patches.py RES_PATCHES)
+   - no REQUEST_INSTALL_PACKAGES (the self-update was removed in part 4) and no WRITE_EXTERNAL_STORAGE (:app declares it, with maxSdkVersion 28, which is the right value for targetSdk 28; a second, different maxSdkVersion would only be a merge conflict)
+   - FileProvider: Seal's own subclass com.junkfood.seal.SealFileProvider instead of androidx.core.content.FileProvider. Every module of this project does the same (ChooserFileProvider,
+     GalleryFileProvider, WinlatorFileProvider): the merger treats two <provider> entries with the same class name as one element and fails on the different authorities. Authority and paths are upstream's
+     (${applicationId}.provider, @xml/sl_provider_paths), FileUtil.getFileProvider() = "$packageName.provider" stays valid
+   - AppLocalesMetadataHolderService (autoStoreLocales) is not declared: it would switch on "store the app language" for the whole launcher; see seal/README.md part 5
+   - DownloadService gets the PROPERTY_SPECIAL_USE_FGS_SUBTYPE property that Android 14 asks for with foregroundServiceType="specialUse" (upstream has none)
+   - resources renamed with the sl_ prefix (sl_ic_launcher, sl_app_name, sl_title_activity_share, sl_provider_paths); styles Theme.Seal / Theme.Seal.Dialog keep their names
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- INTERNET, ACCESS_NETWORK_STATE, FOREGROUND_SERVICE, POST_NOTIFICATIONS and MANAGE_EXTERNAL_STORAGE are also declared by :app (identical, so no merge conflict);
+         new for the launcher through Seal: FOREGROUND_SERVICE_SPECIAL_USE and REQUEST_IGNORE_BATTERY_OPTIMIZATIONS -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+
+            <category android:name="android.intent.category.BROWSABLE" />
+
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
+    <application>
+        <activity
+            android:name="com.junkfood.seal.MainActivity"
+            android:configChanges="orientation"
+            android:exported="false"
+            android:icon="@mipmap/sl_ic_launcher"
+            android:label="@string/sl_app_name"
+            android:launchMode="singleTask"
+            android:screenOrientation="unspecified"
+            android:theme="@style/Theme.Seal" />
+
+        <activity
+            android:name="com.junkfood.seal.QuickDownloadActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:icon="@mipmap/sl_ic_launcher"
+            android:label="@string/sl_title_activity_share"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.Seal.Dialog" />
+
+        <activity
+            android:name="com.junkfood.seal.CrashReportActivity"
+            android:exported="false"
+            android:label="CrashReportActivity"
+            android:theme="@style/Theme.Seal" />
+
+        <service
+            android:name="com.junkfood.seal.DownloadService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="yt-dlp video and audio downloads" />
+        </service>
+
+        <receiver
+            android:name="com.junkfood.seal.NotificationActionReceiver"
+            android:exported="false" />
+
+        <provider
+            android:name="com.junkfood.seal.SealFileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/sl_provider_paths" />
+        </provider>
+    </application>
+
+</manifest>

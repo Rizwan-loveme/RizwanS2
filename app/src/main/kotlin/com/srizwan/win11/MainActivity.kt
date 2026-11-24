@@ -744,6 +744,8 @@ class MainActivity : AppCompatActivity() {
                     openJ2me()
                 } else if (section == "ppsspp") {
                     openPpsspp()
+                } else if (section == "seal") {
+                    openSeal()
                 } else if (section == "mame") {
                     openMame()
                 } else if (section == "retroarch") {
@@ -905,7 +907,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | mame | retroarch | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | seal (alias downloader; optional ?url=<http(s) link> opens its download sheet for that link) | mame | retroarch | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -942,6 +944,11 @@ class MainActivity : AppCompatActivity() {
                 )
                 "j2me" -> openJ2me()
                 "ppsspp" -> openPpsspp()
+                // Seal part 6: the Downloader app; rizwans2://seal?url=https://... opens its download sheet for that link (http / https only)
+                "seal", "downloader" -> {
+                    val link = uri.getQueryParameter("url")
+                    if (link.isNullOrBlank()) openSeal() else openSealWithUrl(link)
+                }
                 "mame" -> openMame()
                 "retroarch" -> openRetroarch()
                 // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
