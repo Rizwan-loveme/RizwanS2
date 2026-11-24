@@ -35,7 +35,7 @@ public class sms implements CommandAbstraction {
 
     @Override
     public int helpRes() {
-        return R.string.tui_help_sms;
+        return R.string.tui_help_win11_sms;
     }
 
     @Override

@@ -426,7 +426,7 @@
     <string name="tui_help_files">Open the Win11 file manager</string>
     <string name="tui_help_gallery">Open the Win11 gallery</string>
     <string name="tui_help_browser">Open the Win11 browser</string>
-    <string name="tui_help_sms">Open the Win11 messages (SMS)</string>
+    <string name="tui_help_win11_sms">Open the Win11 messages (SMS)</string>
     <string name="tui_help_rss">-add [ID] [update_time_in_seconds] [url] -> add a new RSS feed. t-ui will try to get new contents every [update_time_in_seconds] seconds
         \n-rm [ID] -> remove this RSS feed
         \n-ls -> list your RSS feeds
