@@ -6,11 +6,13 @@ name: Android Release Build (Signed, choose modules)
 #   Signing : KEYSTORE_BASE64, KEY_ALIAS, KEYSTORE_PASSWORD, KEY_PASSWORD
 #
 # CHOOSE MODULES: when you press "Run workflow" every optional module has a tick box (ticked = included, unticked = left out):
-#   Winlator (:winlator, about 140 MB of rootfs/wine assets), PPSSPP (:ppsspp), MAME (:mame), RetroArch (:retroarch), J2ME (:j2me + :j2me-dexlib).
+#   Winlator (:winlator, about 140 MB of rootfs/wine assets), PPSSPP (:ppsspp), MAME (:mame), RetroArch (:retroarch), J2ME (:j2me + :j2me-dexlib),
+#   Downloader (:seal + :seal-color, the built-in Seal / yt-dlp app).
 # For every unticked module this run, in its temporary checkout only: deletes the module folder, removes it from settings.gradle.kts and
 # app/build.gradle.kts, replaces its launcher file in :app (WinlatorLauncher.kt, PpssppLauncher.kt, MameLauncher.kt, RetroArchLauncher.kt,
-# J2meLauncher.kt) with a tiny stub (same function names, "not supported"), and hides its Start menu entry and Home icon. The fetch / cache / ccache
-# steps and the APK checks of that module are skipped too (a build without PPSSPP / RetroArch / MAME is much faster and smaller).
+# J2meLauncher.kt, SealLauncher.kt) with a tiny stub (same function names, "not supported"), and hides its Start menu entry and Home icon. The fetch / cache / ccache
+# steps and the APK checks of that module are skipped too (a build without PPSSPP / RetroArch / MAME is much faster and smaller; without the Downloader the APK is
+# about 50-100 MB smaller, and App.kt no longer starts Seal's engine).
 # Always built (the rest of the app depends on them): BlackBox (:Bcore, parallel apps), YouTube, Video, Gallery, Camera, Chooser.
 # Nothing is committed, so your repo (with all modules) is untouched. Release tags are "release-custom-N" so they never clash with the normal
 # workflow's "release-N". Extra switch: "Publish to GitHub Releases" (unticked = the APK is only attached to the run as a workflow artifact).
@@ -26,6 +28,14 @@ name: Android Release Build (Signed, choose modules)
 # (retroarch/tools/fetch-upstream.sh stops if the commit differs; cached) and built by upstream's Android.mk (ndk-build) with ccache. The run fails if
 # lib/arm64-v8a/libretroarch-activity.so is missing from the APK, or if the merged manifest has no RetroArch activity in the own process :retroarch.
 # Cores are NOT bundled (RetroArch's Online Updater downloads them), so there are no RetroArch assets or cores to check. The timeout stays 120 minutes.
+#
+# Seal (:seal + :seal-color, shown in the app as "Downloader"; yt-dlp video / audio downloader): the Kotlin sources are in the repo and the engine (Python, yt-dlp, FFmpeg,
+# aria2c) is a Maven library, so there is nothing to clone or download and no cache step. The run fails if the APK has no lib/arm64-v8a/libpython* or libmmkv*
+# (seal/tools/check-apk-native.sh), or if the merged manifest lacks Seal's activities / DownloadService / receiver / FileProvider or one of its activities has an
+# intent filter (seal/tools/check-merged-manifest.py). The APK grows by roughly 50-100 MB (an estimate from part 1, not measured).
+#
+# Optional input "apk_abis" (default empty = nothing is filtered): e.g. arm64-v8a,armeabi-v7a keeps only these ABIs in the APK (passes -PapkAbis to Gradle, see app/build.gradle.kts).
+# It is the largest size saving available (drops the x86 / x86_64 copies), but it changes every module's packaged output, so it is off by default. arm64-v8a must stay in the list.
 #
 # Package rename: the old -> new replacement happens only inside this run's
 # temporary checkout. Nothing is committed or pushed, so your repo is untouched.
@@ -77,11 +87,21 @@ on:
         required: false
         default: true
         type: boolean
+      include_seal:
+        description: 'Downloader (Seal, yt-dlp video / audio downloader, about +50-100 MB) - tick = include'
+        required: false
+        default: true
+        type: boolean
       publish_release:
         description: 'Publish to GitHub Releases (untick = only a workflow artifact)'
         required: false
         default: true
         type: boolean
+      apk_abis:
+        description: 'Optional: keep only these ABIs in the APK, comma separated (e.g. arm64-v8a,armeabi-v7a). Empty = all ABIs (default, unchanged build)'
+        required: false
+        default: ''
+        type: string
       debug_signing:
         description: 'Run signing diagnostics (no secrets are printed)'
         required: false
@@ -128,6 +148,7 @@ jobs:
           INC_MAME: ${{ inputs.include_mame }}
           INC_RETROARCH: ${{ inputs.include_retroarch }}
           INC_J2ME: ${{ inputs.include_j2me }}
+          INC_SEAL: ${{ inputs.include_seal }}
         run: |
           set -e
           KT=app/src/main/kotlin
@@ -219,7 +240,7 @@ jobs:
           import re,glob
           f=glob.glob("app/src/main/kotlin/**/StartApps.kt",recursive=True)[0]
           t=open(f).read()
-          n=re.sub(r'\n        // Built-in PPSSPP app[^\n]*\n        AppEntry\(.*?section = "ppsspp"\n        \)','',t,count=1,flags=re.S)
+          n=re.sub(r'\n        // Built-in PPSSPP app[^\n]*\n        AppEntry\(.*?section = "ppsspp"\n        \),?','',t,count=1,flags=re.S)
           assert n!=t, "PPSSPP entry not found in StartApps.kt"
           open(f,"w").write(n)
           PY
@@ -295,7 +316,7 @@ jobs:
           open(f,"w").write(n)
           f=glob.glob("app/src/main/kotlin/**/StartApps.kt",recursive=True)[0]
           t=open(f).read()
-          n=re.sub(r'\n        // Built-in J2ME app[^\n]*\n        AppEntry\(.*?section = "j2me"\n        \),','',t,count=1,flags=re.S)
+          n=re.sub(r'\n        // Built-in J2ME app[^\n]*\n        AppEntry\(.*?section = "j2me"\n        \),?','',t,count=1,flags=re.S)
           assert n!=t, "J2ME entry not found in StartApps.kt"
           open(f,"w").write(n)
           PY
@@ -304,8 +325,51 @@ jobs:
             SUMMARY="$SUMMARY no-J2ME"
           fi
 
+          if [ "$INC_SEAL" != "true" ]; then
+            echo "== Removing :seal and :seal-color (Downloader) =="
+            drop_module seal seal-color
+            stub SealLauncher.kt <<'STUB'
+          import android.widget.Toast
+
+          /** Build without the Downloader (Seal): same names as the real launcher, nothing is offered. */
+          internal const val SEAL_NAME = "Downloader"
+          internal fun isSealUrl(url: String?): Boolean = false
+          internal fun MainActivity.openSeal() {
+              Toast.makeText(this, "$SEAL_NAME is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          internal fun MainActivity.openSealWithUrl(url: String?) {
+              Toast.makeText(this, "$SEAL_NAME is not included in this build", Toast.LENGTH_SHORT).show()
+          }
+          STUB
+            # App.kt: the import and the start-up call (MMKV, Koin, yt-dlp engine); Start menu entry; Home icon; the "Downloader" pill of a plain link row in the Media Grabber
+            # (the other Downloader buttons and menu items are shown only when isSealUrl() is true, which the stub never says)
+            python3 - <<'PY'
+          import re,glob
+          kt="app/src/main/kotlin"
+          f=glob.glob(kt+"/**/App.kt",recursive=True)[0]
+          t=open(f).read()
+          n=t.replace("import com.junkfood.seal.SealInit\n","")
+          n=re.sub(r'\n        // Seal \(:seal, part 4\)[^\n]*\n(?:        //[^\n]*\n)*        try \{\n            SealInit\.init\([^\n]*\n        \} catch \(e: Throwable\) \{\n[^\n]*\n        \}\n','\n',n,count=1)
+          assert "SealInit.init(this) {" not in n and "import com.junkfood.seal" not in n, "Seal start-up block not found in App.kt"
+          open(f,"w").write(n)
+          f=glob.glob(kt+"/**/StartApps.kt",recursive=True)[0]
+          t=open(f).read()
+          n=re.sub(r'\n        // Built-in Downloader app[^\n]*\n        AppEntry\(.*?section = "seal"\n        \),?','',t,count=1,flags=re.S)
+          assert n!=t, "Downloader entry not found in StartApps.kt"
+          open(f,"w").write(n)
+          PY
+            sed -i '/desktopIcon(VectorIconView\.SEAL, /d' "$KT"/com/*/*/Win11Shell.kt
+            sed -i '/pill(SEAL_NAME, filled = false, small = true) { toDownloader(url) },/d' "$KT"/com/*/*/BrowserMediaGrabber.kt
+            if grep -q 'desktopIcon(VectorIconView\.SEAL' "$KT"/com/*/*/Win11Shell.kt || grep -q 'pill(SEAL_NAME, filled = false, small = true) { toDownloader(url) },' "$KT"/com/*/*/BrowserMediaGrabber.kt; then
+              echo "::error::the Downloader Home icon / Media Grabber pill could not be removed"
+              exit 1
+            fi
+            no_refs Downloader 'com\.junkfood|SealInit'
+            SUMMARY="$SUMMARY no-Downloader"
+          fi
+
           echo "== Verify Gradle no longer includes a removed module =="
-          for pair in "winlator:$INC_WINLATOR" "ppsspp:$INC_PPSSPP" "mame:$INC_MAME" "retroarch:$INC_RETROARCH" "j2me:$INC_J2ME"; do
+          for pair in "winlator:$INC_WINLATOR" "ppsspp:$INC_PPSSPP" "mame:$INC_MAME" "retroarch:$INC_RETROARCH" "j2me:$INC_J2ME" "seal:$INC_SEAL" "seal-color:$INC_SEAL"; do
             m="${pair%%:*}"; on="${pair##*:}"
             if [ "$on" != "true" ] && grep -rn "project(\":$m\")\|include(\":$m\")" --include="*.kts" --include="*.gradle" --exclude-dir=.git --exclude-dir=build . ; then
               echo "::error::Gradle still references the removed :$m module"; exit 1
@@ -316,7 +380,7 @@ jobs:
             echo "### Modules in this build"
             echo "| Module | Included |"; echo "|---|---|"
             echo "| Winlator | $INC_WINLATOR |"; echo "| PPSSPP | $INC_PPSSPP |"; echo "| MAME | $INC_MAME |"
-            echo "| RetroArch | $INC_RETROARCH |"; echo "| J2ME | $INC_J2ME |"
+            echo "| RetroArch | $INC_RETROARCH |"; echo "| J2ME | $INC_J2ME |"; echo "| Downloader (Seal) | $INC_SEAL |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate & Apply Package Rename
@@ -421,6 +485,34 @@ jobs:
           fi
 
           echo "Done: '$OLD_PKG' -> '$NEW_PKG', no references left."
+
+      # Optional ABI filter (Seal part 7 / 8): -PapkAbis=... keeps only the listed ABIs in the APK (app/build.gradle.kts). Empty input = nothing is filtered.
+      # arm64-v8a is required: Winlator, PPSSPP, MAME, RetroArch and the APK checks below are all arm64.
+      - name: Check the optional ABI filter
+        env:
+          APK_ABIS: ${{ inputs.apk_abis }}
+        run: |
+          set -e
+          ABIS=$(printf '%s' "$APK_ABIS" | tr -d '[:space:]')
+          if [ -z "$ABIS" ]; then
+            echo "apk_abis not set: all ABIs stay in the APK"
+            exit 0
+          fi
+          IFS=',' read -ra LIST <<< "$ABIS"
+          HAVE_ARM64=0
+          for a in "${LIST[@]}"; do
+            case "$a" in
+              arm64-v8a) HAVE_ARM64=1 ;;
+              armeabi-v7a|x86|x86_64) ;;
+              *) echo "::error::apk_abis: '$a' is not an ABI (use arm64-v8a, armeabi-v7a, x86, x86_64)"; exit 1 ;;
+            esac
+          done
+          if [ "$HAVE_ARM64" != 1 ]; then
+            echo "::error::apk_abis must contain arm64-v8a"
+            exit 1
+          fi
+          echo "ORG_GRADLE_PROJECT_apkAbis=$ABIS" >> "$GITHUB_ENV"
+          echo "APK ABIs kept: $ABIS"
 
       # The project (Bcore engine + app) is compiled with Java 21.
       - name: Set up JDK 21
@@ -566,6 +658,7 @@ jobs:
           INC_PPSSPP: ${{ inputs.include_ppsspp }}
           INC_MAME: ${{ inputs.include_mame }}
           INC_RETROARCH: ${{ inputs.include_retroarch }}
+          INC_SEAL: ${{ inputs.include_seal }}
         run: |
           UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*-unsigned.apk" | head -n 1)
           if [ -z "$UNSIGNED_APK" ]; then
@@ -651,6 +744,20 @@ jobs:
             fi
             echo "RetroArch: libretroarch-activity.so is in the APK"
           fi
+          if [ "$INC_SEAL" = "true" ]; then
+            # Seal (:seal, the built-in "Downloader") must really be inside the APK: the yt-dlp engine needs Python and MMKV under lib/arm64-v8a (check-apk-native.sh stops
+            # the run when they are missing and prints the engine libraries, the kept libc++_shared.so and the biggest native files), and the merged manifest must hold
+            # Seal's activities, DownloadService, receiver and FileProvider WITHOUT any intent filter (check-merged-manifest.py).
+            echo "== Seal (Downloader) in the APK =="
+            bash seal/tools/check-apk-native.sh "$UNSIGNED_APK" arm64-v8a
+            MERGED_SEAL=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+            if [ -z "$MERGED_SEAL" ]; then
+              echo "::warning::merged release manifest not found under app/build/intermediates, Seal manifest check skipped"
+            else
+              python3 seal/tools/check-merged-manifest.py "$MERGED_SEAL"
+            fi
+            echo "Seal: engine libraries and manifest entries are in the APK"
+          fi
           ccache -s 2>/dev/null | head -n 12 || true
 
       # Optional and safe: prints only lengths and whitespace flags, never secret
@@ -734,6 +841,7 @@ jobs:
           [ "${{ inputs.include_mame }}" = "true" ] && M="$M MAME" || true
           [ "${{ inputs.include_retroarch }}" = "true" ] && M="$M RetroArch" || true
           [ "${{ inputs.include_j2me }}" = "true" ] && M="$M J2ME" || true
+          [ "${{ inputs.include_seal }}" = "true" ] && M="$M Downloader(Seal)" || true
           echo "included=${M:- none of the optional modules}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release

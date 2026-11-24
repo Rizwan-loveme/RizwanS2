@@ -17,6 +17,14 @@ name: Android Release Build (Signed)
 # lib/arm64-v8a/libretroarch-activity.so is missing from the APK, or if the merged manifest has no RetroArch activity in the own process :retroarch.
 # Cores are NOT bundled (RetroArch's Online Updater downloads them), so there are no RetroArch assets or cores to check. The timeout stays 120 minutes.
 #
+# Seal (:seal + :seal-color, shown in the app as "Downloader"; yt-dlp video / audio downloader): the Kotlin sources are in the repo and the engine (Python, yt-dlp, FFmpeg,
+# aria2c) is a Maven library, so there is nothing to clone or download and no cache step. The run fails if the APK has no lib/arm64-v8a/libpython* or libmmkv*
+# (seal/tools/check-apk-native.sh), or if the merged manifest lacks Seal's activities / DownloadService / receiver / FileProvider or one of its activities has an
+# intent filter (seal/tools/check-merged-manifest.py). The APK grows by roughly 50-100 MB (an estimate from part 1, not measured).
+#
+# Optional input "apk_abis" (default empty = nothing is filtered): e.g. arm64-v8a,armeabi-v7a keeps only these ABIs in the APK (passes -PapkAbis to Gradle, see app/build.gradle.kts).
+# It is the largest size saving available (drops the x86 / x86_64 copies), but it changes every module's packaged output, so it is off by default. arm64-v8a must stay in the list.
+#
 # Package rename: the old -> new replacement happens only inside this run's
 # temporary checkout. Nothing is committed or pushed, so your repo is untouched.
 #
@@ -41,6 +49,11 @@ on:
       new_package_name:
         description: 'New package name (e.g. com.example.newapp, case-sensitive)'
         required: true
+        type: string
+      apk_abis:
+        description: 'Optional: keep only these ABIs in the APK, comma separated (e.g. arm64-v8a,armeabi-v7a). Empty = all ABIs (default, unchanged build)'
+        required: false
+        default: ''
         type: string
       debug_signing:
         description: 'Run signing diagnostics (no secrets are printed)'
@@ -180,6 +193,34 @@ jobs:
           fi
 
           echo "Done: '$OLD_PKG' -> '$NEW_PKG', no references left."
+
+      # Optional ABI filter (Seal part 7 / 8): -PapkAbis=... keeps only the listed ABIs in the APK (app/build.gradle.kts). Empty input = nothing is filtered.
+      # arm64-v8a is required: Winlator, PPSSPP, MAME, RetroArch and the APK checks below are all arm64.
+      - name: Check the optional ABI filter
+        env:
+          APK_ABIS: ${{ inputs.apk_abis }}
+        run: |
+          set -e
+          ABIS=$(printf '%s' "$APK_ABIS" | tr -d '[:space:]')
+          if [ -z "$ABIS" ]; then
+            echo "apk_abis not set: all ABIs stay in the APK"
+            exit 0
+          fi
+          IFS=',' read -ra LIST <<< "$ABIS"
+          HAVE_ARM64=0
+          for a in "${LIST[@]}"; do
+            case "$a" in
+              arm64-v8a) HAVE_ARM64=1 ;;
+              armeabi-v7a|x86|x86_64) ;;
+              *) echo "::error::apk_abis: '$a' is not an ABI (use arm64-v8a, armeabi-v7a, x86, x86_64)"; exit 1 ;;
+            esac
+          done
+          if [ "$HAVE_ARM64" != 1 ]; then
+            echo "::error::apk_abis must contain arm64-v8a"
+            exit 1
+          fi
+          echo "ORG_GRADLE_PROJECT_apkAbis=$ABIS" >> "$GITHUB_ENV"
+          echo "APK ABIs kept: $ABIS"
 
       # The project (Bcore engine + app) is compiled with Java 21.
       - name: Set up JDK 21
@@ -393,6 +434,18 @@ jobs:
             echo "RetroArch: both activities are in the merged manifest, process :retroarch"
           fi
           echo "RetroArch: libretroarch-activity.so is in the APK"
+          # Seal (:seal, the built-in "Downloader") must really be inside the APK: the yt-dlp engine needs Python and MMKV under lib/arm64-v8a (check-apk-native.sh stops
+          # the run when they are missing and prints the engine libraries, the kept libc++_shared.so and the biggest native files), and the merged manifest must hold
+          # Seal's activities, DownloadService, receiver and FileProvider WITHOUT any intent filter (check-merged-manifest.py).
+          echo "== Seal (Downloader) in the APK =="
+          bash seal/tools/check-apk-native.sh "$UNSIGNED_APK" arm64-v8a
+          MERGED_SEAL=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+          if [ -z "$MERGED_SEAL" ]; then
+            echo "::warning::merged release manifest not found under app/build/intermediates, Seal manifest check skipped"
+          else
+            python3 seal/tools/check-merged-manifest.py "$MERGED_SEAL"
+          fi
+          echo "Seal: engine libraries and manifest entries are in the APK"
           ccache -s 2>/dev/null | head -n 12 || true
 
       # Optional and safe: prints only lengths and whitespace flags, never secret
