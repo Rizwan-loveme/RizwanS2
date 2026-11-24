@@ -21,6 +21,9 @@ name: Android Release Build (Signed)
 # aria2c) is a Maven library, so there is nothing to clone or download and no cache step. The run fails if the APK has no lib/arm64-v8a/libpython* or libmmkv*
 # (seal/tools/check-apk-native.sh), or if the merged manifest lacks Seal's activities / DownloadService / receiver / FileProvider or one of its activities has an
 # intent filter (seal/tools/check-merged-manifest.py). The APK grows by roughly 50-100 MB (an estimate from part 1, not measured).
+# T-UI (:tui, shown as the "Terminal" launcher theme; TUI-ConsoleLauncher, MIT): Java sources + resources are in the repo, nothing is fetched. It is always part of the app (not an optional module). The run fails if the font is
+# missing from the APK, if the merged manifest lacks one of its activities / services / receiver / FileProvider, if one of its activities has an intent filter or is exported, or if any
+# activity other than :app's MainActivity has the HOME category (tui/tools/check-merged-manifest.py). The shrinker rules are in tui/consumer-rules.pro (:app has isMinifyEnabled = false today).
 #
 # Optional input "apk_abis" (default empty = nothing is filtered): e.g. arm64-v8a,armeabi-v7a keeps only these ABIs in the APK (passes -PapkAbis to Gradle, see app/build.gradle.kts).
 # It is the largest size saving available (drops the x86 / x86_64 copies), but it changes every module's packaged output, so it is off by default. arm64-v8a must stay in the list.
@@ -446,6 +449,21 @@ jobs:
             python3 seal/tools/check-merged-manifest.py "$MERGED_SEAL"
           fi
           echo "Seal: engine libraries and manifest entries are in the APK"
+          # T-UI (:tui, the Terminal theme) is part of every build (it is not one of the optional modules: :app depends on it). The APK must hold its font, and the
+          # merged manifest must keep its components private and without any HOME / LAUNCHER / VIEW filter, with :app's MainActivity as the only HOME activity (tui/tools/check-merged-manifest.py).
+          echo "== T-UI (Terminal theme) in the APK =="
+          unzip -l "$UNSIGNED_APK" > "$RUNNER_TEMP/apk-list-tui.txt"
+          if ! grep -q "assets/lucida_console\.ttf" "$RUNNER_TEMP/apk-list-tui.txt"; then
+            echo "::error::assets/lucida_console.ttf (the T-UI font) is not in the APK"
+            exit 1
+          fi
+          MERGED_TUI=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+          if [ -z "$MERGED_TUI" ]; then
+            echo "::warning::merged release manifest not found under app/build/intermediates, T-UI manifest check skipped"
+          else
+            python3 tui/tools/check-merged-manifest.py "$MERGED_TUI"
+          fi
+          echo "T-UI: font and manifest entries are in the APK"
           ccache -s 2>/dev/null | head -n 12 || true
 
       # Optional and safe: prints only lengths and whitespace flags, never secret
