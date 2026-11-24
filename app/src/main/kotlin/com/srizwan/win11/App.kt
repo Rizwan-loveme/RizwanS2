@@ -70,6 +70,12 @@ class App : Application() {
         if (!isLauncherProcess()) return
         AppLog.init(this)
         AppLog.installCrashHandler()
+        // Terminal step 9: the terminal screen must know at once whether it is the home screen (Back handling), also after a process restart.
+        try { ThemeManager.syncHost(this) } catch (e: Throwable) { AppLog.e("App", "theme sync failed", e) }
+        // Terminal step 10: the terminal's `win11` command switches the launcher theme through this.
+        try { ThemeManager.registerHostSwitcher() } catch (e: Throwable) { AppLog.e("App", "theme switcher failed", e) }
+        // Terminal step 11: the terminal's `pinned` / `builtin` / `files` ... commands and its hidden-apps list use the launcher's lists through this.
+        try { TerminalShare.register(this) } catch (e: Throwable) { AppLog.e("App", "terminal share failed", e) }
         WinlatorLauncher.installLogBridge()
         AppLog.i("App", "process start | ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         // Seal (:seal, part 4): MMKV, Koin, download folders, notification channels; the yt-dlp engine unpacks in the background.

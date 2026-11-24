@@ -66,3 +66,7 @@ include(":retroarch")
 // Resources prefixed "sl_". Built step by step, see seal/README.md. App hooks (Start menu, Home icon, rizwans2://seal, browser) come in part 6.
 include(":seal-color")
 include(":seal")
+// TUI-ConsoleLauncher (Linux terminal launcher theme) as the built-in "Terminal" theme, package ohi.andre.consolelauncher (upstream package kept: the sources import its R / BuildConfig).
+// Upstream: https://github.com/fandreuz/TUI-ConsoleLauncher (MIT), see NOTICE-TUI.md and the "Two launcher themes" section of README.md.
+// Only the Java sources, resources (prefix "tui_") and a trimmed library manifest are in the project; :app stays the only HOME activity. Built step by step, see README.md (all 13 steps done: module, dependencies, sources, resources, Java references, manifest + licence, terminal screen as a normal activity, saved theme + routing, switch UI, shared lists + built-in apps, polish, final check; always part of every build, not an optional module).
+include(":tui")

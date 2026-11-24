@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Library manifest of :tui (upstream: TUI-ConsoleLauncher, app/src/main/AndroidManifest.xml), package ohi.andre.consolelauncher (namespace in build.gradle.kts).
+  Step 7 of 13 (LauncherActivity attributes adjusted in step 8, see its comment below): the upstream manifest, trimmed so that it can be merged into :app (the only application and the only HOME activity of this project).
+  Everything below uses the tui_ resource names (step 5); the Java classes are the unchanged upstream ones.
+
+  What was REMOVED compared with upstream (and why):
+    * <supports-screens>: it only repeats the defaults (all sizes, anyDensity, resizeable) and would apply to the whole app.
+    * every <application> attribute (allowBackup="false", icon, label, theme, usesCleartextTraffic="false", requestLegacyExternalStorage): :app owns them.
+      A library value that differs from :app's (allowBackup, usesCleartextTraffic) would be a manifest-merger error, and the theme / icon / label
+      of the terminal screen are now set on each component instead.
+    * LauncherActivity: the MAIN + HOME + LAUNCHER + LAUNCHER_APP filter. Only :app's MainActivity may be a HOME / LAUNCHER activity; it will forward to
+      this screen when the saved theme is TERMINAL (step 9). The activity is not exported any more (:app starts it with an explicit intent).
+    * FakeLauncherActivity: the HOME filter (it was the dummy HOME app that upstream's `exit` command enables for a moment, to make Android forget the default-launcher choice).
+      The class stays declared (Tuils.resetPreferredLauncherAndOpenChooser() builds a ComponentName for it), still disabled, not exported. Since step 8 nothing calls that method: `exit` just closes the screen.
+    * TuixtActivity: both VIEW / EDIT intent filters (text/* and the .js .htm .html .xhtml .php .ini .sh .log .db .conf .cfg .txt .xml file-scheme patterns),
+      so TUIXT no longer appears in the system "Open with" list; it is started only by the `tuixt` command (explicit intent), so it is not exported any more.
+
+  What is KEPT as upstream (needed by the terminal's features):
+    * all <uses-permission> / <uses-feature> entries (duplicates of :app's are merged; every feature is required="false")
+    * the signature permission ohi.andre.consolelauncher.permission.RECEIVE_CMD (LauncherActivity registers its public command receiver with it)
+    * the file provider (GenericFileProvider, authority ${applicationId}.FILE_PROVIDER = BuildConfig.APPLICATION_ID + ".FILE_PROVIDER" = com.srizwan.win11.FILE_PROVIDER;
+      no other module uses that authority), PolicyReceiver (device admin: "lock the screen on double tap"), KeeperService (foreground, specialUse),
+      MusicService (foreground, mediaPlayback), NotificationService (notification listener) and NotificationMonitorService.
+    * :app has its own WhatsAppNotificationListener and AppDeviceAdmin; the classes and their names are different, so both pairs live side by side.
+
+  Names: ".Foo" is resolved against the namespace (ohi.andre.consolelauncher), not against :app's package. The PARENT_ACTIVITY value of TuixtActivity is a plain
+  string that androidx resolves at run time against the application's package, so it is written out fully (a leading dot would point into com.srizwan.win11).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- permissions (upstream list, unchanged) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_INTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!-- features (all optional, so the Play Store does not filter devices) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
+    <uses-feature android:name="android.hardware.audio.output" android:required="false" />
+
+    <permission
+        android:name="ohi.andre.consolelauncher.permission.RECEIVE_CMD"
+        android:protectionLevel="signature" />
+
+    <application>
+
+        <provider
+            android:name=".tuils.GenericFileProvider"
+            android:authorities="${applicationId}.FILE_PROVIDER"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/tui_provider_paths" />
+        </provider>
+
+        <!-- The terminal screen. No intent filter: not a HOME / LAUNCHER activity, started by :app with an explicit intent (TerminalLauncher.kt; theme routing in step 9).
+             Step 8: a normal activity. Upstream's launcher-only attributes were removed: clearTaskOnLaunch, excludeFromRecents, stateNotNeeded, resumeWhilePausing
+             and taskAffinity="" (the empty affinity made it a separate task of its own). Without it the screen lives in :app's task (default affinity = the app package),
+             so Back / `exit` return to the Win11 screen below (when the TERMINAL theme is saved, step 9, the terminal is the root of the task and is the home screen). Kept: singleTask (one instance; a notification click or shortcut brings it to the front and the command
+             arrives in onNewIntent()), configChanges (rotation / keyboard without restart) and the keyboard mode.
+             Step 12: the theme is tui_Custom.Start (Solid + a black window background, no white flash at start; TuixtActivity keeps tui_Custom.Solid). -->
+        <activity
+            android:name=".LauncherActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|keyboard|navigation"
+            android:enabled="true"
+            android:icon="@mipmap/tui_ic_launcher"
+            android:label="@string/tui_app_name"
+            android:launchMode="singleTask"
+            android:theme="@style/tui_Custom.Start"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
+            android:exported="false" />
+
+        <!-- Device admin ("lock the screen on double tap"). Must stay exported: the system binds it with BIND_DEVICE_ADMIN. -->
+        <receiver
+            android:name=".tuils.stuff.PolicyReceiver"
+            android:description="@string/tui_admin_permission"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/tui_policy" />
+
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+                <action android:name="android.app.action.DEVICE_ADMIN_DISABLED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".managers.notifications.KeeperService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
+                android:value="Maintains the launcher console state and provides persistent access to T-UI commands via notification." />
+        </service>
+        <service
+            android:name=".managers.music.MusicService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- TUIXT text editor: opened only by the `tuixt` command; no VIEW / EDIT filters, so it is not in the system "Open with" list. -->
+        <activity
+            android:name=".commands.tuixt.TuixtActivity"
+            android:excludeFromRecents="true"
+            android:icon="@mipmap/tui_ic_launcher"
+            android:label="@string/tui_tuixt_label"
+            android:noHistory="true"
+            android:theme="@style/tui_Custom.Solid"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
+            android:exported="false">
+            <meta-data
+                android:name="androidx.core.app.PARENT_ACTIVITY"
+                android:value="ohi.andre.consolelauncher.LauncherActivity" />
+        </activity>
+
+        <!-- Notification listener (the `notifications` feature). Must stay exported: the system binds it with BIND_NOTIFICATION_LISTENER_SERVICE. -->
+        <service
+            android:name=".managers.notifications.NotificationService"
+            android:label="@string/tui_notification_reader"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".managers.notifications.NotificationMonitorService"
+            android:exported="false" />
+
+        <!-- Dummy HOME app of upstream's `exit` command: HOME filter removed (see the top comment); stays disabled and private. -->
+        <activity
+            android:name=".tuils.stuff.FakeLauncherActivity"
+            android:enabled="false"
+            android:exported="false" />
+    </application>
+
+</manifest>

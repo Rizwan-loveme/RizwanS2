@@ -1,0 +1,47 @@
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <style name="tui_Custom.Solid" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:textColorHint">@color/tui_hint_color</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
+    <!-- Win11 step 12: the theme of LauncherActivity in the manifest = the first window the system draws while the screen starts. Black instead of Theme.AppCompat.Light's
+         white, so a start does not flash white before the terminal's own colours (onCreate switches to tui_Custom.SystemWP / tui_Custom.Solid with setTheme, as upstream). -->
+    <style name="tui_Custom.Start" parent="tui_Custom.Solid">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+    <style name="tui_Custom.SystemWP" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:textColorHint">@color/tui_hint_color</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
+    <style name="tui_Theme.AppCompat.Light.NoActionBar.FullScreen" parent="@style/Theme.AppCompat.Light">
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <style name="tui_ToolsBar">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">@integer/tui_tools_view_weight</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <style name="tui_OverlayDialog" parent="@android:style/Theme.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+</resources>

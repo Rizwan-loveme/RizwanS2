@@ -253,9 +253,18 @@ class MainActivity : AppCompatActivity() {
         null
     }
 
+    /** Terminal step 9: set when onCreate() handed a launcher start to the terminal screen and finished before any Win11 state was built (onDestroy() then does nothing). */
+    private var forwardedToTerminal = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppLog.i(LOGT, "onCreate (savedState=${savedInstanceState != null}, API ${Build.VERSION.SDK_INT})")
+        // Terminal step 9: the TERMINAL theme is saved and this is a Home / launcher-icon start: open the terminal screen and leave (ThemeManager.kt).
+        if (ThemeManager.forwardIfTerminal(this, intent)) {
+            forwardedToTerminal = true
+            finish()
+            return
+        }
         try { supportActionBar?.hide() } catch (e: Exception) { }
         prefs = getSharedPreferences("app_state", MODE_PRIVATE)
         guard("DlEngine.init") { DlEngine.init(applicationContext) }
@@ -389,6 +398,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         AppLog.i(LOGT, "onDestroy (finishing=$isFinishing)")
+        if (forwardedToTerminal) { super.onDestroy(); return } // onCreate() returned early: nothing of Win11 was built
         try { if (::shell.isInitialized) shell.stopClock() } catch (e: Exception) { }
         try { if (::explorerUi.isInitialized) explorerUi.destroy() } catch (e: Exception) { }
         try { destroyAllPopups() } catch (e: Exception) { }
@@ -873,6 +883,20 @@ class MainActivity : AppCompatActivity() {
         // A rizwans2:// link that arrived before the UI was ready.
         pendingDeepLink?.let { pendingDeepLink = null; handleDeepLink(it) }
         pendingSendTo?.let { pendingSendTo = null; handleSendTo(it) }
+        maybeAskTheme()
+    }
+
+    /**
+     * Terminal step 12: the first-run launcher choice (the two theme cards, ThemeSwitchUi). Only when the person has never chosen (ThemeManager.hasChosen), only for a plain
+     * launcher start (icon / Home, not a rizwans2:// link, a share or a notification tap) and once per process; closing the dialog in any way counts as seen.
+     */
+    private var themeAsked = false
+    private fun maybeAskTheme() {
+        if (themeAsked || ThemeManager.hasChosen(this) || !ThemeManager.isLauncherEntry(intent)) return
+        themeAsked = true
+        window.decorView.post {
+            if (!isFinishing && !isDestroyed) ThemeSwitchUi.show(this, firstRun = true)
+        }
     }
 
     /**
@@ -907,7 +931,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | seal (alias downloader; optional ?url=<http(s) link> opens its download sheet for that link) | mame | retroarch | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | terminal | theme (shows the current one) | theme/choose (the two theme cards) | theme/terminal | theme/win11 | seal (alias downloader; optional ?url=<http(s) link> opens its download sheet for that link) | mame | retroarch | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -944,6 +968,16 @@ class MainActivity : AppCompatActivity() {
                 )
                 "j2me" -> openJ2me()
                 "ppsspp" -> openPpsspp()
+                // Terminal step 8: the T-UI screen (:tui, TerminalLauncher.kt)
+                "terminal" -> openTerminal()
+                // Terminal step 9: rizwans2://theme/terminal | win11 switches the saved launcher theme; rizwans2://theme shows the current one.
+                // Step 10: rizwans2://theme/choose opens the two theme cards (the UI; the terminal side is the `win11` command).
+                "theme" -> when (uri.pathSegments.firstOrNull()?.lowercase()) {
+                    "choose" -> ThemeSwitchUi.show(this)
+                    "terminal" -> ThemeManager.switchTo(this, LauncherTheme.TERMINAL)
+                    "win11" -> ThemeManager.switchTo(this, LauncherTheme.WIN11)
+                    else -> Toast.makeText(this, "Launcher theme: ${ThemeManager.get(this)}", Toast.LENGTH_SHORT).show()
+                }
                 // Seal part 6: the Downloader app; rizwans2://seal?url=https://... opens its download sheet for that link (http / https only)
                 "seal", "downloader" -> {
                     val link = uri.getQueryParameter("url")
@@ -1148,6 +1182,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // Terminal step 9: Home / launcher icon while the TERMINAL theme is saved (Win11 was opened by a deep link, say): show the terminal, Win11 closes.
+        if (ThemeManager.forwardIfTerminal(this, intent)) {
+            forwardedToTerminal = !isUIInitialized
+            finish()
+            return
+        }
         if (intent?.action == Intent.ACTION_VIEW && intent.data?.scheme == "rizwans2") {
             handleDeepLink(intent.data!!)
         }

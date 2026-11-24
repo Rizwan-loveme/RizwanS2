@@ -780,8 +780,14 @@ class Win11Shell(
     private fun showUserMenu(anchor: View) {
         val menu = GlassMenu(ctx, anchor)
         menu.menu.add(0, 1, 0, "Settings")
+        // Terminal step 10: the two theme cards (ThemeSwitchUi.kt)
+        menu.menu.add(0, 2, 1, "Launcher theme")
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                2 -> {
+                    closeStart(animated = false)
+                    ThemeSwitchUi.show(ctx)
+                }
                 1 -> try {
                     ctx.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     closeStart(animated = false)

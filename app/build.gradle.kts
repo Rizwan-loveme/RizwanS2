@@ -101,6 +101,8 @@ dependencies {
     implementation(project(":retroarch"))
     // Seal: built-in video / audio downloader (yt-dlp), package com.junkfood.seal. Part 3: the module is wired in; start-up code (part 4), manifest (part 5) and the Start menu / Home / deep-link hooks (part 6) follow, see seal/README.md
     implementation(project(":seal"))
+    // TUI-ConsoleLauncher: Linux terminal launcher theme (package ohi.andre.consolelauncher, MIT). Step 2: the module is wired in (empty); sources, resources, manifest, terminal screen, theme switch follow, see README.md ("Two launcher themes")
+    implementation(project(":tui"))
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")
