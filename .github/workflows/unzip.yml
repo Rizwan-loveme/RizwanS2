@@ -1,9 +1,16 @@
 name: Auto Unzip & Push
 
 # দুইভাবে চলবে:
-# ১) রিপোতে .zip push করলে (ছোট জিপের জন্য)
+# ১) Main রিপোতে .zip push/upload করলে (ছোট জিপের জন্য) — স্বয়ংক্রিয়ভাবে, flat (single root strip = true)
 # ২) Actions ট্যাব থেকে হাতে চালিয়ে direct download লিংক দিলে (বড় জিপের জন্য)
 on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - '**.zip'
+      - '**/*.zip'
   workflow_dispatch:
     inputs:
       zip_url:
@@ -17,10 +24,10 @@ on:
         type: string
         default: '.'
       strip_single_root:
-        description: 'জিপে একটাই root ফোল্ডার থাকলে সেটা বাদ দিয়ে ভেতরের জিনিস extract করবে'
+        description: 'জিপে একটাই root ফোল্ডার থাকলে সেটা বাদ দিয়ে ভেতরের জিনিস extract করবে (flat zip)'
         required: false
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
@@ -30,8 +37,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # true করলে: জিপের ভেতরে একটাই root ফোল্ডার থাকলে সেটা বাদ দিয়ে ভেতরের জিনিস extract হবে
-  STRIP_SINGLE_ROOT: ${{ github.event_name == 'workflow_dispatch' && inputs.strip_single_root || 'false' }}
+  # true: জিপের ভেতরে একটাই root ফোল্ডার থাকলে সেটা বাদ দিয়ে ভেতরের জিনিস extract হবে (flat zip)
+  # push (রিপোতে zip upload) করলে সবসময় true; হাতে চালালে strip_single_root input অনুযায়ী
+  STRIP_SINGLE_ROOT: ${{ (github.event_name != 'workflow_dispatch' || inputs.strip_single_root) && 'true' || 'false' }}
   # true করলে: extract শেষে রিপোর মূল .zip ফাইল মুছে যাবে (URL থেকে নামানো জিপ সবসময় temp-এ থাকে, রিপোতে ঢোকে না)
   DELETE_ZIP_AFTER: "true"
   # এর চেয়ে বড় (MB) নতুন/পরিবর্তিত ফাইল স্বয়ংক্রিয়ভাবে Git LFS-এ যাবে
