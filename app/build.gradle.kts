@@ -111,6 +111,8 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     // Recycled lists for the Messages UI (smooth scrolling, no lag)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    // Media Grabber step 5: HTML parsing for the Page Grabber crawler (links, <video>/<source>, <a href>); same version as :tui
+    implementation("org.jsoup:jsoup:1.17.2")
     // Desugaring for :youtube
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 }

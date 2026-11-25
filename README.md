@@ -1617,6 +1617,30 @@ Part 1 (nothing built, no build file touched): Seal is Kotlin + Compose with the
 Upstream's README forbids other parties from using the name "Seal" for a downloader app (derivatives included), so the built-in app has a neutral display name, **"Downloader"** (done in part 6).
 
 
+# Browser Media Grabber + Page Grabber (`:app`, steps 5 - 6c)
+
+The Browser's **Media Grabber** sheet (toolbar button, `BrowserMediaGrabber.kt`) lists what a page loads: network sniffing, a script hook, a page scan, "Scan site", YouTube extractor
+(details: `docs/CHANGES-step6-newtab-dialog-mediagrabber.md`). Its **Page Grabber** pill opens a native crawler (`PageGrabberCore.kt` + `PageGrabberUi.kt`, jsoup 1.17.2).
+Licence and credits: `NOTICE-PageGrabber.md`, `LICENSE-jsoup`. Details per step: `docs/CHANGES-step6-pagegrabber-6a-6c.md`.
+
+| Step | What | Status |
+|---|---|---|
+| 5 | Dependency check, jsoup 1.17.2 added to `:app` | done |
+| 6a | `PageGrabberCore.kt`: level tree, type / size / duration filters, jsoup link finding, crawler with Level and same-site limit, cancel | done |
+| 6b | `PageGrabberUi.kt`: dialog (Level, types, filters, sort, results list, selection) and the "Page Grabber" pill in `BrowserMediaGrabber` | done |
+| 6c | Google Drive (files, Docs / Sheets / Slides, public folders) and Mega links, cookie fix, `NOTICE-PageGrabber.md`, `LICENSE-jsoup`, this section | done |
+
+- **Level:** 1 = the links of the start page, 2 = also the pages linked from it, 3 = one more hop ... (UI 1 - 6). "Same site only" follows pages on the start host and its sub-domains; files may be anywhere.
+- **Filters:** All / Video / Audio / Image / Document / Compressed / Program / Subtitle / Torrent / Custom extensions, size window, duration window (only where the server tells it), sort, full file name.
+- **Per row:** Play (video, audio), Download (browser download engine: Downloads folder, progress, pause / resume), Downloader (yt-dlp), Copy. Select all / None, Download selected, Copy selected, Copy all.
+- **Google Drive (6c):** file links give name, type and size and download through the direct address; Docs / Sheets / Slides are exported as .docx / .xlsx / .pptx; a public folder is listed
+  (folders inside it need a higher Level); a private file or a quota block shows as a link row. Check box "Include Google Drive and Mega links" (on by default).
+- **Mega (6c):** shown as link rows only (Open, Mega app, Copy). Mega files are encrypted in the client, so they cannot be downloaded with a plain request; Downloader (yt-dlp) has no Mega support either.
+- **Fix in 6c:** the crawler no longer sends the start page's cookies to other hosts; each request gets the cookie of its own address.
+- **Open points (not built or run yet):** the first Gradle build of `PageGrabberCore.kt` / `PageGrabberUi.kt` (no compiler was available while writing them); the Drive folder view and "can't scan" form are Google pages, not an API,
+  and can change; `NOTICE-PageGrabber.md` asks you to check the licence position of the reference app whose behaviour the filter rules follow.
+
+
 # Two launcher themes: Win11 + Linux terminal (`:tui` module)
 
 Goal: the launcher gets two built-in themes, **Win11** (the current shell, unchanged) and **Linux terminal**

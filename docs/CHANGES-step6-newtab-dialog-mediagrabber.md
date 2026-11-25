@@ -50,3 +50,6 @@ blue dot on the toolbar button). New:
 * `BrowserUi.kt`: `installGrabHooks(webView)` next to the other JS bridges; `shouldInterceptRequest` clears the page list on a main-frame request and sniffs sub-resources; `GRAB_HOOK_JS` evaluated in `onPageStarted` / `onPageFinished`.
 * No new permission, no new dependency (`androidx.webkit:webkit:1.11.0` was already there).
 * Not compiled in this environment (no Gradle / Android SDK here): please build once and tell me any error.
+
+## Page Grabber (steps 6a - 6c)
+The native "Page Grabber" pill added after this step is described in `docs/CHANGES-step6-pagegrabber-6a-6c.md`.

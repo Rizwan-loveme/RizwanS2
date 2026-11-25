@@ -71,6 +71,12 @@ import kotlin.math.abs
 //               block it. Results stay in the "Whole site" list until the app is closed.
 //  5. YouTube watch pages (youtube.com / m.youtube.com / youtu.be): same extractor as the built-in YouTube app.
 //               "MP4 - 360p" (video + audio in one file), "Audio only" (M4A when YouTube has it), "Live stream".
+//  6. Page Grabber (step 6, PageGrabberCore.kt + PageGrabberUi.kt): the "Page Grabber" pill opens a native crawler dialog.
+//               It reads the page (and, by Level, the pages linked from it) with its own HTTP requests, keeps the files
+//               that pass the type / size / duration filters, sorts them, and offers Play / Download / Downloader / Copy,
+//               also for a whole selection. Independent of the WebView lists above.
+//               Step 6c adds Google Drive (files, Docs / Sheets / Slides exports, public folders) and Mega links (shown as links
+//               only: Open, Mega app, Copy; Mega files are encrypted in the client).
 //
 // WHAT THE LIST SHOWS: This page / Whole site, a type filter (Video, Audio, Streams, Embeds, Links), a text filter,
 // the file size and type of direct files (a small HEAD request in the background), the quality variants of an HLS
@@ -1098,6 +1104,16 @@ internal fun MainActivity.showMediaGrabber() {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { marginStart = dp(8) }
         )
+        // Media Grabber step 6b: the native Page Grabber (PageGrabberCore.kt / PageGrabberUi.kt): levels, file types, size filter, sort
+        actionRow.addView(pill("Page Grabber", filled = false, small = true) {
+            if (!isSealUrl(pageUrl)) toast("Open a web page first")
+            else {
+                dialogRef?.dismiss()
+                showPageGrabber(pageUrl, pageUrl, ua)
+            }
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { marginStart = dp(8) })
         // Seal part 6: the open page itself (a video page, a playlist, a channel ...) to the Downloader
         if (isSealUrl(pageUrl)) actionRow.addView(pill("Page → $SEAL_NAME", filled = false, small = true) { toDownloader(pageUrl) },
             LinearLayout.LayoutParams(
