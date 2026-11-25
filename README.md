@@ -630,7 +630,7 @@ Most settings were stored since steps 5 to 8; this step checked every one, added
   asks again, and after "don't ask again" the button becomes "Open settings". The album screen closes when the permission is gone. The `:gallery`
   manifest now declares the same storage lines as `:app` (`WRITE_EXTERNAL_STORAGE` maxSdk 28, `MANAGE_EXTERNAL_STORAGE`), so the module is complete on its
   own; the merge with `:app` is a no-op.
-- **targetSdk = 28, like the other modules**: no scoped-storage rules apply, so plain `File` paths work everywhere once access is granted (the viewer, delete,
+- **targetSdk = 28, like the other modules** (37 since part 8 of the Mika plan; the all-files permission keeps plain `File` access working): no scoped-storage rules apply, so plain `File` paths work everywhere once access is granted (the viewer, delete,
   rename and rotate-save use files; the MediaStore `DATA` column is read; `requestLegacyExternalStorage` is already set in `:app`). On Android 13+ the system
   shows its normal photos prompt for the old storage permission. There is no partial-photo-access (Android 14) flow because it only exists for targets 34+.
   Deleted pictures also have their MediaStore row removed, so the other galleries notice.
@@ -773,7 +773,7 @@ The list the system chooser would build, built by us. No UI yet: the sheets of s
   the same type, else `family/*`, else `*/*`; this is the type `ACTION_SEND_MULTIPLE` needs), `family(mime)`.
 - **`ChooserPrefs`** (file `chooser_prefs`): the recent choices per kind and MIME family, at most 12 each: `recent()`, `recordChoice()` (step 4 calls it after a pick), `forget()` (for an app
   that can no longer be started). Step 3 added the saved "always" choices (see below); step 11 adds the settings here.
-- **Package visibility**: `targetSdk = 28`, so every app is visible without `<queries>`. If targetSdk is raised to 30 or more, `:app` needs `<queries>` for `VIEW` and `SEND`,
+- **Package visibility**: `targetSdk` is 37 since part 8 of the Mika plan, and every app stays visible because `:app` declares `QUERY_ALL_PACKAGES` (checked). Without that permission `:app` would need `<queries>` for `VIEW` and `SEND`,
   or the list comes back (nearly) empty. Noted in the `AppFinder` KDoc.
 - Not done on purpose: no "default app" marker yet (step 3 / 11), no UI, no manifest change. `:app`, `:gallery`, `:video`, `:youtube` are unchanged. Version stays 2.5.3 (code 120).
 - Checked (static): packages match folders, braces balance, no unused imports, no `gl_` leftovers. No Android SDK here, so no Gradle build was run: **build once with `./gradlew :app:assembleDebug`**.
@@ -1535,7 +1535,7 @@ rotate, back button, close and open again. Keep PPSSPP closed before starting a 
 - Step 3 (done): the `:retroarch` library module exists and is in `settings.gradle.kts` and `:app`, but it is **empty** (namespace `com.retroarch`, compileSdk 37, minSdk 26, project NDK, arm64-v8a by default, `-PretroarchAbis=...` to override, `PLAY_STORE_BUILD=false`, keep rules for the JNI classes). No Java, resources, native build or app hooks yet, so the APK behaves as before. Upstream's Java needs no library dependency.
 - Step 4 (done): `retroarch/tools/fetch-upstream.sh` shallow-clones the tag into `retroarch/upstream/` (about 332 MB, 11,147 files, git-ignored), **stops the build if the commit is not `UPSTREAM_COMMIT`**, and checks 9 paths the module needs. Gradle task `fetchRetroarchUpstream` (`./gradlew :retroarch:fetchRetroarchUpstream`). The script was run for real (first run, second run, wrong commit, bad files, hand-placed copy, missing path). The task is attached to the native-build tasks, which only exist from step 5, so CI is not changed and does not clone yet.
 - Step 5 (done in the build file, **not compiled yet**): native build with upstream's own `Android.mk` via `externalNativeBuild { ndkBuild }` -> `lib/arm64-v8a/libretroarch-activity.so` (`APP_PLATFORM=android-26`, `APP_STL=c++_static`). The fetch task now runs before `preBuild` and every native task, so the first CI run clones and compiles RetroArch by itself (about 330 MB, long compile, no cache / ccache until step 10). Optional properties: `retroarchNative=false` (escape hatch: no native build, no clone), `retroarchAbis`, `retroarchCcache`, `retroarchGles=3`, `retroarchCFlags` / `retroarchCppFlags` (see `retroarch/README.md`, also commented in `gradle.properties`). `Android.mk` was evaluated with GNU make (flags and sources as expected); the API-26 `ifaddrs` clash was checked and does not happen. Main risk: tag written for NDK r22, project has NDK 29.
-- Decision: cores, core info and assets are **not** bundled; RetroArch's Online Updater (Core Downloader) fetches them. Works because `:app` keeps `targetSdk = 28`.
+- Decision: cores, core info and assets are **not** bundled; RetroArch's Online Updater (Core Downloader) fetches them. Worked while `:app` kept `targetSdk = 28`; **`:app` has `targetSdk = 37` since part 8 of the Mika plan, expect the downloaded cores not to load** (`-PappTargetSdk=28` goes back).
 - Open risk: the tag was written for NDK r22, the project uses NDK 29; first CI build decides. GPL-3.0 vs the GPL-2.0 parts: licence check before publishing.
 - Step 6 (done, **not built yet**): the 10 small upstream Java files, the `ra_` resources and the real library manifest are in the module (checked against the real `v1.22.2` tree). Decisions: RetroArch runs in its own process `:retroarch` (upstream calls `System.exit` / `exit`, which would close the whole app; `App.kt` starts no engine there, like for `:mame`); both activities are **not exported** (the `LIBRETRO` extra is a `.so` path); the documents provider is kept but **disabled** (in Win11 it would show the data folder of the whole app); RetroArch's own unpacking of the APK `assets/` folder is **switched off** (that folder holds PPSSPP / Winlator / MAME files). Only 3 upstream files are edited after step 8, `bash retroarch/tools/diff-upstream-java.sh` shows it.
 - Step 7: nothing to build (decision: online core downloader only).
@@ -1841,3 +1841,89 @@ Nothing of the Win11 theme was changed in this step. No Android SDK, Gradle, `ja
 - **Name clash in commands**: upstream already has a `theme` command (its own colour themes, `ThemeManager`). The launcher-theme switch command therefore needs another name (decided in step 10).
 - **Theme routing design**: only `MainActivity` keeps the HOME filter and forwards to the terminal screen when the saved theme is TERMINAL. Enabling / disabling HOME components at run time is not used, because it can reset the user's default-launcher choice.
 - **Still to check in step 7 / 8** (not read in step 1): where TUI keeps its config (`Tuils.getFolder()`), its `Application` / static-context use, and how it behaves with `targetSdk = 28` of `:app`.
+
+## Mika — `:mika` / `:mika-core` modules ("Rizwan" assistant, Mika 0.1.52)
+
+[Mika](https://github.com/wangzan101/Mika) (pinned **0.1.52**, commit `7ff1703f63b7cbf5741a29345c1b4507802c6b06`, Apache-2.0) is an on-device AI agent for Android. It is a built-in **library** app of Win11 in the same
+style as PPSSPP / MAME / RetroArch, shown as **Rizwan** ("Hey Rizwan" in the chat). Licence and credits: `NOTICE-Mika.md`, `LICENSE-Mika`. Analysis and details: `mika/README.md`.
+The upstream sources are **not in the project zip**: `mika/tools/fetch-upstream.sh` (step 3) clones the pinned commit into `mika/upstream/` (git-ignored) and `mika/tools/patch-upstream.sh` (step 4) turns it into a library before every build.
+
+### Mika plan (15 steps)
+
+| # | Part | Status |
+|---|------|--------|
+| 1 | Pin upstream, analysis, notices | done |
+| 2 | Module build files (`:mika-core` JVM, `:mika` Android library) | done |
+| 3 | Fetch script + `fetchMikaUpstream` task | done |
+| 4 | Patch script (library manifest, `MikaApp` open, `mk_` resources, Rizwan name + greeting + icon) | done |
+| 5 | Gradle wiring | done |
+| 6 | `App : AppBase : MikaApp` with process guard, start after first use, quit keeps Win11 alive | done |
+| 7 | Manifest merge into `:app` (+ cut Mika's self-update, language, backup text) | done |
+| 8 | Hooks: Start menu, Home icon, `rizwans2://rizwan` (+ `targetSdk 37`) | done |
+| 9 | CI (all workflows, `include_mika` switch) | done |
+| 10 | `.gitignore` audit (`__pycache__`), `.gitattributes` (LF for `*.py` / `*.stub`), docs (`docs/CHANGES-mika.md`) | done |
+| 11 | Licence files in the APK assets (GPL-2.0 / GPL-3.0 / LGPL-3.0, notices, PRoot patches), `NOTICE-Mika.md`, CI APK check | done |
+| 12 | README / CHANGES refresh (docs only; read again after 13 and 14) | done |
+| 13 | Static checks (+ `mika/tools/static-check.py`) | done |
+| 14 | Wake word "Hey Rizwan" (Mika has none; engine decision first) | todo |
+| 15 | Final flat zip | todo |
+
+Step 1 (done): upstream read (2 modules, 2,720 files, 58 MB assets), pinned, analysed. Main findings: `:core` is pure JVM; `MikaApp` is final and cast to in 10 places (the Win11 `App` must extend it);
+only 13 resource names clash; Mika adds 13 permissions; its network config (cleartext + user CAs) must not become global. The app was not built or run here (no Gradle / SDK / GitHub / phone).
+
+Step 2 (done): `mika-core/build.gradle.kts` (`:mika-core`, pure JVM: protobuf-lite from the OpenTelemetry protos + the `knowledgeIndex` task kept, tests / README generator / Go / Python left out) and
+`mika/build.gradle.kts` (`:mika`, Android library: source sets point at `mika/upstream/app/src/main`, BuildConfig fields a library lacks are defined, `APPLICATION_ID` = `com.srizwan.win11`).
+Versions follow the project (Kotlin 2.2.10, JDK 21, Compose BOM alpha 2025.03.01 like `:seal`, serialization 1.9.0). Library minSdk is 26, so no `overrideLibrary` is needed (runtime check `MikaLauncher.isSupported()` instead).
+Not wired into `settings.gradle.kts` yet (step 5), so the build is unchanged. New: the wake word "Hey Rizwan" is its own step 14 (upstream Mika has no wake word; details in `mika/README.md`). Details and risks: `mika/README.md`, `docs/CHANGES-mika-part2.md`.
+
+Step 3 (done): `mika/tools/fetch-upstream.sh` fetches exactly the pinned commit (`git fetch --depth 1 <sha>`, sparse checkout of `core/src/main`, `app/src/main`, `gradle/libs.versions.toml`, licences; about 83 MB of the 133 MB repo), stops if the commit, the version or the layout does not match,
+and accepts a hand-placed folder (offline) after a version check. Gradle task `:mika:fetchMikaUpstream` runs before `preBuild` of `:mika` and before the compile / resources / knowledge index of `:mika-core`. Tested here on a local repository (6 cases); the real GitHub download was not run (no network). Not wired yet (step 5). Details: `mika/README.md`, `docs/CHANGES-mika-part3.md`.
+
+Step 4 (done): `mika/tools/patch-upstream.sh` (+ `patch-upstream.py`) turns the fetched checkout into the library, idempotent: `MikaApp` becomes `open`; the manifest loses the `<application>` attributes and the launcher filter (everything else is left for step 7);
+13 clashing resource names get the prefix `mk_` (about 207 edits); "Mika" becomes "Rizwan" in the strings of all 13 languages; the chat greeting becomes "Hey Rizwan"; the icon art is replaced (`mika/rizwan/`). Gradle task `:mika:patchMikaUpstream` runs after the fetch.
+Tested on a copy of the real upstream (first run, second run, forced re-run byte-identical, 999 XML files well-formed); not compiled (no SDK here). Prompts still say "Mika" (step 14). Details: `mika/README.md`, `docs/CHANGES-mika-part4.md`.
+
+Step 5 (done): `:mika-core` and `:mika` are in `settings.gradle.kts`; `:app` has `implementation(project(":mika"))` and `androidResources { noCompress += "xz" }` (the 50+ MB sandbox root file system stays stored). Switch `-PincludeMika=false` leaves them out (the stub that keeps `:app` compiling without Mika comes in step 9).
+Version table checked (protobuf 4.36.2, coroutines root pin 1.9.0, serialization 1.9.0, xz 1.12 ...), `maybeCreate("java")` for the protobuf lite option. **From now on every build runs the Mika fetch + patch** (git, python3, network, about 83 MB once); nothing starts Mika yet (steps 6 to 8). Not compiled here (no SDK). Details and the ordered risk list: `mika/README.md`, `docs/CHANGES-mika-part5.md`.
+
+Step 6 (done): `App` now extends `AppBase`, which extends `MikaApp` (Mika casts the Application to `MikaApp` in ten places). The patch script got edit 7: `MikaApp.onCreate` is split into `startOnCreate()` + an idempotent, main-thread `startMika()`;
+`AppBase` says "not now", so none of the other Win11 processes (":black", ":p0", ":midlet", ":mame", ":retroarch") ever runs Mika code, and `App.onCreate` starts it last, **in the launcher process only**, and only after Rizwan was opened once on the phone
+(the sandbox unpack, capsule and helper watcher are not paid for by users who never use Rizwan; first start comes from the step 8 hooks via `startMikaNow()`).
+**Found by reading:** Mika's "Quit" killed the process and cleared every notification of the package, which would have closed the Win11 launcher; it now calls `MikaApp.onQuitExit()` and Win11 does nothing there.
+Tested on a copy of the real upstream (first, second and forced run, byte-identical); the Seal / J2ME blocks of `App.kt` that the "without" workflow edits by regex are unchanged; not compiled (no SDK here).
+`-PincludeMika=false` does not compile until the stub of step 9 (`mika/tools/stub/AppBase.kt.stub`). Details: `mika/README.md`, `docs/CHANGES-mika-part6.md`. (The two items carried forward from here, Mika's self-update and the backup-import text, are done in step 7.)
+
+Step 7 (done): the manifest merge. AGP merges Mika's library manifest into `:app` by itself, so the work was to decide what must not leak and to prove the rest: **all 30 permissions of Mika are kept** (13 are new to the app, 17 were already declared; `KEEP_PERMISSIONS` in the patch script fails the build when one goes missing),
+all services / providers / receivers / `<queries>` / `<uses-feature>` stay, and so do Mika's share filters (it appears in the share sheet as \"Rizwan\"). The patch script got five new edits: (8) Mika's language switch no longer uses Android 13's per-app `LocaleManager` and no longer sets the process default `Locale`
+(either would have changed the language of the whole Win11 launcher); (9) **Mika's self-update is cut** (`UpdateChecker.check()` does nothing: no GitHub request, no download, no install of \"com.wangzan101.mika\" over Win11); (10) the text after a backup import (13 languages) now says to close Rizwan and swipe RizwanS2 away
+(Mika no longer ends the process); (11) Mika's four visible screens get the label \"Rizwan\" and its icon and (three of them) their own task `${applicationId}.rizwan`, so Rizwan opens as its own window in Recents instead of on top of the launcher; (12) `MainActivity.onCreate` calls the idempotent `startMika()`, so a start from the share sheet works even before Rizwan was ever opened.
+New: `mika/tools/check-manifest.py` (static merge check: permissions, duplicate components and provider authorities, component classes, manifest resources, labels), a comment block in `app/src/main/AndroidManifest.xml`.
+**Not changed on purpose:** Mika's network security config (cleartext is already on in `:app`; trusting user-installed CAs for the whole app was not accepted, so Mika works with system CAs only). Tested on a copy of the real upstream (fresh, on a step-6 tree, re-run, forced re-run: identical trees; manifest check positive and 4 negative cases); not compiled (no SDK here).
+Details and risks: `mika/README.md`, `docs/CHANGES-mika-part7.md`.
+
+Step 8 (done): the hooks. `app/.../MikaLauncher.kt` (`MikaLauncher.open()`, `isSupported()`), the Start menu entry **Rizwan** (violet sparkle vector icon, section `rizwan`), the Home screen icon, `rizwans2://rizwan` (alias `rizwans2://assistant`) and the terminal theme's built-in list; all hidden on a phone that is not Android 10+ on 64-bit ARM. Opening Rizwan calls `AppBase.startMikaNow()` first (Mika starts, the "used" flag is set), then starts Mika's `MainActivity` in its own task. `mika/tools/stub/MikaLauncher.kt.stub` is the "without Rizwan" replacement for step 9. `check-manifest.py` has three new checks (explicit `android:exported`, foreground service type permissions, hook class declared). **`targetSdk` is now 37** (owner decision; `-PappTargetSdk=28` goes back): **Winlator's program start and RetroArch's downloaded cores are expected to stop working at 37**, see "targetSdk 37" below. Not compiled or run here. Details and risks: `mika/README.md` ("Step 8"), `docs/CHANGES-mika-part8.md`.
+
+Step 9 (done): CI. All three workflows (`UltimateBuild.yml`, `UltimateBuild_NoWinlator.yml`, `UltimateBuild_WithoutMe.yml`) now **cache** `mika/upstream` (the patched copy; key = version, commit, the fetch / patch scripts and the icon), then **fetch + patch + check the source manifest** (`mika/tools/check-manifest.py`) and verify that the package rename reached `BuildConfig.APPLICATION_ID` in `mika/build.gradle.kts`.
+After the build, "Locate Unsigned APK" checks that the APK holds Mika's three prebuilt native files, `assets/runtime/rootfs.tar.xz` (exact size) and Mika's classes, and the new `mika/tools/check-merged-manifest.py` checks the merged manifest: **all 30 permissions**, every Mika component, no launcher / HOME filter on Mika, explicit `exported`, own task for its chat screen.
+`UltimateBuild_WithoutMe.yml` has the tick box **`include_mika`**: unticked, `AppBase.kt` and `MikaLauncher.kt` get the two stubs from `mika/tools/stub/`, `:mika` and `:mika-core` are deleted and unwired, nothing is fetched, and the APK check requires that Mika is **not** in the APK (no Start menu / Home / terminal edit needed: the stub's `isSupported()` is false).
+Tested on copies (YAML, `bash -n` of every step, removal block, package rename, the new checker on synthetic manifests, the APK block on fake APKs); **not run:** Gradle, a compile, GitHub Actions, the real upstream this turn. First errors are expected from the fetch step or from the first compile of Mika's 837 Kotlin files. Details and risks: `mika/README.md`, `docs/CHANGES-mika-part9.md`.
+
+Step 10 (done): `.gitignore`, `.gitattributes`, docs. A real `git init` + `git add -A` of the tree with the patched upstream inside shows 0 files of `mika/upstream/` and found one gap: `mika/tools/__pycache__/` (created whenever the scripts run) would have been committed; `**/tools/__pycache__/` and the marker `.rizwan-patched` are now ignored. `*.py` and `*.stub` are LF in `.gitattributes` (like `*.sh`).
+New: **`docs/CHANGES-mika.md`** = the whole Mika / Rizwan feature in one file (where it opens, every file, build chain and switches, the 30 permissions, the 12 patch edits, decisions, not-verified list, first-failure table, how to move to a newer Mika), `docs/CHANGES-mika-part10.md`; `mika/README.md` got an Overview at its top. With the real upstream the chain was re-run: fetch (hand-placed), patch, `check-manifest.py` OK. Not run: Gradle, a compile, CI, a device. Details: `docs/CHANGES-mika-part10.md`.
+
+Step 11 (done): licence files in the APK. Found by reading: Mika's own APK carries only `Apache-2.0.txt` and the protobuf licence as licence assets, while it ships **PRoot (GPL-2.0-or-later, patched by Mika), talloc (LGPL-3.0-or-later) and an Alpine root file system of GPL / LGPL / MIT / BSD / MPL packages**; their texts lived only in upstream's repository folder `licenses/`.
+New patch edit 13 copies `GPL-2.0.txt`, `GPL-3.0.txt`, `LGPL-3.0.txt`, `THIRD_PARTY_NOTICES.md`, Mika's `NOTICE` (as `MIKA-NOTICE.txt`), our `mika/rizwan/licenses/RIZWAN-NOTICE.md` and `gpl-source/` (the 4 PRoot patches, the pinned source locks with SHA-256, Mika's sandbox README) into `assets/licenses/`; the fetch script checks out upstream's `tools/sandbox/` (152 KB) for it; `check-manifest.py` check 12 and the three workflows' APK step verify every file (and 4 patches) is there. `NOTICE-Mika.md` has a table of the non-Apache parts, the file list, and **three open points for you** (GPL source offer / your contact, Alpine package sources not checked, Mika's licence screen shows only Apache-2.0). Not legal advice.
+Tested on the real upstream: patch fresh / again / forced / on a tree from the step 10 script (identical trees), `check-manifest.py` + 3 negative cases, the fetch script on a local repo, the APK block on fake APK lists. Not run: Gradle, a compile, CI, a device. Details: `docs/CHANGES-mika-part11.md`.
+
+Step 12 (done): documentation refresh. Docs only; no code, Gradle, manifest, workflow or script file changed. Plan tables (`README.md`, `mika/README.md`), `docs/CHANGES-mika.md` (now parts 1 to 12) and the file lists were brought up to date; new `docs/CHANGES-mika-part12.md`.
+The whole chain was run again on the real upstream 0.1.52 (hand-placed): fetch check, patch (13 edits), second run "already patched", `check-manifest.py` OK (30 permissions, 65 authorities). Not run: Gradle, a compile, CI, a device. Next: step 13 (static checks), step 14 (wake word "Hey Rizwan"), step 15 (final zip); the docs are read once more after 13 and 14.
+
+Step 13 (done): static checks over the whole project. New read-only script `mika/tools/static-check.py` (9 groups: workflows, scripts, XML, resource clashes with `:mika`, stubs vs the app's use, Kotlin balance of the hook files, Gradle wiring and the "without" unwiring, "Hey Rizwan" in 13 languages, line endings / modes). **No defect found**, no project file changed; the script passes on the project and on the real patched upstream 0.1.52 and fails (exit 1) on 3 injected faults.
+Not run: Gradle, a compile, CI, a device. Next: step 14 (wake word "Hey Rizwan"), step 15 (final zip). Details: `docs/CHANGES-mika-part13.md`.
+
+### targetSdk 37 (part 8 of the Mika plan)
+- **Where:** `app/build.gradle.kts` (`targetSdk = appTargetSdk property ?: 37`), root `build.gradle.kts` (`extra["targetSdkVersion"]`, unused), `gradle.properties` (documented, commented out). Earlier notes of this README that say "targetSdk 28" describe the state at their time.
+- **Checked here (static):** no component without `android:exported` in the 14 module manifests + Mika's; 5 foreground service types all have their permission; no `PendingIntent` without an immutability flag; `QUERY_ALL_PACKAGES` keeps every app visible (package visibility); `MANAGE_EXTERNAL_STORAGE` keeps plain `File` access (scoped storage); `android:enableOnBackInvokedCallback="false"` is already set on `<application>` (predictive back at target 36+); J2ME already makes its dex cache read-only (Android 14 dynamic code loading); most main screens of `:app` already handle window insets.
+- **Expected to stop working:** Winlator (box64 / wine are started from the app data folder: Android blocks that from target 29), RetroArch cores downloaded into `<dataDir>/cores`. Seal's engine and PPSSPP / MAME are not expected to be affected (upstream Seal itself targets 35).
+- **Not verified:** edge-to-edge layout of the library modules' screens (target 35+ forces it), Android 17 behaviour changes, BlackBox hidden-API behaviour, notification permission prompts. Needs a real phone.
+

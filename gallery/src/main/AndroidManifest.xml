@@ -4,7 +4,7 @@
     <!-- Reading the device's pictures (Android 13+ uses READ_MEDIA_IMAGES, older versions READ_EXTERNAL_STORAGE) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Delete / rename / rotate-save write to the files (the app targets API 28: plain File access once granted), and the
+    <!-- Delete / rename / rotate-save write to the files (plain File access once the all-files permission is granted; the app targets 37 since part 8, MANAGE_EXTERNAL_STORAGE keeps it working), and the
          view menu opens "All files access" on Android 11+ (step 12). Same lines as :app, so the merge is a no-op. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />

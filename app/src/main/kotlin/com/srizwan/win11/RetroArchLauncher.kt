@@ -16,7 +16,7 @@ import java.io.File
 // the File Manager (a game file with an unambiguous extension, see isRetroarchFile()).
 // RetroArch runs in its own process ":retroarch" and its own task (see retroarch/README.md step 6), so it never closes the Win11 shell.
 // Cores are NOT bundled: the person downloads them in RetroArch (Online Updater -> Core Downloader, plus Update Core Info Files). That works because
-// :app keeps targetSdk 28. For a game from the File Manager the launcher picks the downloaded core itself (RetroArchCores.kt), because upstream starts a
+// :app kept targetSdk 28 (part 8 of the Mika plan raised it to 37, which stops Android from running those downloaded cores: -PappTargetSdk=28 goes back). For a game from the File Manager the launcher picks the downloaded core itself (RetroArchCores.kt), because upstream starts a
 // game only when it gets a game path AND a core file.
 // =====================================================================
 
@@ -85,7 +85,7 @@ internal fun isRetroarchFile(name: String): Boolean = when (name.substringAfterL
  * see retroarch/README.md step 8), which adds RetroArch's usual extras (config, data dir, ...) and starts the game. The core is chosen by
  * [RetroarchCores.pick] from the cores the person downloaded (RetroArch itself starts a game only with a game AND a core; with only a game it
  * would fail to load a core and show its menu). The app has the all-files permission, so RetroArch reads the path directly
- * (a file:// uri would throw at targetSdk 28 and a content:// uri has no real path).
+ * (a file:// uri would throw since API 24 and a content:// uri has no real path).
  * Without a downloaded core that opens this extension RetroArch's menu opens instead, with a hint (the game could not start anyway).
  * If RetroArch is already running, upstream's RetroActivityFuture.onNewIntent keeps the same game, or for another game ends the ":retroarch" process
  * (System.exit); then the same Intent is sent again from here once the process is gone (about 3 seconds at most).

@@ -760,6 +760,8 @@ class MainActivity : AppCompatActivity() {
                     openMame()
                 } else if (section == "retroarch") {
                     openRetroarch()
+                } else if (section == MikaLauncher.SECTION) {
+                    MikaLauncher.open(this)
                 } else if (section == "parallel") {
                     try { startActivity(Intent(this, com.srizwan.win11.parallel.ParallelActivity::class.java)) }
                     catch (e: Throwable) { AppLog.e(LOGT, "cannot open ParallelActivity", e) }
@@ -931,7 +933,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | terminal | theme (shows the current one) | theme/choose (the two theme cards) | theme/terminal | theme/win11 | seal (alias downloader; optional ?url=<http(s) link> opens its download sheet for that link) | mame | retroarch | chooser | start | quick  (anything else just opens the launcher).
+     * rizwans2://open | files (optional ?path=folder) | browser | dialer | sms | winlator | youtube | video | gallery | camera (optional ?mode=video) | j2me | ppsspp | terminal | theme (shows the current one) | theme/choose (the two theme cards) | theme/terminal | theme/win11 | seal (alias downloader; optional ?url=<http(s) link> opens its download sheet for that link) | mame | retroarch | rizwan (alias assistant: the Rizwan assistant) | chooser | start | quick  (anything else just opens the launcher).
      * Numbers: rizwans2://1, rizwans2://#1 and rizwans2://app/1 open app number 1 of the Start menu's "All apps" list (as shown on screen).
      */
     internal fun handleDeepLink(uri: Uri) {
@@ -985,6 +987,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 "mame" -> openMame()
                 "retroarch" -> openRetroarch()
+                // Mika part 8: the Rizwan assistant (:mika), its own task; Mika is started first (MikaLauncher.open -> AppBase.startMikaNow)
+                "rizwan", "assistant" -> MikaLauncher.open(this)
                 // Chooser step 11: the settings of the own Open with / Share sheets (grid or list, saved apps, recent apps)
                 "chooser" -> com.srizwan.chooser.settings.ChooserSettings.open(this)
                 else -> { // "open" and anything unknown

@@ -131,7 +131,7 @@ Details: `docs/CHANGES-seal-part8.md`. Short form:
 ## Part 7 — targetSdk 28, native libraries, ABI, APK size
 
 Details: `docs/CHANGES-seal-part7.md`. Short form (all from the sources, nothing was built here):
-- **targetSdk 28**: no change needed. Programs may run from the native library folder (blocked only for 29+, the reason the project uses 28 for Winlator); all-files access is forced by the launcher at start, which Seal's "no storage prompt above API 29" relies on. One gap: **Android 10 only** (host declares `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion=28`, Seal asks for it on API 29) — not changed.
+- **targetSdk 28** (changed to **37** by part 8 of the Mika plan; `-PappTargetSdk=28` goes back; read the rest of this line with that in mind): no change was needed. Programs may run from the native library folder (blocked only for 29+, the reason the project uses 28 for Winlator); all-files access is forced by the launcher at start, which Seal's "no storage prompt above API 29" relies on. One gap: **Android 10 only** (host declares `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion=28`, Seal asks for it on API 29) — not changed.
 - **Native libraries**: `:app` already extracts them (`useLegacyPackaging = true` + `android:extractNativeLibs="true"`); `pickFirsts` already covers `libc++_shared.so` (risk: one kept copy for the whole app, MMKV is one more user; unproven, `seal/tools/check-apk-native.sh` shows the kept copy).
 - **ABI / size**: new optional `-PapkAbis=arm64-v8a,armeabi-v7a` (`:app` `ndk.abiFilters`, default off). Size not measured.
 - **`seal/tools/check-apk-native.sh APK [abi]`**: reports the engine libraries inside a built APK (run by the three workflows since part 8).

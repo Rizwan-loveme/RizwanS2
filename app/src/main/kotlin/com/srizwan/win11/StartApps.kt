@@ -110,6 +110,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_MAME = "builtin.mame"
         private const val BUILTIN_CLS_RETROARCH = "builtin.retroarch"
         private const val BUILTIN_CLS_SEAL = "builtin.seal"
+        private const val BUILTIN_CLS_RIZWAN = "builtin.rizwan"
+        /** Large four-point sparkle with a small one (assistant): the built-in Rizwan app (:mika module = Mika, package com.wangzan101.mika; shown as "Rizwan"). */
+        private const val RIZWAN_PATH =
+            "M12,3L14.5,9.5L21,12L14.5,14.5L12,21L9.5,14.5L3,12L9.5,9.5ZM19,2L19.9,4.1L22,5L19.9,5.9L19,8L18.1,5.9L16,5L18.1,4.1Z"
         /** Cloud with a down arrow (Material "cloud_download"): the built-in Downloader app (:seal module = Seal, package com.junkfood.seal; shown as "Downloader"). */
         private const val SEAL_PATH =
             "M19.35,10.04C18.67,6.59 15.64,4 12,4 9.11,4 6.6,5.64 5.35,8.04 2.34,8.36 0,10.91 0,14c0,3.31 2.69,6 6,6h13c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96zM17,13l-5,5 -5,-5h3V9h4v4h3z"
@@ -332,6 +336,16 @@ class AppRepository(private val ctx: Context) {
                 "RetroArch", ctx.packageName, BUILTIN_CLS_RETROARCH,
                 BuiltInIconDrawable(RETROARCH_PATH, Color.parseColor("#2EC4B6"), evenOdd = true),
                 section = "retroarch"
+            )
+        ) else emptyList()
+    ) + (
+        // Built-in Rizwan assistant (:mika module = Mika, com.wangzan101.mika.ui.MainActivity), vector icon only (Mika's own logo is not used). Android 10+ on a
+        // 64-bit ARM phone only (MikaLauncher.isSupported()): no entry on other phones. Opened through MikaLauncher.open() (part 8).
+        if (MikaLauncher.isSupported()) listOf(
+            AppEntry(
+                MikaLauncher.NAME, ctx.packageName, BUILTIN_CLS_RIZWAN,
+                BuiltInIconDrawable(RIZWAN_PATH, Color.parseColor("#B185FF")),
+                section = MikaLauncher.SECTION
             )
         ) else emptyList()
     )

@@ -13,9 +13,11 @@ android {
         applicationId = "com.srizwan.win11"
         // 26: required by the :winlator library (was 24)
         minSdk = 26
-        // 28: Android blocks running programs from the app data folder above 28 (Winlator runs box64 / wine
-        // there). Same reason the BlackBox engine prefers 28. See README "Winlator inside Win11", part 3.
-        targetSdk = 28
+        // targetSdk 37 (owner decision, Mika part 8; it was 28 before). One place: -PappTargetSdk=28 (or appTargetSdk=28 in gradle.properties) goes back to the old value
+        // without touching this file. WHY 28 WAS USED and what 37 changes for the other built-in apps: Android blocks running programs from the app data folder above 28
+        // (Winlator runs box64 / wine there; RetroArch loads the cores it downloaded into <dataDir>/cores). Both are expected to stop working at 37, see docs/CHANGES-mika-part8.md
+        // and README "targetSdk 37". Other effects (scoped storage, package visibility, edge-to-edge, foreground service types ...) are listed there too.
+        targetSdk = (findProperty("appTargetSdk") as String?)?.trim()?.toIntOrNull() ?: 37
         versionCode = 120
         versionName = "2.5.3"
 
@@ -55,8 +57,14 @@ android {
         }
     }
     
-    // targetSdk = 28 is intentional (see above), so lint's "ExpiredTargetSdkVersion" (Google Play wants 33+)
-    // must not stop the release build. lintVitalRelease is skipped, same as in :winlator.
+    // :mika (Rizwan): assets/runtime/rootfs.tar.xz (the Linux sandbox root file system, 50+ MB) is already xz: keep it stored, do not deflate it a second time.
+    // AGP counts this setting in the application module only (a library's copy is ignored), so it is here.
+    androidResources {
+        noCompress += "xz"
+    }
+
+    // lint's "ExpiredTargetSdkVersion" (Google Play wants 34+ for new updates) can only fire when -PappTargetSdk goes back to 28, and must not stop the
+    // release build then. lintVitalRelease is skipped, same as in :winlator.
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -103,6 +111,11 @@ dependencies {
     implementation(project(":seal"))
     // TUI-ConsoleLauncher: Linux terminal launcher theme (package ohi.andre.consolelauncher, MIT). Step 2: the module is wired in (empty); sources, resources, manifest, terminal screen, theme switch follow, see README.md ("Two launcher themes")
     implementation(project(":tui"))
+    // Mika: built-in "Rizwan" AI assistant (package com.wangzan101.mika, Apache-2.0). Part 5: the module is wired in (settings.gradle.kts, -PincludeMika=false leaves it out);
+    // App : MikaApp (part 6), manifest merge (part 7) and the Start menu / Home / deep-link hooks (part 8, MikaLauncher.kt) are done, and so is CI (part 9: fetch + patch + checks in all three workflows, tick box include_mika in UltimateBuild_WithoutMe.yml), see mika/README.md
+    if ((findProperty("includeMika") as String?) != "false") {
+        implementation(project(":mika"))
+    }
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")

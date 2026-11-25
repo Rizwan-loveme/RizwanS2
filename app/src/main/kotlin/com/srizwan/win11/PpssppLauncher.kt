@@ -32,7 +32,7 @@ internal fun isPpssppFile(name: String): Boolean {
 
 /**
  * Starts [file] in PPSSPP. The path goes in PPSSPP's own shortcut extra (what its shortcuts use), not as a file:// uri
- * (the app targets API 28, where a file:// uri in an intent throws) and not as a content:// uri (PPSSPP then has no real path).
+ * (a file:// uri in an intent throws since API 24) and not as a content:// uri (PPSSPP then has no real path).
  * The app has the all-files permission, so PPSSPP reads the path directly.
  */
 internal fun MainActivity.openPpssppFile(file: File) {

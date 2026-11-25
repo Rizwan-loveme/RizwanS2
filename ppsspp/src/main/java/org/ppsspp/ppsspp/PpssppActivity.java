@@ -231,7 +231,7 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 		return shouldAsk;
 	}
 
-	// Win11: the host app targets API 28 and holds the all-files permission (MANAGE_EXTERNAL_STORAGE). On Android 11+ the old
+	// Win11: the host app (targetSdk 28, later 37: same result) holds the all-files permission (MANAGE_EXTERNAL_STORAGE). On Android 11+ the old
 	// WRITE_EXTERNAL_STORAGE runtime permission is never granted to such an app, so upstream's check always said "denied"
 	// and the game list showed "Give PPSSPP permission to access storage" forever. All-files access counts as storage access.
 	private boolean waitingForAllFilesAccess = false;

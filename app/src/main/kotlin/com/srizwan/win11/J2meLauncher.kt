@@ -30,7 +30,7 @@ internal fun isJ2meFile(name: String): Boolean {
 }
 
 /**
- * Opens the J2ME installer for [file]. The app targets API 28, where a file:// uri in an intent throws, so the file goes
+ * Opens the J2ME installer for [file]. A file:// uri in an intent throws (FileUriExposedException, since API 24; the app targets 37 since part 8 of the Mika plan), so the file goes
  * through the own FileProvider of :chooser as a content:// uri with a read grant (J2ME's installer reads both).
  */
 internal fun MainActivity.openJ2meFile(file: File) {

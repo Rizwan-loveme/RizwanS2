@@ -27,7 +27,7 @@ import kotlin.math.min
  * The file work behind the viewer's action buttons (step 8). Everything here is blocking except [share] (it only starts
  * the chooser): call [delete], [rename], [saveRotation] and [setWallpaper] from a background thread, as the viewer does.
  *
- * The app targets API 28, so a plain `File` works on every folder once the storage permission / "all files access" is
+ * A plain `File` works on every folder (the app holds "all files access", MANAGE_EXTERNAL_STORAGE, so scoped storage does not apply even at the targetSdk 37 of part 8) once the storage permission / "all files access" is
  * granted (the same way the File Manager deletes and renames). After a change, MediaStore is told about it
  * ([MediaScannerConnection]), the thumbnails of the old file are dropped ([ImageLoader.invalidate]) and the shared list
  * ([GalleryRepository.cached]) is edited, so the home grid and the album screens show the change when they come back.

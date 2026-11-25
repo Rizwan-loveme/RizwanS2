@@ -1,0 +1,21 @@
+import android.content.Context
+import android.widget.Toast
+
+/**
+ * Build without Rizwan (:mika): the same members as the real MikaLauncher.kt (part 8), which do nothing. SECTION / NAME stay the same so that
+ * the Start menu, Home screen, deep link and terminal code compile unchanged; isSupported() is false, so no entry or icon is shown.
+ * Used by the "without" CI build (part 9) in place of app/src/main/kotlin/<package>/MikaLauncher.kt; the package line of the original file is put on top.
+ * Keep the members in step with MikaLauncher.kt.
+ */
+object MikaLauncher {
+    const val SECTION = "rizwan"
+    const val NAME = "Rizwan"
+
+    fun isSupported(): Boolean = false
+
+    /** Only reachable through rizwans2://rizwan (no entry is shown): says so instead of doing nothing. */
+    fun open(ctx: Context): Boolean {
+        Toast.makeText(ctx, "$NAME is not in this build", Toast.LENGTH_SHORT).show()
+        return false
+    }
+}

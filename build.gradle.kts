@@ -13,13 +13,16 @@ plugins {
     // :seal / :seal-color (built-in Seal downloader): Compose compiler, kotlinx.serialization and KSP (Room compiler), all on the project's Kotlin 2.2.10.
     // KSP 2.2.10-2.0.2 is the release for Kotlin 2.2.10 (KSP2; checked against the google/ksp release list). Upstream Seal uses Kotlin 2.0.20 / KSP 2.0.20-1.0.25.
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.10" apply false
+    // :mika-core (Mika's pure JVM library): Kotlin JVM plugin on the project's Kotlin 2.2.10 (same kotlin-gradle-plugin artifact as kotlin.android).
+    id("org.jetbrains.kotlin.jvm") version "2.2.10" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10" apply false
     id("com.google.devtools.ksp") version "2.2.10-2.0.2" apply false
 }
 
 // Read by :Bcore (Groovy) as rootProject.ext.xxx
 extra["compileSdkVersion"] = 37
-extra["targetSdkVersion"] = 28
+// Same value as :app's targetSdk (37, part 8; -PappTargetSdk=28 goes back). Nothing reads it today (checked: :Bcore does not), it only keeps the old line from lying.
+extra["targetSdkVersion"] = (findProperty("appTargetSdk") as String?)?.trim()?.toIntOrNull() ?: 37
 extra["minSdk"] = 21
 extra["ndkVer"] = "29.0.13846066"
 

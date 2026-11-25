@@ -1,6 +1,5 @@
 package com.srizwan.win11
 
-import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -31,8 +30,13 @@ import java.io.File
  *
  * The built-in Seal downloader (:seal, package com.junkfood.seal) runs in the launcher's own process: SealInit.init(this) is called at the end of
  * onCreate (launcher process only). Seal has no Application of its own and no second crash handler: the launcher's crash handler covers it.
+ *
+ * The built-in Rizwan assistant (:mika, Mika 0.1.52, see mika/README.md step 6): Mika's code needs the Application to be a MikaApp (ten `applicationContext as MikaApp`
+ * casts), so App extends [AppBase], which extends MikaApp. MikaApp.onCreate is patched so that it starts nothing by itself: the Win11 processes listed above (all but the
+ * launcher's) never run any Mika code, and in the launcher process Mika is started at the very end of onCreate, after BlackBox, logging and Seal, by startMikaIfUsed()
+ * (only when Rizwan was opened before on this phone; the first start comes from the hooks of step 8 through startMikaNow()). A failure only gets logged.
  */
-class App : Application() {
+class App : AppBase() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -84,6 +88,12 @@ class App : Application() {
             SealInit.init(this) { AppLog.e("Seal", "yt-dlp engine init failed", it) }
         } catch (e: Throwable) {
             AppLog.e("App", "Seal init failed", e)
+        }
+        // Rizwan (:mika, part 6): launcher process only (the early returns above and isLauncherProcess() keep it out of every other process). Must stay after the Seal block.
+        try {
+            startMikaIfUsed()
+        } catch (e: Throwable) {
+            AppLog.e("App", "Rizwan (Mika) start failed", e)
         }
     }
 

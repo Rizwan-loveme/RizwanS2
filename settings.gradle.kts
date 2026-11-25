@@ -55,7 +55,7 @@ include(":ppsspp")
 include(":mame")
 // RetroArch (libretro frontend) as the built-in "RetroArch" app, package com.retroarch (upstream package kept: the native code calls the Java classes by name).
 // Upstream: https://github.com/libretro/RetroArch (GPL-3.0), pinned in retroarch/UPSTREAM_VERSION (v1.22.2) + retroarch/UPSTREAM_COMMIT, see retroarch/README.md and NOTICE-RetroArch.md (licence files + GPL-3.0 compatibility note, step 9).
-// Cores are NOT bundled: RetroArch's own Online Updater (Core Downloader) fetches them at run time (works because :app keeps targetSdk 28).
+// Cores are NOT bundled: RetroArch's own Online Updater (Core Downloader) fetches them at run time (this worked while :app kept targetSdk 28; at the targetSdk 37 of part 8 Android blocks loading them from the data folder: -PappTargetSdk=28 goes back, see docs/CHANGES-mika-part8.md).
 // All 12 steps done (step 12 = final static checks; docs step 11; CI: cache, fetch step, ccache and APK check in both workflows, step 10): the C source is NOT in the project zip: retroarch/tools/fetch-upstream.sh (step 4) clones it into retroarch/upstream/ (commit-checked) before every build.
 // The native library libretroarch-activity.so is built from it by upstream's Android.mk (ndk-build, step 5; -PretroarchNative=false switches it off).
 // The small Java part (10 files incl. the SAF VFS and the play-core stub), resources (prefix "ra_") and the library manifest are IN the project (step 6): RetroArch runs in its own process ":retroarch" (upstream calls System.exit / exit), activities not exported. App hooks (step 8): app/.../RetroArchLauncher.kt = Start menu entry, Home icon, rizwans2://retroarch and File Manager (console ROM files); 64-bit ARM only.
@@ -70,3 +70,15 @@ include(":seal")
 // Upstream: https://github.com/fandreuz/TUI-ConsoleLauncher (MIT), see NOTICE-TUI.md and the "Two launcher themes" section of README.md.
 // Only the Java sources, resources (prefix "tui_") and a trimmed library manifest are in the project; :app stays the only HOME activity. Built step by step, see README.md (all 13 steps done: module, dependencies, sources, resources, Java references, manifest + licence, terminal screen as a normal activity, saved theme + routing, switch UI, shared lists + built-in apps, polish, final check; always part of every build, not an optional module).
 include(":tui")
+// Mika (on-device AI agent) as the built-in "Rizwan" assistant: :mika (Android library, package com.wangzan101.mika, upstream package kept: 837 files import its R / BuildConfig)
+// + :mika-core (its pure JVM part). Upstream: https://github.com/wangzan101/Mika (Apache-2.0), pinned in mika/UPSTREAM_VERSION (0.1.52) + mika/UPSTREAM_COMMIT, see NOTICE-Mika.md and mika/README.md.
+// The sources are NOT in the project zip: mika/tools/fetch-upstream.sh clones them into mika/upstream/ and mika/tools/patch-upstream.sh turns them into a library, both run by Gradle
+// (tasks :mika:fetchMikaUpstream / :mika:patchMikaUpstream, before :mika's preBuild) so every build, local or CI, needs git + python3 + network once (about 83 MB, cached afterwards).
+// Resources are not prefixed (only 13 clashing names get "mk_", done by the patch script). Wired in part 5; App (part 6), manifest (part 7) and the Start menu / Home icon / rizwans2://rizwan hooks (part 8, app/.../MikaLauncher.kt) are done, see mika/README.md. :app targets SDK 37 since part 8 (-PappTargetSdk=28 goes back).
+// -PincludeMika=false (or includeMika=false in gradle.properties) leaves both modules, and the :app dependency on them, out of the build. It does NOT compile by itself: AppBase extends MikaApp, and MikaLauncher names a Mika class.
+// The "without" workflow (UltimateBuild_WithoutMe.yml, input include_mika, part 9) deletes the two modules and swaps AppBase.kt and MikaLauncher.kt for mika/tools/stub/*.stub; do the same by hand for a local build without Mika.
+val includeMika = (providers.gradleProperty("includeMika").orNull ?: "true") != "false"
+if (includeMika) {
+    include(":mika-core")
+    include(":mika")
+}

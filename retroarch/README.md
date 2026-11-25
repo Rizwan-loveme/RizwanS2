@@ -97,7 +97,7 @@ The "All apps" numbers (`rizwans2://N`) shift by one for the apps after **RetroA
 **Assets and cores (your decision: online downloader only)**
 - The native side reads an optional `assets/` folder from the app APK (`APK` extra). Upstream's own CI (`Android.yml`: `./gradlew assembleDebug`) builds **without** any `assets/` folder, so an APK without bundled assets is a supported setup.
 - First start: the user opens *Online Updater* and downloads *Core Downloader* cores, *Core Info Files*, *Assets* (and shaders / overlays if wanted). INTERNET is already granted.
-- Cores are loaded from `<dataDir>/cores/`. Executing downloaded `.so` files from the app's data folder only works while `:app` keeps `targetSdk = 28` (it does, on purpose). With targetSdk 29+ Android blocks it.
+- Cores are loaded from `<dataDir>/cores/`. Executing downloaded `.so` files from the app's data folder only works while `:app` keeps `targetSdk = 28`. With targetSdk 29+ Android blocks it. **Part 8 of the Mika plan set `:app` to `targetSdk = 37` (owner decision), so expect the Core Downloader's cores to stop loading; `-PappTargetSdk=28` (or `appTargetSdk=28` in `gradle.properties`) brings the old behaviour back. See `docs/CHANGES-mika-part8.md`.**
 
 **Resource clashes with the other modules (checked)**
 
@@ -341,7 +341,7 @@ Your decision: **nothing is bundled**, RetroArch's own *Online Updater* download
 | Where do cores come from? | `config.def.h`: for `ANDROID_AARCH64` the buildbot URL is `http://buildbot.libretro.com/nightly/android/latest/arm64-v8a/` (plain `http`). RetroArch uses its own native sockets for it. `:app` also has `usesCleartextTraffic="true"`. Not tested on a device |
 | Menu names (v1.22.2 strings) | *Online Updater* -> **Core Downloader**, **Update Core Info Files**, **Update Assets** |
 | Where are things saved? | `DATADIR` extra = the app's data folder, so `<dataDir>/cores`, `info`, `assets`, `shaders`, `overlays`, `autoconfig`, `filters`, `database` (`platform_unix.c`). a `grep` for `dataDir` / parent-folder use and for those folder names in the Kotlin / Java sources found **no other module using them** (I did not trace the storage paths of every module, and native code was not searched) |
-| Can a downloaded `.so` be loaded? | yes while `:app` has `targetSdk = 28` (it has, on purpose: checked in `app/build.gradle.kts`). From targetSdk 29 Android blocks executing files from the data folder |
+| Can a downloaded `.so` be loaded? | yes while `:app` has `targetSdk = 28`. **Since part 8 of the Mika plan `:app` has 37 by default, so expect no** (`-PappTargetSdk=28` goes back). From targetSdk 29 Android blocks executing files from the data folder |
 | Does the clone-and-build leave `assets/` out safely? | yes: upstream's own CI builds without it; step 6 also switched off the extraction of the Win11 `assets/` folder |
 | Menu without assets | the default menu driver is MaterialUI (first in the driver list); its font and icons are read from the assets folder, and the font driver list contains a built-in bitmap renderer (I did not check that it is used as the fallback). **Not run**: the first start may look plain or lack icons until *Update Assets* was done |
 | The backup / restore feature (Part 30) | works on clone data only, not on this module's data folder: nothing to change |

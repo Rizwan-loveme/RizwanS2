@@ -26,8 +26,8 @@ import java.util.Locale
  * same name collapse into one. The result is sorted: the apps chosen before for this kind and MIME family first (most recent
  * first, see [ChooserPrefs]), then the rest by name.
  *
- * The app targets API 28, so every app is visible without a `<queries>` block. If targetSdk is ever raised to 30 or more, the
- * `:app` manifest needs `<queries>` entries for `VIEW` and `SEND`, or this list comes back (nearly) empty.
+ * Package visibility (API 30+): :app declares QUERY_ALL_PACKAGES, so every app stays visible at the targetSdk 37 of part 8 without a `<queries>` block. If that permission is
+ * ever removed, the `:app` manifest needs `<queries>` entries for `VIEW` and `SEND`, or this list comes back (nearly) empty.
  */
 object AppFinder {
 

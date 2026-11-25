@@ -1,0 +1,17 @@
+import android.app.Application
+
+/**
+ * Build without Rizwan (:mika): a plain Application with the same members as the real AppBase, which do nothing.
+ * Used by the "without" CI build (part 9) in place of app/src/main/kotlin/<package>/AppBase.kt; the package line of the original file is put on top.
+ * Keep the members in step with AppBase.kt: App.kt and the hooks of part 8 call them.
+ */
+abstract class AppBase : Application() {
+    protected fun startMikaIfUsed() {}
+
+    fun startMikaNow(): Boolean = false
+
+    companion object {
+        @JvmStatic
+        fun isMikaSupported(): Boolean = false
+    }
+}

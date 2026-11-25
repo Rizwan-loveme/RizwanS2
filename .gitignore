@@ -16,3 +16,13 @@ mame/core/
 
 # RetroArch source is fetched at build time (retroarch/tools/fetch-upstream.sh, step 4)
 retroarch/upstream/
+
+# Mika (Rizwan) sources are fetched at build time (mika/tools/fetch-upstream.sh, step 3)
+mika/upstream/
+
+# Python byte-code caches that the tool scripts leave next to themselves (mika/tools/*.py, seal/tools/*.py, ...) (step 10).
+# Deliberately only under a tools/ folder: winlator's virglrenderer source has two .pyc files of its own that stay as they are.
+**/tools/__pycache__/
+
+# Marker / log files that the Mika patch and check scripts leave only inside the fetched checkout (mika/upstream/ is ignored above); listed so a hand-copied checkout never leaks (step 10)
+.rizwan-patched
