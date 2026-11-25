@@ -7,10 +7,10 @@ name: Android Release Build (Signed, choose modules)
 #
 # CHOOSE MODULES: when you press "Run workflow" every optional module has a tick box (ticked = included, unticked = left out):
 #   Winlator (:winlator, about 140 MB of rootfs/wine assets), PPSSPP (:ppsspp), MAME (:mame), RetroArch (:retroarch), J2ME (:j2me + :j2me-dexlib),
-#   Downloader (:seal + :seal-color, the built-in Seal / yt-dlp app).
+#   Downloader (:seal + :seal-color, the built-in Seal / yt-dlp app), Rizwan (:mika-core + :mika, the built-in Mika AI assistant).
 # For every unticked module this run, in its temporary checkout only: deletes the module folder, removes it from settings.gradle.kts and
 # app/build.gradle.kts, replaces its launcher file in :app (WinlatorLauncher.kt, PpssppLauncher.kt, MameLauncher.kt, RetroArchLauncher.kt,
-# J2meLauncher.kt, SealLauncher.kt) with a tiny stub (same function names, "not supported"), and hides its Start menu entry and Home icon. The fetch / cache / ccache
+# J2meLauncher.kt, SealLauncher.kt; for Rizwan: AppBase.kt + MikaLauncher.kt) with a tiny stub (same function names, "not supported"), and hides its Start menu entry and Home icon. The fetch / cache / ccache
 # steps and the APK checks of that module are skipped too (a build without PPSSPP / RetroArch / MAME is much faster and smaller; without the Downloader the APK is
 # about 50-100 MB smaller, and App.kt no longer starts Seal's engine).
 # Always built (the rest of the app depends on them): BlackBox (:Bcore, parallel apps), YouTube, Video, Gallery, Camera, Chooser.
@@ -28,6 +28,15 @@ name: Android Release Build (Signed, choose modules)
 # (retroarch/tools/fetch-upstream.sh stops if the commit differs; cached) and built by upstream's Android.mk (ndk-build) with ccache. The run fails if
 # lib/arm64-v8a/libretroarch-activity.so is missing from the APK, or if the merged manifest has no RetroArch activity in the own process :retroarch.
 # Cores are NOT bundled (RetroArch's Online Updater downloads them), so there are no RetroArch assets or cores to check. The timeout stays 120 minutes.
+#
+# Rizwan (:mika-core + :mika, the built-in Mika AI assistant, Apache-2.0, see NOTICE-Mika.md): the sources are not in the repo. mika/tools/fetch-upstream.sh clones the commit pinned in
+# mika/UPSTREAM_COMMIT (version in mika/UPSTREAM_VERSION; it stops if the commit differs), mika/tools/patch-upstream.sh turns the checkout into an Android library (idempotent: library
+# manifest, open MikaApp, mk_ resource names, Rizwan name + "Hey Rizwan", icon) and mika/tools/check-manifest.py checks the manifest merge. mika/upstream is cached together with its patch
+# (the cache key holds the version, the commit, the three scripts and the icon). There is no native build (Mika's .so files are prebuilt), so no ccache. The run fails if
+# lib/arm64-v8a/libmikarun.so, libproot.so, libproot_loader.so, assets/runtime/rootfs.tar.xz (exact size) or the Mika classes (MikaApp, core) are missing from the APK, or if the merged manifest
+# lacks one of Mika's 30 permissions or components, or one of its screens is a launcher (mika/tools/check-merged-manifest.py). The package rename also reaches mika/build.gradle.kts
+# (BuildConfig.APPLICATION_ID must be the host package: Mika compares it with the package name at run time), and the run checks that. The APK grows by at least 58 MB (Mika's assets;
+# an estimate, not measured). The timeout stays 120 minutes.
 #
 # Seal (:seal + :seal-color, shown in the app as "Downloader"; yt-dlp video / audio downloader): the Kotlin sources are in the repo and the engine (Python, yt-dlp, FFmpeg,
 # aria2c) is a Maven library, so there is nothing to clone or download and no cache step. The run fails if the APK has no lib/arm64-v8a/libpython* or libmmkv*
@@ -95,6 +104,11 @@ on:
         required: false
         default: true
         type: boolean
+      include_mika:
+        description: 'Rizwan (Mika, on-device AI assistant, at least +58 MB) - tick = include'
+        required: false
+        default: true
+        type: boolean
       publish_release:
         description: 'Publish to GitHub Releases (untick = only a workflow artifact)'
         required: false
@@ -152,6 +166,7 @@ jobs:
           INC_RETROARCH: ${{ inputs.include_retroarch }}
           INC_J2ME: ${{ inputs.include_j2me }}
           INC_SEAL: ${{ inputs.include_seal }}
+          INC_MIKA: ${{ inputs.include_mika }}
         run: |
           set -e
           KT=app/src/main/kotlin
@@ -383,8 +398,20 @@ jobs:
             SUMMARY="$SUMMARY no-Downloader"
           fi
 
+          if [ "$INC_MIKA" != "true" ]; then
+            echo "== Removing :mika and :mika-core (Rizwan) =="
+            # AppBase.kt (the Application base: extends MikaApp) and MikaLauncher.kt (Start menu / Home / deep link hooks) are replaced by the two stubs of mika/tools/stub.
+            # They are read BEFORE the mika folder is deleted. With the stub MikaLauncher.isSupported() is false, so Rizwan has no Start menu entry, Home icon or terminal entry,
+            # and rizwans2://rizwan only shows a message. The package line of each original file is put on top of the stub, so the package rename renames them with the rest.
+            stub AppBase.kt < mika/tools/stub/AppBase.kt.stub
+            stub MikaLauncher.kt < mika/tools/stub/MikaLauncher.kt.stub
+            drop_module mika mika-core
+            no_refs Rizwan 'com\.wangzan101|MikaApp'
+            SUMMARY="$SUMMARY no-Rizwan"
+          fi
+
           echo "== Verify Gradle no longer includes a removed module =="
-          for pair in "winlator:$INC_WINLATOR" "ppsspp:$INC_PPSSPP" "mame:$INC_MAME" "retroarch:$INC_RETROARCH" "j2me:$INC_J2ME" "seal:$INC_SEAL" "seal-color:$INC_SEAL"; do
+          for pair in "winlator:$INC_WINLATOR" "ppsspp:$INC_PPSSPP" "mame:$INC_MAME" "retroarch:$INC_RETROARCH" "j2me:$INC_J2ME" "seal:$INC_SEAL" "seal-color:$INC_SEAL" "mika:$INC_MIKA" "mika-core:$INC_MIKA"; do
             m="${pair%%:*}"; on="${pair##*:}"
             if [ "$on" != "true" ] && grep -rn "project(\":$m\")\|include(\":$m\")" --include="*.kts" --include="*.gradle" --exclude-dir=.git --exclude-dir=build . ; then
               echo "::error::Gradle still references the removed :$m module"; exit 1
@@ -395,7 +422,7 @@ jobs:
             echo "### Modules in this build"
             echo "| Module | Included |"; echo "|---|---|"
             echo "| Winlator | $INC_WINLATOR |"; echo "| PPSSPP | $INC_PPSSPP |"; echo "| MAME | $INC_MAME |"
-            echo "| RetroArch | $INC_RETROARCH |"; echo "| J2ME | $INC_J2ME |"; echo "| Downloader (Seal) | $INC_SEAL |"; echo "| Terminal theme (T-UI) | always |"
+            echo "| RetroArch | $INC_RETROARCH |"; echo "| J2ME | $INC_J2ME |"; echo "| Downloader (Seal) | $INC_SEAL |"; echo "| Rizwan (Mika) | $INC_MIKA |"; echo "| Terminal theme (T-UI) | always |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate & Apply Package Rename
@@ -610,6 +637,38 @@ jobs:
           ls -l mame/core/jniLibs/arm64-v8a/libMAME4droid.so mame/core/res/raw/mm_files.zip
           df -h / | tail -n 1
 
+      # Rizwan (:mika-core + :mika, Mika 0.1.52 at the commit pinned in mika/UPSTREAM_COMMIT): not in the repo. Cached between runs (about 83 MB with .git, so that the commit check still works;
+      # the cached copy is already patched and the patch script is idempotent). The Gradle tasks :mika:fetchMikaUpstream / :mika:patchMikaUpstream run the same scripts before the build
+      # and do nothing when the folder is already right. This runs after the package rename on purpose: the rename only touches the app's old package in the project's own files,
+      # never Mika's source (mika/build.gradle.kts is one of those files: its BuildConfig.APPLICATION_ID is the host package and is checked below).
+      - name: Cache Mika source
+        if: ${{ inputs.include_mika }}
+        id: mika_src
+        uses: actions/cache@v4
+        with:
+          path: mika/upstream
+          key: mika-upstream-${{ hashFiles('mika/UPSTREAM_VERSION', 'mika/UPSTREAM_COMMIT', 'mika/tools/fetch-upstream.sh', 'mika/tools/patch-upstream.sh', 'mika/tools/patch-upstream.py', 'mika/rizwan/**') }}
+
+      - name: Fetch and patch Mika source
+        if: ${{ inputs.include_mika }}
+        timeout-minutes: 20
+        env:
+          NEW_PKG: ${{ inputs.new_package_name }}
+        run: |
+          set -e
+          bash mika/tools/fetch-upstream.sh
+          bash mika/tools/patch-upstream.sh
+          python3 mika/tools/check-manifest.py
+          # Mika compares BuildConfig.APPLICATION_ID with context.packageName (ShizukuShellUserService): the package rename must have reached mika/build.gradle.kts
+          if ! grep 'buildConfigField("String", "APPLICATION_ID"' mika/build.gradle.kts | grep -oE '[A-Za-z0-9_.]+' | grep -qxF "$NEW_PKG"; then
+            echo "::error::mika/build.gradle.kts: BuildConfig.APPLICATION_ID is not the new package name $NEW_PKG (the package rename did not reach it)"
+            grep -n 'APPLICATION_ID' mika/build.gradle.kts || true
+            exit 1
+          fi
+          echo "Mika: $(grep -v '^[[:space:]]*#' mika/UPSTREAM_VERSION | tr -d '[:space:]') $(grep -v '^[[:space:]]*#' mika/UPSTREAM_COMMIT | tr -d '[:space:]')"
+          du -sh mika/upstream mika/upstream/app/src/main/assets
+          df -h / | tail -n 1
+
       # ccache for the PPSSPP C++ build and the RetroArch C build (the -PppssppCcache property adds the compiler launcher to :ppsspp's CMake arguments,
       # -PretroarchCcache adds NDK_CCACHE=ccache to :retroarch's ndk-build arguments). Both use the one cache folder below.
       # The NDK is installed fresh on every run, so compilers are compared by content, not by modification time.
@@ -674,6 +733,7 @@ jobs:
           INC_MAME: ${{ inputs.include_mame }}
           INC_RETROARCH: ${{ inputs.include_retroarch }}
           INC_SEAL: ${{ inputs.include_seal }}
+          INC_MIKA: ${{ inputs.include_mika }}
         run: |
           UNSIGNED_APK=$(find app/build/outputs/apk/release -name "*-unsigned.apk" | head -n 1)
           if [ -z "$UNSIGNED_APK" ]; then
@@ -772,6 +832,65 @@ jobs:
               python3 seal/tools/check-merged-manifest.py "$MERGED_SEAL"
             fi
             echo "Seal: engine libraries and manifest entries are in the APK"
+          fi
+          if [ "$INC_MIKA" = "true" ]; then
+            # Rizwan (Mika, :mika-core + :mika) must really be inside the APK: the three prebuilt native files under lib/arm64-v8a (the sandbox runs them from nativeLibraryDir, so they must be
+            # stored extracted: :app has useLegacyPackaging = true), the Linux sandbox root file system (assets/runtime/rootfs.tar.xz, checked by exact size against the fetched file: it is
+            # stored, not deflated again), and Mika's classes in the dex files (MikaApp from :mika, the core package from :mika-core; the build has no shrinker today, a minified build would need
+            # keep rules first). Then the merged manifest must hold all 30 permissions and every component of Mika, none of them a launcher (mika/tools/check-merged-manifest.py).
+            echo "== Rizwan (Mika) in the APK =="
+            grep -E "libmikarun\.so|libproot\.so|libproot_loader\.so|assets/runtime/rootfs\.tar\.xz" "$RUNNER_TEMP/apk-list.txt" | head -n 6 || true
+            for LIB in libmikarun.so libproot.so libproot_loader.so; do
+              if ! grep -q "lib/arm64-v8a/$LIB" "$RUNNER_TEMP/apk-list.txt"; then
+                echo "::error::lib/arm64-v8a/$LIB is not in the APK (Mika's prebuilt native files missing)"
+                exit 1
+              fi
+            done
+            MIKA_ROOTFS="mika/upstream/app/src/main/assets/runtime/rootfs.tar.xz"
+            if [ ! -f "$MIKA_ROOTFS" ]; then
+              echo "::error::$MIKA_ROOTFS is missing: the fetch of Mika did not run"
+              exit 1
+            fi
+            RF_SIZE=$(stat -c %s "$MIKA_ROOTFS")
+            if ! awk -v s="$RF_SIZE" '$1==s && $4=="assets/runtime/rootfs.tar.xz" {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::assets/runtime/rootfs.tar.xz ($RF_SIZE bytes) is not in the APK (Mika's Linux sandbox missing or wrong size)"
+              exit 1
+            fi
+            # licence texts and notices of what Mika ships (PRoot GPL-2.0, talloc LGPL-3.0, the Alpine root file system): they must travel with the APK (part 11, patch edit 13)
+            for LIC in Apache-2.0.txt GPL-2.0.txt GPL-3.0.txt LGPL-3.0.txt THIRD_PARTY_NOTICES.md MIKA-NOTICE.txt RIZWAN-NOTICE.md gpl-source/README.md gpl-source/sources.lock gpl-source/runtime-sources.lock; do
+              if ! awk -v n="assets/licenses/$LIC" '$4==n {f=1} END {exit f?0:1}' "$RUNNER_TEMP/apk-list.txt"; then
+                echo "::error::assets/licenses/$LIC is not in the APK (licence files of Mika's GPL / LGPL parts missing)"
+                exit 1
+              fi
+            done
+            N_PROOT_PATCHES=$(awk '$4 ~ /^assets\/licenses\/gpl-source\/patches\/.*\.patch$/ {c++} END {print c+0}' "$RUNNER_TEMP/apk-list.txt")
+            if [ "$N_PROOT_PATCHES" -lt 4 ]; then
+              echo "::error::only $N_PROOT_PATCHES PRoot patch file(s) in assets/licenses/gpl-source/patches (expected 4)"
+              exit 1
+            fi
+            # class names are plain text in the dex string table (listing / extraction go to a file first: no pipe under pipefail)
+            unzip -p "$UNSIGNED_APK" 'classes*.dex' > "$RUNNER_TEMP/apk-dex.bin"
+            for CLS in 'Lcom/wangzan101/mika/MikaApp;' 'Lcom/wangzan101/mika/core/'; do
+              if ! grep -aqF "$CLS" "$RUNNER_TEMP/apk-dex.bin"; then
+                echo "::error::$CLS is not in the APK's dex files (Mika classes missing)"
+                rm -f "$RUNNER_TEMP/apk-dex.bin"
+                exit 1
+              fi
+            done
+            rm -f "$RUNNER_TEMP/apk-dex.bin"
+            MERGED_MIKA=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+            if [ -z "$MERGED_MIKA" ]; then
+              echo "::warning::merged release manifest not found under app/build/intermediates, Mika manifest check skipped"
+            else
+              python3 mika/tools/check-merged-manifest.py "$MERGED_MIKA"
+            fi
+            echo "Rizwan (Mika): native files, sandbox root file system, licence files, classes and manifest entries are in the APK"
+          else
+            echo "== Rizwan (Mika) is not in this build =="
+            if grep -q "lib/arm64-v8a/libmikarun\.so" "$RUNNER_TEMP/apk-list.txt"; then
+              echo "::error::libmikarun.so is in the APK although Rizwan was left out of this build"
+              exit 1
+            fi
           fi
           # T-UI (:tui, the Terminal theme) is part of every build (it is not one of the optional modules: :app depends on it). The APK must hold its font, and the
           # merged manifest must keep its components private and without any HOME / LAUNCHER / VIEW filter, with :app's MainActivity as the only HOME activity (tui/tools/check-merged-manifest.py).
@@ -872,6 +991,7 @@ jobs:
           [ "${{ inputs.include_retroarch }}" = "true" ] && M="$M RetroArch" || true
           [ "${{ inputs.include_j2me }}" = "true" ] && M="$M J2ME" || true
           [ "${{ inputs.include_seal }}" = "true" ] && M="$M Downloader(Seal)" || true
+          [ "${{ inputs.include_mika }}" = "true" ] && M="$M Rizwan(Mika)" || true
           echo "included=${M:- none of the optional modules}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
