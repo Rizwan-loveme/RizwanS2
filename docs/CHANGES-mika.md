@@ -1,6 +1,6 @@
-# Mika → "Rizwan": the whole feature in one file (parts 1 to 13 of 15)
+# Mika → "Rizwan": the whole feature in one file (parts 1 to 13 of 15, step 14 dropped, build fix 1)
 
-Status after part 13 (part 12 = documentation refresh, part 13 = static checks plus the new script `mika/tools/static-check.py`; neither changed a Kotlin, Gradle, manifest or workflow file; this file is read again after part 14). **Nothing has been compiled, built or run yet** (no Gradle / Android SDK / network in the environment where it was written); every claim below says whether it was
+Status after part 13 (part 12 = documentation refresh, part 13 = static checks plus the new script `mika/tools/static-check.py`; neither changed a Kotlin, Gradle, manifest or workflow file; this file is read again after part 14). **Build fix 1 (after your first CI log):** the first real build got through fetch, patch, resource and manifest merge and the `:mika-core` compile, and failed only at `:mika:compileReleaseKotlin` with 2 errors (`ChatDrawerMotion.kt`: `minAnchor` / `maxAnchor`, removed in the newer Compose Foundation); fixed by patch edit 14 (section 6), see `docs/CHANGES-mika-fix1.md`. Step 14 (wake word) was dropped by you. **Still not verified:** everything after that compile (the rest of `:mika`, `:app`, R8, APK, a phone). Before the log, nothing had been compiled (no Gradle / Android SDK / network in the environment where it was written); every claim below says whether it was
 *tested on the real upstream*, *tested on copies*, *checked by reading* or *not verified*. The per-part files `docs/CHANGES-mika-part1.md` to `part13.md` and `mika/README.md` keep the full detail.
 
 ## 1. What it is
@@ -66,7 +66,7 @@ Each is requested at run time only when Rizwan uses the matching feature. Mika a
 ## 5b. Licences in the APK (part 11)
 The APK ships PRoot (GPL-2.0-or-later, patched by Mika), talloc (LGPL-3.0-or-later) and an Alpine root file system of GPL / LGPL / MIT / BSD / MPL packages next to Mika's Apache-2.0 code. `assets/licenses/` now holds `Apache-2.0.txt`, `GPL-2.0.txt`, `GPL-3.0.txt`, `LGPL-3.0.txt`, `THIRD_PARTY_NOTICES.md`, `MIKA-NOTICE.txt`, `RIZWAN-NOTICE.md` and `gpl-source/` (4 PRoot patches, 2 source locks, README); CI fails when one is missing. Open points for the owner (GPL source offer, Alpine package sources unchecked, Mika's licence screen shows only Apache-2.0): `NOTICE-Mika.md`.
 
-## 6. What the patch changes in upstream: 13 edits (only in the build checkout, never in the zip)
+## 6. What the patch changes in upstream: 14 edits (only in the build checkout, never in the zip)
 1. `MikaApp` becomes `open` (the 10 `applicationContext as MikaApp` casts keep working with Win11's `App`)
 2. library manifest: the 8 `<application>` attributes and `MainActivity`'s MAIN / LAUNCHER filter are removed
 3. 13 clashing resource names get the prefix `mk_` (12 strings + `mipmap/ic_launcher`, about 207 edits)
@@ -80,6 +80,7 @@ The APK ships PRoot (GPL-2.0-or-later, patched by Mika), talloc (LGPL-3.0-or-lat
 11. manifest: label "Rizwan", own icon, own task for the chat screen
 12. `MainActivity.onCreate` calls `startMika()` first
 13. (part 11) licence assets: upstream's GPL-2.0 / GPL-3.0 / LGPL-3.0 / `THIRD_PARTY_NOTICES.md` / `NOTICE`, our `RIZWAN-NOTICE.md` and the PRoot patches + source locks go into `assets/licenses/` of the APK (Mika's own APK carried only Apache-2.0 and the protobuf licence)
+14. (build fix 1) `ChatDrawerMotion.kt`: `anchors.minAnchor()` / `anchors.maxAnchor()` (gone in the Foundation of BOM 2025.03.01) become `minOf` / `maxOf` of `anchors.positionOf(DrawerValue.Closed)` and `positionOf(DrawerValue.Open)`; same meaning (the drawer has these two anchors), works in every Foundation version; `check()` fails if the removed API is left anywhere
 Not changed on purpose: Mika's network security config (cleartext is already on in `:app`; trusting user-installed CAs for the whole app was not accepted, so a company-CA model server fails TLS), the share filters, the notification small icon.
 The persona / prompt texts in `core/src/main/resources` still say "You are Mika" (step 14, together with the wake word).
 
@@ -129,5 +130,6 @@ a clashing resource name that disappeared or a new one, a new language not in `B
 | 11 | licence files in the APK assets, `NOTICE-Mika.md` rewritten, CI APK check | `CHANGES-mika-part11.md` |
 | 12 | README / CHANGES refresh (this file, `mika/README.md`, `README.md`, stale counts and file lists) | `CHANGES-mika-part12.md` |
 | 13 | static checks over the whole project + `mika/tools/static-check.py` | `CHANGES-mika-part13.md` |
-| 14 | wake word "Hey Rizwan", persona prompts | todo |
+| 14 | wake word "Hey Rizwan", persona prompts | dropped by you (not done; the greeting "Hey Rizwan" and the name stay as in parts 4 and 6) |
+| fix 1 | first CI build error: `ChatDrawerMotion.kt` Compose API (patch edit 14) | `CHANGES-mika-fix1.md` |
 | 15 | final zip `RizwanS2-main-mika-rizwan.zip` | todo |

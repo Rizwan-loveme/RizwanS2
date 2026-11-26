@@ -1865,7 +1865,7 @@ The upstream sources are **not in the project zip**: `mika/tools/fetch-upstream.
 | 11 | Licence files in the APK assets (GPL-2.0 / GPL-3.0 / LGPL-3.0, notices, PRoot patches), `NOTICE-Mika.md`, CI APK check | done |
 | 12 | README / CHANGES refresh (docs only; read again after 13 and 14) | done |
 | 13 | Static checks (+ `mika/tools/static-check.py`) | done |
-| 14 | Wake word "Hey Rizwan" (Mika has none; engine decision first) | todo |
+| 14 | Wake word "Hey Rizwan" (Mika has none; engine decision first) | dropped by you (not done) |
 | 15 | Final flat zip | todo |
 
 Step 1 (done): upstream read (2 modules, 2,720 files, 58 MB assets), pinned, analysed. Main findings: `:core` is pure JVM; `MikaApp` is final and cast to in 10 places (the Win11 `App` must extend it);
@@ -1920,6 +1920,8 @@ The whole chain was run again on the real upstream 0.1.52 (hand-placed): fetch c
 
 Step 13 (done): static checks over the whole project. New read-only script `mika/tools/static-check.py` (9 groups: workflows, scripts, XML, resource clashes with `:mika`, stubs vs the app's use, Kotlin balance of the hook files, Gradle wiring and the "without" unwiring, "Hey Rizwan" in 13 languages, line endings / modes). **No defect found**, no project file changed; the script passes on the project and on the real patched upstream 0.1.52 and fails (exit 1) on 3 injected faults.
 Not run: Gradle, a compile, CI, a device. Next: step 14 (wake word "Hey Rizwan"), step 15 (final zip). Details: `docs/CHANGES-mika-part13.md`.
+
+Build fix 1 (step 14 dropped): your first GitHub Actions log got through fetch, patch, resources, manifest and `:mika-core`, and failed only at `:mika:compileReleaseKotlin`: `ChatDrawerMotion.kt` line 85 used `minAnchor()` / `maxAnchor()`, which the newer Compose Foundation (BOM 2025.03.01, the project's version) no longer has. New patch edit 14 in `mika/tools/patch-upstream.py` replaces them with `minOf` / `maxOf` of `positionOf(Closed)` / `positionOf(Open)` (same meaning); a cached, already patched `mika/upstream/` is patched again automatically. Tested on the real upstream (first run, second run, old-patched checkout, `static-check.py`); the compile itself is not testable here, the next CI run decides. Details: `docs/CHANGES-mika-fix1.md`.
 
 ### targetSdk 37 (part 8 of the Mika plan)
 - **Where:** `app/build.gradle.kts` (`targetSdk = appTargetSdk property ?: 37`), root `build.gradle.kts` (`extra["targetSdkVersion"]`, unused), `gradle.properties` (documented, commented out). Earlier notes of this README that say "targetSdk 28" describe the state at their time.

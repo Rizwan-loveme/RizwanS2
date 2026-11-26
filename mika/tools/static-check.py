@@ -7,7 +7,7 @@ Exit code 1 and `::error::static-check: ...` lines when something is wrong, so C
 
 Checks: 1 workflows (YAML + `bash -n` of every run step)   2 shell scripts (`bash -n`) and Python scripts (ast)   3 XML well-formed (project, patched Mika)
 4 resource names: no clash between any module and :mika   5 stubs have every member the app uses   6 Kotlin files of the hooks: braces / parentheses balance
-7 Gradle wiring: settings / app dependency / unwiring still leaves valid blocks   8 greeting + name in the patched strings   9 line endings + executable bits
+7 Gradle wiring: settings / app dependency / unwiring still leaves valid blocks   8 greeting + name in the patched strings   9 line endings + executable bits   10 (patched Mika) no removed Compose Foundation API left (build fix 1)
 """
 import ast, glob, os, re, subprocess, sys
 import xml.etree.ElementTree as ET
@@ -241,6 +241,17 @@ def check_strings():
     ok("strings: %d files carry 'Hey Rizwan', %d visible 'Mika' words left (upstream URLs and Theme.Mika are kept on purpose)" % (len(fs), left))
 
 
+# ---- 10 removed Compose API (build fix 1: the first CI build failed on DraggableAnchors.minAnchor() / maxAnchor())
+def check_removed_api():
+    bad = 0
+    for dp, dn, fn in os.walk(UP + "/app/src/main/java"):
+        for f in fn:
+            if f.endswith((".kt", ".java")) and re.search(r"\.(?:minAnchor|maxAnchor)\(", read(os.path.join(dp, f))):
+                bad += 1
+                err("removed Compose Foundation API minAnchor()/maxAnchor() in " + os.path.join(dp, f))
+    ok("api: %d uses of the removed DraggableAnchors.minAnchor()/maxAnchor() left in the patched Mika" % bad)
+
+
 # ---- 9 line endings / modes
 def check_files():
     for f in glob.glob("mika/tools/*") + glob.glob("mika/tools/stub/*"):
@@ -266,6 +277,7 @@ def main():
         ok("xml: %d patched Mika files well-formed" % n2)
         check_resources()
         check_strings()
+        check_removed_api()
     else:
         notes.append("mika/upstream not present: patched-source checks (XML, resource clashes, greeting) skipped; run fetch + patch first")
     for n_ in notes:

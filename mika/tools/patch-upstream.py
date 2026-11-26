@@ -34,6 +34,10 @@ What it does (all inside mika/upstream/app/src/main):
  13. licence assets (part 11) the APK carries the licence texts of what Mika ships: upstream's licenses/ (GPL-2.0, GPL-3.0, LGPL-3.0, THIRD_PARTY_NOTICES.md) and NOTICE go into
                          assets/licenses/ next to Mika's own Apache-2.0.txt, together with mika/rizwan/licenses/RIZWAN-NOTICE.md (what Rizwan is, what was changed, where the source of the
                          GPL / LGPL parts is) and gpl-source/ (PRoot's four patches + the two source locks + Mika's sandbox README from tools/sandbox/). Nothing of Mika's is overwritten.
+  14. drawer anchors (build fix) ChatDrawerMotion.kt used `DraggableAnchors.minAnchor()` / `maxAnchor()`, which are gone in the Compose Foundation of the BOM that :mika shares with
+                          the other Win11 modules (compose-bom-alpha 2025.03.01; upstream builds with 2024.12.01): `:mika:compileReleaseKotlin` failed with two
+                          `Unresolved reference` errors. They become `minOf/maxOf(anchors.positionOf(Closed), anchors.positionOf(Open))`, which means the same (the drawer has
+                          exactly these two anchors) and exists in every Foundation version.
 Checks at the end (exit 1 with ::error:: when something is off): manifest parses, no application attributes / launcher filter left, `open class MikaApp`,
 no un-prefixed clashing resource left, no Latin "Mika" left in the UI text (except URL / github tokens).
 Not done here (later parts): persona / prompts (core resources still say Mika, part 14), notification icon.
@@ -478,6 +482,22 @@ def patch_license_assets():
     return n
 
 
+# ---------------------------------------------------------------- 14. drawer anchors (build fix)
+DRAWER_FILE = os.path.join(JAVA, "com", "wangzan101", "mika", "chat", "ui", "ChatDrawerMotion.kt")
+DRAWER_OLD = "anchors.minAnchor(), anchors.maxAnchor()"
+DRAWER_NEW = ("minOf(anchors.positionOf(DrawerValue.Closed), anchors.positionOf(DrawerValue.Open)), "
+              "maxOf(anchors.positionOf(DrawerValue.Closed), anchors.positionOf(DrawerValue.Open))")
+
+
+def patch_drawer_anchors():
+    s = read(DRAWER_FILE)
+    if DRAWER_OLD not in s:
+        return 0                                   # already patched (or upstream no longer uses the removed API)
+    if s.count(DRAWER_OLD) != 1:
+        err("ChatDrawerMotion.kt: `%s` not found exactly once (upstream layout changed, review the patch)" % DRAWER_OLD)
+    return write_if_changed(DRAWER_FILE, s.replace(DRAWER_OLD, DRAWER_NEW, 1), s)
+
+
 # ---------------------------------------------------------------- checks
 def check():
     s = read(MANIFEST)
@@ -547,6 +567,9 @@ def check():
         s = read(path)
         if rx_src.search(s) or (path == MANIFEST and rx_xml.search(s)):
             err("un-prefixed clashing resource reference left in " + os.path.relpath(path, UP))
+    for path in walk(JAVA, (".kt", ".java")):       # build fix (edit 14): the removed Foundation API must not be left anywhere
+        if re.search(r"\.(?:minAnchor|maxAnchor)\(", read(path)):
+            err("removed Compose Foundation API minAnchor()/maxAnchor() still used in " + os.path.relpath(path, UP))
     left = 0
     for path in walk(RES, (".xml",)):
         d = os.path.basename(os.path.dirname(path))
@@ -588,6 +611,7 @@ def main():
         "manifest part 7": patch_manifest_part7(),
         "MainActivity start": patch_main_activity(),
         "licence assets": patch_license_assets(),
+        "drawer anchors": patch_drawer_anchors(),
     }
     check()
     with open(MARKER, "w", encoding="utf-8") as f:

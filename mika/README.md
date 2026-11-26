@@ -23,13 +23,13 @@ Start menu entry, Home icon and `rizwans2://rizwan` open it; the assistant is ca
 | 11 | Licence files in the APK assets (upstream `licenses/` + `NOTICE` + PRoot patches, `RIZWAN-NOTICE.md`), `NOTICE-Mika.md` rewritten, CI APK check, patch edit 13, check 12 | done |
 | 12 | README + `docs/CHANGES-mika*.md` refresh (docs only; read again after 13 and 14) | done |
 | 13 | Static checks (XML, resource clashes, references, scripts, workflows) + `tools/static-check.py` | done |
-| 14 | Wake word "Hey Rizwan" (Mika has none: design + engine decision first, see "Wake word" below) | todo |
+| 14 | Wake word "Hey Rizwan" (Mika has none: design + engine decision first, see "Wake word" below) | dropped by you (not done) |
 | 15 | Final flat zip `RizwanS2-main-mika-rizwan.zip` | todo |
 
 ## Overview (read this first; the rest of this file is the step-by-step log)
 
 **What it is.** The built-in **Rizwan** assistant: Mika 0.1.52 (Apache-2.0) as the library modules `:mika` + `:mika-core`, package `com.wangzan101.mika` (upstream's package kept). The sources are fetched and patched at build time, not stored in the zip.
-Mika keeps all 30 permissions; the project's versions win; "Hey Rizwan" is the name and greeting, the spoken wake word is step 14. **Nothing was built or run on a phone yet.** One-file summary of everything: `../docs/CHANGES-mika.md`.
+Mika keeps all 30 permissions; the project's versions win; "Hey Rizwan" is the name and greeting, the spoken wake word is step 14. **Nothing was run on a phone yet; the first CI build (your log, see "Build fix 1" at the end) compiled everything up to `:mika:compileReleaseKotlin` and failed there on 2 lines, now fixed.** One-file summary of everything: `../docs/CHANGES-mika.md`.
 
 **Licences:** the APK carries `assets/licenses/` (Apache-2.0, GPL-2.0, GPL-3.0, LGPL-3.0, Mika's third-party notices and NOTICE, `RIZWAN-NOTICE.md`, the 4 PRoot patches and source locks): step 11, `../NOTICE-Mika.md`. Open points about the GPL source offer are listed there.
 
@@ -529,3 +529,11 @@ New read-only script `tools/static-check.py` (run `python3 mika/tools/static-che
 (5) `MikaLauncher.kt.stub` / `AppBase.kt.stub` have every member the app uses, (6) the 7 hook Kotlin files balance `{}` and `()`, (7) `settings.gradle.kts` / `app/build.gradle.kts` wiring and what the "without" workflow's unwiring leaves (balanced, no Mika line), (8) "Hey Rizwan" in all 13 greeting files and no visible "Mika" word left (upstream URLs and `Theme.Mika` stay), (9) LF in `mika/tools`, `*.sh` executable.
 Result: **no defect found**, so no project file was changed. (One scare during the work, braces "unbalanced" in three Kotlin files, was my first quick regex; a proper tokenizer that skips strings, comments and char literals shows all balanced; the script uses that one.)
 Negative tests: a stray `}` in `AppBase.kt`, a stub without `isSupported`, a greeting file without "Hey Rizwan": each stops the script with `::error::static-check:` and exit code 1. Not run: Gradle, a compile, CI, a device. Details: `../docs/CHANGES-mika-part13.md`.
+
+## Build fix 1 (after your first GitHub Actions log, `build-error-log.zip`)
+Request: step 14 dropped; fix the build error; keep every detail; full flat zip.
+**What the log showed:** `fetchMikaUpstream` (Mika 0.1.52, commit 7ff1703f63b7, "already present"), `patchMikaUpstream`, `:mika-core` (protobuf, compileKotlin), `:mika` resources / manifest / assets / JNI libs and `:app:mergeReleaseNativeLibs` all passed. Then:
+`e: .../mika/chat/ui/ChatDrawerMotion.kt:85:88 Unresolved reference 'minAnchor'` and `:85:109 Unresolved reference 'maxAnchor'` -> `:mika:compileReleaseKotlin FAILED` (the only 2 errors in the log; the only other messages were warnings of other modules).
+**Cause:** `:mika` builds with `compose-bom-alpha:2025.03.01` (the project's version, part 5; upstream uses 2024.12.01). In that Compose Foundation `DraggableAnchors.minAnchor()` / `maxAnchor()` no longer exist (renamed in newer Foundation).
+**Fix:** patch edit 14 in `tools/patch-upstream.py` (idempotent, checked): `minOf` / `maxOf` of `anchors.positionOf(DrawerValue.Closed)` and `positionOf(DrawerValue.Open)`. The drawer has exactly these two anchors (`Closed at -width`, `Open at 0`), so the clamp is the same, and `positionOf` exists in every Foundation version. The patch stamp includes the script hash, so a cached `mika/upstream/` patched by the old script is patched again on the next run (tested: only `drawer anchors=1` changes). `static-check.py` has a new group 10 for it.
+**Tested:** patch on the real upstream 0.1.52: first run `drawer anchors=1`, second run "already patched"; on a checkout patched by the old script: only edit 14 applies; `static-check.py` passes. **Not tested:** the compile itself (no Kotlin / Android SDK here), so the next CI run decides; the compiler may show more errors after this one (a build stops at the first failing task). Send the next log and I fix it the same way. Details: `../docs/CHANGES-mika-fix1.md`.
