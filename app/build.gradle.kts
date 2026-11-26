@@ -50,6 +50,10 @@ android {
             useLegacyPackaging = true
             // :winlator and :j2me (ndk-build, c++_shared) / ffmpeg-kit / oboe each bring a libc++_shared.so
             pickFirsts += "**/libc++_shared.so"
+            // Build fix 2: a build WITH :winlator and :j2me failed in :app:mergeReleaseNativeLibs ("2 files found with path 'lib/arm64-v8a/liboboe.so'"):
+            // :winlator ships a prebuilt Oboe 1.9.0 (jniLibs, used by its fluidsynth / MIDI audio), :j2me gets Oboe 1.11.0 from the Prefab package. One copy is kept
+            // for the whole app (same risk as libc++_shared.so above: audio of the other user of Oboe could misbehave if the versions differ, see docs/CHANGES-mika-fix2.md).
+            pickFirsts += "**/liboboe.so"
         }
         // :seal (Seal's libraries ship duplicate licence files; upstream excludes the same two)
         resources {

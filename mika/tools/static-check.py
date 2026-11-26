@@ -219,7 +219,10 @@ def check_gradle():
             err("%s: braces unbalanced after removing Mika (without workflow)" % name)
     if 'project(":mika' in a2 or 'include(":mika' in s2:
         err("unwiring left a Mika line behind")
-    ok("gradle: modules included, dependency present, unwiring leaves balanced files")
+    for lib in ("libc++_shared.so", "liboboe.so"):      # build fix 2: duplicate native libs of the full build (:winlator + :j2me)
+        if 'pickFirsts += "**/%s"' % lib not in ap:
+            err("app/build.gradle.kts has no pickFirsts for " + lib)
+    ok("gradle: modules included, dependency present, pickFirsts (libc++_shared, liboboe), unwiring leaves balanced files")
 
 
 # ---- 8 patched strings
