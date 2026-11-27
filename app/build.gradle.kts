@@ -54,6 +54,12 @@ android {
             // :winlator ships a prebuilt Oboe 1.9.0 (jniLibs, used by its fluidsynth / MIDI audio), :j2me gets Oboe 1.11.0 from the Prefab package. One copy is kept
             // for the whole app (same risk as libc++_shared.so above: audio of the other user of Oboe could misbehave if the versions differ, see docs/CHANGES-mika-fix2.md).
             pickFirsts += "**/liboboe.so"
+            // :cloneapp native libraries (jni/arm64-v8a in cloneapp.aar, made by cloneapp/tools/add-jni.py, which already leaves out ffmpeg-kit / MMKV / c++_shared / CameraX copies).
+            // Safety net only: if a library that Gradle dependencies also bring ever shows up twice, one copy is kept instead of "2 files found with path" stopping the build.
+            pickFirsts += "**/libdatastore_shared_counter.so"
+            pickFirsts += "**/libmmkv.so"
+            pickFirsts += "**/libimage_processing_util_jni.so"
+            pickFirsts += "**/libsurface_util_jni.so"
         }
         // :seal (Seal's libraries ship duplicate licence files; upstream excludes the same two)
         resources {
@@ -115,6 +121,8 @@ dependencies {
     implementation(project(":seal"))
     // TUI-ConsoleLauncher: Linux terminal launcher theme (package ohi.andre.consolelauncher, MIT). Step 2: the module is wired in (empty); sources, resources, manifest, terminal screen, theme switch follow, see README.md ("Two launcher themes")
     implementation(project(":tui"))
+    // Clone App: prebuilt AAR module (package com.pengyou.cloneapp, no sources). Step 1: the module is wired in; its manifest is merged into :app (launcher icons removed, authorities use ${applicationId}); Start menu / Home / deep-link hooks and the engine start-up are not done yet, see cloneapp/README.md
+    implementation(project(":cloneapp"))
     // Mika: built-in "Rizwan" AI assistant (package com.wangzan101.mika, Apache-2.0). Part 5: the module is wired in (settings.gradle.kts, -PincludeMika=false leaves it out);
     // App : MikaApp (part 6), manifest merge (part 7) and the Start menu / Home / deep-link hooks (part 8, MikaLauncher.kt) are done, and so is CI (part 9: fetch + patch + checks in all three workflows, tick box include_mika in UltimateBuild_WithoutMe.yml), see mika/README.md
     if ((findProperty("includeMika") as String?) != "false") {

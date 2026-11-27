@@ -31,6 +31,9 @@ import java.io.File
  * The built-in Seal downloader (:seal, package com.junkfood.seal) runs in the launcher's own process: SealInit.init(this) is called at the end of
  * onCreate (launcher process only). Seal has no Application of its own and no second crash handler: the launcher's crash handler covers it.
  *
+ * The Clone App (:cloneapp, prebuilt AAR, see cloneapp/README.md): its engine processes are ":chs" and ":cp0" .. ":cp49" (renamed from the original ":hs" / ":p0" .. so they cannot clash
+ * with BlackBox's ":p0" ..). There only CloneAppEngine runs (no BlackBox, no J2ME); in the launcher process it starts after BlackBox. It is opened from Settings only.
+ *
  * The built-in Rizwan assistant (:mika, Mika 0.1.52, see mika/README.md step 6): Mika's code needs the Application to be a MikaApp (ten `applicationContext as MikaApp`
  * casts), so App extends [AppBase], which extends MikaApp. MikaApp.onCreate is patched so that it starts nothing by itself: the Win11 processes listed above (all but the
  * launcher's) never run any Mika code, and in the launcher process Mika is started at the very end of onCreate, after BlackBox, logging and Seal, by startMikaIfUsed()
@@ -44,6 +47,11 @@ class App : AppBase() {
         if (isRetroarchProcess()) return // RetroArch (step 6) neither
         if (isMidletProcess()) {
             ru.playsoftware.j2meloader.EmulatorApplication.attachMidletProcess(this)
+            return
+        }
+        // Clone App engine processes (:chs, :cp0 .. :cp49, see CloneAppEngine.kt): only the Clone App's engine runs there, never BlackBox (its own processes are :black, :p0 ..).
+        if (CloneAppEngine.isCloneProcess(packageName, currentProcessName())) {
+            CloneAppEngine.attach(this, base)
             return
         }
         // J2ME screens in the launcher process need the Application (Room database, MIDlet list); nothing else happens here.
@@ -61,11 +69,14 @@ class App : AppBase() {
         } catch (e: Throwable) {
             Log.e("App", "engine attach failed", e)
         }
+        // Clone App (:cloneapp): the launcher process is its "manager" role (screens, databases). Does nothing when its native libraries are not in the APK.
+        if (isLauncherProcess()) CloneAppEngine.attach(this, base)
     }
 
     override fun onCreate() {
         super.onCreate()
         if (isMameProcess() || isMidletProcess() || isRetroarchProcess()) return
+        if (CloneAppEngine.isCloneProcess(packageName, currentProcessName())) { CloneAppEngine.create(); return }
         try {
             BlackBoxCore.get().doCreate()
         } catch (e: Throwable) {
@@ -74,6 +85,8 @@ class App : AppBase() {
         if (!isLauncherProcess()) return
         AppLog.init(this)
         AppLog.installCrashHandler()
+        // Clone App (:cloneapp): second half of its engine start-up; only reached in the launcher process. A failure is only logged.
+        try { CloneAppEngine.create() } catch (e: Throwable) { AppLog.e("App", "Clone App start failed", e) }
         // Terminal step 9: the terminal screen must know at once whether it is the home screen (Back handling), also after a process restart.
         try { ThemeManager.syncHost(this) } catch (e: Throwable) { AppLog.e("App", "theme sync failed", e) }
         // Terminal step 10: the terminal's `win11` command switches the launcher theme through this.

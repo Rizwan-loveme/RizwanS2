@@ -785,8 +785,14 @@ class Win11Shell(
         menu.menu.add(0, 1, 0, "Settings")
         // Terminal step 10: the two theme cards (ThemeSwitchUi.kt)
         menu.menu.add(0, 2, 1, "Launcher theme")
+        // Clone App (:cloneapp): this Settings menu is its only entry (no Start menu / Home / deep link), see CloneAppEngine.kt
+        menu.menu.add(0, 3, 2, CloneAppEngine.NAME)
         menu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                3 -> {
+                    closeStart(animated = false)
+                    CloneAppEngine.open(ctx)
+                }
                 2 -> {
                     closeStart(animated = false)
                     ThemeSwitchUi.show(ctx)

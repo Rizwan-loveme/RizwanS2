@@ -77,6 +77,10 @@ include(":tui")
 // Resources are not prefixed (only 13 clashing names get "mk_", done by the patch script). Wired in part 5; App (part 6), manifest (part 7) and the Start menu / Home icon / rizwans2://rizwan hooks (part 8, app/.../MikaLauncher.kt) are done, see mika/README.md. :app targets SDK 37 since part 8 (-PappTargetSdk=28 goes back).
 // -PincludeMika=false (or includeMika=false in gradle.properties) leaves both modules, and the :app dependency on them, out of the build. It does NOT compile by itself: AppBase extends MikaApp, and MikaLauncher names a Mika class.
 // The "without" workflow (UltimateBuild_WithoutMe.yml, input include_mika, part 9) deletes the two modules and swaps AppBase.kt and MikaLauncher.kt for mika/tools/stub/*.stub; do the same by hand for a local build without Mika.
+// Clone App (parallel-space / app cloner, package com.pengyou.cloneapp) as a prebuilt AAR module: :cloneapp has no sources, it only hands cloneapp/cloneapp.aar to :app.
+// Written permission to use it was given by its owner (stated by the project owner). Made by cloneapp/tools/build-aar.py, see cloneapp/README.md ("What was changed") and NOTICE-CloneApp.md.
+// Always part of every build (like :tui). The AAR holds the Java / resources / assets only: the engine's native libraries (lib/<abi>/*.so) were NOT in the files received, see cloneapp/README.md ("Not done yet").
+include(":cloneapp")
 val includeMika = (providers.gradleProperty("includeMika").orNull ?: "true") != "false"
 if (includeMika) {
     include(":mika-core")
