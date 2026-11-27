@@ -145,6 +145,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          # unzip.yml puts files over 25 MB (e.g. cloneapp/cloneapp.aar, 59 MB) into Git LFS: without this the build would get a tiny pointer file instead of the AAR
+          lfs: true
 
       # Winlator assets + PPSSPP source + the 367 MB MAME core (copied several times while the APK is packed) + several native builds need a lot of disk: free the runner's unused big toolchains first.
       # RetroArch adds a 330 MB source clone and one more big native build (Vulkan / glslang); the preinstalled Docker images are not needed either.
