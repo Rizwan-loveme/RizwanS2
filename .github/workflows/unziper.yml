@@ -3,11 +3,12 @@ name: Auto Unzip & Push
 # দুইভাবে চলবে:
 # ১) রিপোতে .zip push করলে (ছোট জিপের জন্য)
 # ২) Actions ট্যাব থেকে হাতে চালিয়ে direct download লিংক দিলে (বড় জিপের জন্য)
+#    split জিপ (.zip.001/.002/.003 বা Dropbox-এ নাম বদলানো অংশ) হলে লিংকগুলো ক্রমানুসারে দিন: নিজে জোড়া লাগিয়ে extract করবে
 on:
   workflow_dispatch:
     inputs:
       zip_url:
-        description: 'Direct download লিংক (একাধিক হলে space দিয়ে আলাদা করুন). খালি রাখলে রিপোর ভেতরের .zip খুঁজে extract করবে'
+        description: 'Direct download লিংক (একাধিক হলে space দিয়ে আলাদা করুন; split জিপের অংশ হলে .001, .002, .003 ক্রমে). খালি রাখলে রিপোর ভেতরের .zip খুঁজে extract করবে'
         required: false
         type: string
         default: ''
@@ -103,24 +104,46 @@ jobs:
 
             read -ra URLS <<< "$ZIP_URLS"
             N=0
+            FILES=()
             for URL in "${URLS[@]}"; do
               N=$((N + 1))
-              F="$DL_DIR/download_$N.zip"
+              # Dropbox: dl=0 / dl=2 ইত্যাদি হলেও সরাসরি ডাউনলোড (dl=1) করা হবে
+              URL="$(printf '%s' "$URL" | sed -E 's/([?&])dl=[0-9]+/\1dl=1/')"
+              F="$DL_DIR/download_$N.part"
               echo "=== Downloading #$N ..."
               curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 \
                    --progress-bar -o "$F" "$URL"
+              echo "Downloaded: $(du -h "$F" | cut -f1)"
+              FILES+=("$F")
+            done
 
-              # সত্যিই জিপ কিনা যাচাই (অনেক সময় লিংক HTML পেজ ফেরত দেয়)
-              if ! unzip -tq "$F" >/dev/null 2>&1; then
-                echo "::error::#$N লিংক থেকে নামানো ফাইলটি বৈধ zip নয়। এটা direct download লিংক কিনা দেখুন (Google Drive/Dropbox হলে direct রূপ ব্যবহার করুন)"
+            # একটাই লিংক বা প্রতিটা ফাইল নিজে বৈধ zip হলে: আলাদা আলাদা extract
+            ALL_VALID=true
+            for F in "${FILES[@]}"; do
+              unzip -tq "$F" >/dev/null 2>&1 || ALL_VALID=false
+            done
+
+            if [ "$ALL_VALID" = "true" ]; then
+              for F in "${FILES[@]}"; do
+                echo "=== Extracting $(basename "$F") -> $DEST_DIR"
+                extract_zip "$F" "$DEST_DIR"
+                rm -f "$F"
+              done
+            else
+              # split zip (.zip.001 / .002 / .003): লিংকের ক্রমে জোড়া লাগিয়ে একটা zip বানানো হবে
+              echo "=== কিছু ফাইল একা বৈধ zip নয়: split অংশ ধরে লিংকের ক্রমে জোড়া লাগানো হচ্ছে (${#FILES[@]} টি অংশ)"
+              JOINED="$DL_DIR/joined.zip"
+              cat "${FILES[@]}" > "$JOINED"
+              rm -f "${FILES[@]}"
+              if ! unzip -tq "$JOINED" >/dev/null 2>&1; then
+                echo "::error::জোড়া লাগানোর পরেও বৈধ zip হয়নি। লিংকগুলো সঠিক ক্রমে (.001, .002, .003) আছে কিনা এবং direct download (dl=1) কিনা দেখুন। কোনো লিংক HTML পেজ ফেরত দিতে পারে"
                 exit 1
               fi
-
-              echo "Downloaded: $(du -h "$F" | cut -f1)"
-              echo "=== Extracting #$N -> $DEST_DIR"
-              extract_zip "$F" "$DEST_DIR"
-              rm -f "$F"
-            done
+              echo "Joined: $(du -h "$JOINED" | cut -f1)"
+              echo "=== Extracting joined zip -> $DEST_DIR"
+              extract_zip "$JOINED" "$DEST_DIR"
+              rm -f "$JOINED"
+            fi
             exit 0
           fi
 
