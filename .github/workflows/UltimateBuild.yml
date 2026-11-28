@@ -26,6 +26,13 @@ name: Android Release Build (Signed)
 # (BuildConfig.APPLICATION_ID must be the host package: Mika compares it with the package name at run time), and the run checks that. The APK grows by at least 58 MB (Mika's assets;
 # an estimate, not measured). The timeout stays 120 minutes.
 #
+# Shizuku (:shizuku + 11 helper modules, the built-in Shizuku manager / server, Apache-2.0 / MIT, see NOTICE-Shizuku.md; step 8A): the sources are not in the repo either.
+# shizuku/tools/fetch-upstream.sh clones the tag pinned in shizuku/UPSTREAM_VERSION (and the API submodule at shizuku/UPSTREAM_API_COMMIT; it stops if a commit differs),
+# shizuku/tools/patch-upstream.sh turns the checkout into library code that runs in the host app. The patch reads the host package from applicationId of app/build.gradle.kts,
+# so the step runs AFTER the package rename (and stops if the rename did not reach that file). shizuku/upstream is cached together with its patch (the patch marker holds the hash of
+# the script and the host package, so a changed package patches again from the pristine checkout). This step fetches, patches and checks the sources; the module is
+# on by default (includeShizuku, row 8F) and the APK checks (rows 8D-1 / 8D-2, in the last step before the signing: merged manifest with --require-shizuku, native libraries and assets) are unconditional.
+#
 # Seal (:seal + :seal-color, shown in the app as "Downloader"; yt-dlp video / audio downloader): the Kotlin sources are in the repo and the engine (Python, yt-dlp, FFmpeg,
 # aria2c) is a Maven library, so there is nothing to clone or download and no cache step. The run fails if the APK has no lib/arm64-v8a/libpython* or libmmkv*
 # (seal/tools/check-apk-native.sh), or if the merged manifest lacks Seal's activities / DownloadService / receiver / FileProvider or one of its activities has an
@@ -340,6 +347,40 @@ jobs:
           du -sh mika/upstream mika/upstream/app/src/main/assets
           df -h / | tail -n 1
 
+      # Shizuku (:shizuku, the built-in Shizuku manager + server; Shizuku v13.6.0 at the commit pinned in shizuku/UPSTREAM_COMMIT, API at shizuku/UPSTREAM_API_COMMIT): not in the repo.
+      # Cached between runs with its .git folders (the commit check of the fetch script needs them); the cached copy is already patched, and patch-upstream.sh compares its marker
+      # (hash of the script + the host package) and patches again from the pristine checkout when either changed. The Gradle tasks :shizuku:fetchShizukuUpstream /
+      # :shizuku:patchShizukuUpstream run the same scripts when the module is in the build (-PincludeShizuku=true) and do nothing when the folder is already right. This runs after
+      # the package rename and after the Mika step on purpose: the patch reads the host package from applicationId of app/build.gradle.kts, and the provider check below reads Mika's
+      # patched manifest. The module is on by default since row 8F, so Gradle finds the checkout this step prepared (and its own fetch / patch tasks do nothing).
+      - name: Cache Shizuku source
+        id: shizuku_src
+        uses: actions/cache@v4
+        with:
+          path: shizuku/upstream
+          key: shizuku-upstream-${{ hashFiles('shizuku/UPSTREAM_VERSION', 'shizuku/UPSTREAM_COMMIT', 'shizuku/UPSTREAM_API_COMMIT', 'shizuku/tools/fetch-upstream.sh', 'shizuku/tools/patch-upstream.sh', 'shizuku/tools/patch-upstream.py') }}
+
+      - name: Fetch and patch Shizuku source
+        timeout-minutes: 20
+        env:
+          NEW_PKG: ${{ inputs.new_package_name }}
+        run: |
+          set -e
+          # the patch writes the host package from applicationId of app/build.gradle.kts into the server / starter / API provider: the package rename must have reached it
+          if ! grep -E 'applicationId[[:space:]]*=' app/build.gradle.kts | grep -oE '[A-Za-z0-9_.]+' | grep -qxF "$NEW_PKG"; then
+            echo "::error::app/build.gradle.kts: applicationId is not the new package name $NEW_PKG (the package rename did not reach it; the Shizuku patch would write the old package)"
+            grep -n 'applicationId' app/build.gradle.kts || true
+            exit 1
+          fi
+          bash shizuku/tools/fetch-upstream.sh
+          bash shizuku/tools/patch-upstream.sh
+          # the patch self-check again on the finished checkout, then the provider match on the real patched manifests of Shizuku and Mika (Mika was fetched and patched above)
+          python3 -I shizuku/tools/patch-upstream.py --check
+          python3 -I shizuku/tools/check-provider-match.py
+          echo "Shizuku: $(grep -v '^[[:space:]]*#' shizuku/UPSTREAM_VERSION | tr -d '[:space:]') $(grep -v '^[[:space:]]*#' shizuku/UPSTREAM_COMMIT | tr -d '[:space:]') + API $(grep -v '^[[:space:]]*#' shizuku/UPSTREAM_API_COMMIT | tr -d '[:space:]')"
+          du -sh shizuku/upstream
+          df -h / | tail -n 1
+
       # ccache for the PPSSPP C++ build and the RetroArch C build (the -PppssppCcache property adds the compiler launcher to :ppsspp's CMake arguments,
       # -PretroarchCcache adds NDK_CCACHE=ccache to :retroarch's ndk-build arguments). Both use the one cache folder below.
       # The NDK is installed fresh on every run, so compilers are compared by content, not by modification time.
@@ -554,6 +595,19 @@ jobs:
             python3 tui/tools/check-merged-manifest.py "$MERGED_TUI"
           fi
           echo "T-UI: font and manifest entries are in the APK"
+          # Shizuku (:shizuku, rows 8D-1 / 8D-2, unconditional since row 8F): the module is on by default (settings.gradle.kts), so the merged manifest must carry the manager's pieces
+          # in the right form (shizuku/tools/check-merged-manifest.py --require-shizuku: it also fails when the manager is missing from the manifest) and the APK must hold the native
+          # libraries and assets of the starter (shizuku/tools/check-apk-contents.py: libshizuku.so, libadb.so, librish.so per ABI, extracted; assets rish and rish_shizuku.dex).
+          # With -PincludeShizuku=false in a build this step fails on purpose: that is the opt-out of a person, not of the CI (rollback: the step8e zip).
+          echo "== Shizuku (built-in manager) in the APK =="
+          MERGED_SHIZUKU=$(find app/build/intermediates -path "*merged_manifests/release*" -name AndroidManifest.xml 2>/dev/null | head -n 1)
+          if [ -z "$MERGED_SHIZUKU" ]; then
+            echo "::error::merged release manifest not found under app/build/intermediates: the Shizuku manifest check cannot run"
+            exit 1
+          fi
+          python3 shizuku/tools/check-merged-manifest.py "$MERGED_SHIZUKU" --require-shizuku
+          python3 shizuku/tools/check-apk-contents.py "$UNSIGNED_APK" --list
+          echo "Shizuku: manifest entries, native libraries and assets are in the APK"
           ccache -s 2>/dev/null | head -n 12 || true
 
       # Optional and safe: prints only lengths and whitespace flags, never secret
