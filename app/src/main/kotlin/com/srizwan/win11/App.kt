@@ -31,13 +31,13 @@ import java.io.File
  * The built-in Seal downloader (:seal, package com.junkfood.seal) runs in the launcher's own process: SealInit.init(this) is called at the end of
  * onCreate (launcher process only). Seal has no Application of its own and no second crash handler: the launcher's crash handler covers it.
  *
- * The Clone App (:cloneapp, prebuilt AAR, see cloneapp/README.md): its engine processes are ":chs" and ":cp0" .. ":cp49" (renamed from the original ":hs" / ":p0" .. so they cannot clash
- * with BlackBox's ":p0" ..). There only CloneAppEngine runs (no BlackBox, no J2ME); in the launcher process it starts after BlackBox. It is opened from Settings only.
- *
  * The built-in Rizwan assistant (:mika, Mika 0.1.52, see mika/README.md step 6): Mika's code needs the Application to be a MikaApp (ten `applicationContext as MikaApp`
  * casts), so App extends [AppBase], which extends MikaApp. MikaApp.onCreate is patched so that it starts nothing by itself: the Win11 processes listed above (all but the
  * launcher's) never run any Mika code, and in the launcher process Mika is started at the very end of onCreate, after BlackBox, logging and Seal, by startMikaIfUsed()
  * (only when Rizwan was opened before on this phone; the first start comes from the hooks of step 8 through startMikaNow()). A failure only gets logged.
+ *
+ * The built-in Shizuku manager (:shizuku, step 6E, shizuku/README.md): it runs in the launcher's own process too. Its one init call, ShizukuLauncher.initApplication(this), sits in onCreate
+ * (launcher process only) after the "process start" log line and before the Seal block; it does nothing when :shizuku is not in the build.
  */
 class App : AppBase() {
 
@@ -47,11 +47,6 @@ class App : AppBase() {
         if (isRetroarchProcess()) return // RetroArch (step 6) neither
         if (isMidletProcess()) {
             ru.playsoftware.j2meloader.EmulatorApplication.attachMidletProcess(this)
-            return
-        }
-        // Clone App engine processes (:chs, :cp0 .. :cp49, see CloneAppEngine.kt): only the Clone App's engine runs there, never BlackBox (its own processes are :black, :p0 ..).
-        if (CloneAppEngine.isCloneProcess(packageName, currentProcessName())) {
-            CloneAppEngine.attach(this, base)
             return
         }
         // J2ME screens in the launcher process need the Application (Room database, MIDlet list); nothing else happens here.
@@ -69,14 +64,11 @@ class App : AppBase() {
         } catch (e: Throwable) {
             Log.e("App", "engine attach failed", e)
         }
-        // Clone App (:cloneapp): the launcher process is its "manager" role (screens, databases). Does nothing when its native libraries are not in the APK.
-        if (isLauncherProcess()) CloneAppEngine.attach(this, base)
     }
 
     override fun onCreate() {
         super.onCreate()
         if (isMameProcess() || isMidletProcess() || isRetroarchProcess()) return
-        if (CloneAppEngine.isCloneProcess(packageName, currentProcessName())) { CloneAppEngine.create(); return }
         try {
             BlackBoxCore.get().doCreate()
         } catch (e: Throwable) {
@@ -85,8 +77,6 @@ class App : AppBase() {
         if (!isLauncherProcess()) return
         AppLog.init(this)
         AppLog.installCrashHandler()
-        // Clone App (:cloneapp): second half of its engine start-up; only reached in the launcher process. A failure is only logged.
-        try { CloneAppEngine.create() } catch (e: Throwable) { AppLog.e("App", "Clone App start failed", e) }
         // Terminal step 9: the terminal screen must know at once whether it is the home screen (Back handling), also after a process restart.
         try { ThemeManager.syncHost(this) } catch (e: Throwable) { AppLog.e("App", "theme sync failed", e) }
         // Terminal step 10: the terminal's `win11` command switches the launcher theme through this.
@@ -95,6 +85,13 @@ class App : AppBase() {
         try { TerminalShare.register(this) } catch (e: Throwable) { AppLog.e("App", "terminal share failed", e) }
         WinlatorLauncher.installLogBridge()
         AppLog.i("App", "process start | ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+        // Shizuku (:shizuku, step 6E): upstream's Application.onCreate work (application, ShizukuSettings, locale). Launcher process only, before any receiver / screen of this process
+        // (the boot receiver needs it, finding 13), so it sits here, before Seal. Does nothing when :shizuku is not in the build. A failure only gets logged.
+        try {
+            ShizukuLauncher.initApplication(this)
+        } catch (e: Throwable) {
+            AppLog.e("App", "Shizuku init failed", e)
+        }
         // Seal (:seal, part 4): MMKV, Koin, download folders, notification channels; the yt-dlp engine unpacks in the background.
         // A failure here must never stop the launcher, so it is only logged.
         try {

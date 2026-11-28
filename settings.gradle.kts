@@ -4,6 +4,14 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    // :shizuku and the :shizuku-* modules (Shizuku part 3, see shizuku/README.md): the two Rikka Gradle plugins that upstream's build uses, at upstream's versions.
+    // Only a VERSION lookup (the modules apply them without a version): nothing is downloaded unless a module applies the plugin, i.e. only when the switch is on (default since step 8F; -PincludeShizuku=false turns it off).
+    // dev.rikka.tools.refine = rewrites calls to hidden Android APIs (server / starter / shell / manager), dev.rikka.tools.materialthemebuilder = generates Theme.Material3.*.Shizuku.
+    // (upstream's third plugin, dev.rikka.tools.autoresconfig, runs only in an application module: its one output, ShizukuLocales, is made by shizuku/tools/patch-upstream.py.)
+    plugins {
+        id("dev.rikka.tools.refine") version "4.4.0"
+        id("dev.rikka.tools.materialthemebuilder") version "1.5.1"
+    }
 }
 dependencyResolutionManagement {
     // এই লাইনটি রিপোজিটরি কনফ্লিক্ট দূর করবে
@@ -77,12 +85,36 @@ include(":tui")
 // Resources are not prefixed (only 13 clashing names get "mk_", done by the patch script). Wired in part 5; App (part 6), manifest (part 7) and the Start menu / Home icon / rizwans2://rizwan hooks (part 8, app/.../MikaLauncher.kt) are done, see mika/README.md. :app targets SDK 37 since part 8 (-PappTargetSdk=28 goes back).
 // -PincludeMika=false (or includeMika=false in gradle.properties) leaves both modules, and the :app dependency on them, out of the build. It does NOT compile by itself: AppBase extends MikaApp, and MikaLauncher names a Mika class.
 // The "without" workflow (UltimateBuild_WithoutMe.yml, input include_mika, part 9) deletes the two modules and swaps AppBase.kt and MikaLauncher.kt for mika/tools/stub/*.stub; do the same by hand for a local build without Mika.
-// Clone App (parallel-space / app cloner, package com.pengyou.cloneapp) as a prebuilt AAR module: :cloneapp has no sources, it only hands cloneapp/cloneapp.aar to :app.
-// Written permission to use it was given by its owner (stated by the project owner). Made by cloneapp/tools/build-aar.py, see cloneapp/README.md ("What was changed") and NOTICE-CloneApp.md.
-// Always part of every build (like :tui). The AAR holds the Java / resources / assets only: the engine's native libraries (lib/<abi>/*.so) were NOT in the files received, see cloneapp/README.md ("Not done yet").
-include(":cloneapp")
 val includeMika = (providers.gradleProperty("includeMika").orNull ?: "true") != "false"
 if (includeMika) {
     include(":mika-core")
     include(":mika")
+}
+
+// Shizuku (manager app + server + starter + API) as the built-in "Shizuku" app: :shizuku (Android library, package moe.shizuku.manager, upstream package kept: the sources import its R / databinding classes)
+// + 10 helper modules, one per upstream Gradle project (upstream's build files are NOT used; ours are in shizuku/modules/<name>/build.gradle.kts and read the sources from shizuku/upstream/).
+// Upstream: https://github.com/RikkaApps/Shizuku (Apache-2.0) + its API submodule https://github.com/RikkaApps/Shizuku-API (MIT), pinned in shizuku/UPSTREAM_VERSION (v13.6.0) + UPSTREAM_COMMIT + UPSTREAM_API_COMMIT,
+// see NOTICE-Shizuku.md and shizuku/README.md. The sources are NOT in the project zip: shizuku/tools/fetch-upstream.sh clones them and shizuku/tools/patch-upstream.sh turns them into a library, both run by Gradle
+// (tasks :shizuku:fetchShizukuUpstream / :shizuku:patchShizukuUpstream, before every task that reads the checkout), so a build with Shizuku needs git + python3 + network once (about 4 MB, cached afterwards).
+//   upstream project   -> Gradle project           what it is
+//   :manager           -> :shizuku                 manager UI + native libshizuku.so / libadb.so (the library the Win11 :app depends on)
+//   :aidl :shared :api :provider (api/ submodule)  -> :shizuku-aidl :shizuku-shared :shizuku-api :shizuku-provider   (the client API; :mika's Maven copy of the last two is replaced by these, see build.gradle.kts)
+//   :rish (api/)       -> :shizuku-rish            native librish.so + Java of the "rish" shell
+//   :server-shared     -> :shizuku-server-shared   code shared by server and starter
+//   :common :starter :server -> :shizuku-common :shizuku-starter :shizuku-server   (the server process, started by ADB / root through app_process from the host APK)
+//   :shell             -> :shizuku-shell           an APPLICATION module on purpose: only its classes.dex is wanted (becomes assets/rish_shizuku.dex of :shizuku), it is never part of the APK
+// ON by default since step 8F (it was off from 3B to 8E: nothing compiled, no plugin resolved, the build exactly as before): -PincludeShizuku=false (or includeShizuku=false in gradle.properties) turns it off again.
+// Step 3B added the switch and the include list; the build files of the modules (shizuku/build.gradle.kts, shizuku/modules/<name>/build.gradle.kts) came with 3C - 3E, so all 11 exist now and
+// -PincludeShizuku=true can build them on their own:  ./gradlew :shizuku:assembleDebug -PincludeShizuku=true  (the first real test of the Gradle side). The :app side is 3F (done): app/build.gradle.kts
+// depends on :shizuku and excludes the Rikka AppCompat fork, the root build.gradle.kts replaces :mika's Maven dev.rikka.shizuku:* artifacts by the local modules, gradle.properties documents the flags. All of it only with the flag on:
+// with it on, the Win11 APK now contains Shizuku (the provider authority clash with :mika is removed by a build-type manifest overlay of :app, step 4B-2; not built yet); with it off the build is exactly as before.
+// Why it could be switched on (8F): the Start menu hooks (step 6), the init call in App.onCreate (6E, the built-in boot receiver needs it) and the CI checks (8D) exist. NOT yet seen: a real build of it (the first CI run
+// decides; if it fails, the one-word rollback is the "true" below -> "false", plus the three workflows, see shizuku/README.md "8F"). A build with the switch on needs git + network (fetch) and python3 (patch).
+val includeShizuku = (providers.gradleProperty("includeShizuku").orNull ?: "true") == "true"
+if (includeShizuku) {
+    include(":shizuku")
+    for (sub in listOf("aidl", "shared", "api", "provider", "rish", "server-shared", "common", "starter", "server", "shell")) {
+        include(":shizuku-$sub")
+        project(":shizuku-$sub").projectDir = file("shizuku/modules/$sub")
+    }
 }

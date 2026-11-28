@@ -38,6 +38,16 @@ What it does (all inside mika/upstream/app/src/main):
                           the other Win11 modules (compose-bom-alpha 2025.03.01; upstream builds with 2024.12.01): `:mika:compileReleaseKotlin` failed with two
                           `Unresolved reference` errors. They become `minOf/maxOf(anchors.positionOf(Closed), anchors.positionOf(Open))`, which means the same (the drawer has
                           exactly these two anchors) and exists in every Foundation version.
+ 15. Shizuku queries (Shizuku step 7A-1.1) Mika's `<queries><package android:name="moe.shizuku.privileged.api"/>` is the package of the EXTERNAL Shizuku app. With the manager built into the
+                          host (environment MIKA_SHIZUKU_BUILTIN=1, set by the Gradle task :mika:patchMikaUpstream when :shizuku is in the build) the entry becomes
+                          `<package android:name="${applicationId}"/>` (the host package, renamed with the app). Without the manager (variable unset or 0) the stock name is
+                          written, so the same checkout can be patched in either direction (the switch is part of the stamp). Nothing else of <queries> is touched.
+ 16. Shizuku package (Shizuku step 7A-2.1) ShizukuController.kt (the Kotlin side of finding 7) names the EXTERNAL Shizuku app in `const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"`:
+                          `isPackageInstalled()` asks the package manager for it and `openShizukuApp()` starts its launch intent. With the manager built into the host (same switch
+                          MIKA_SHIZUKU_BUILTIN=1) the manager IS the host: `isPackageInstalled()` asks for `app.packageName` (a run-time value, so the package rename of the workflows
+                          cannot leave a stale name) and `openShizukuApp()` starts the manager's start screen `moe.shizuku.manager.MainActivity` inside the host package (the launch intent of
+                          the host package would open the Win11 launcher, not Shizuku). The const becomes `SHIZUKU_MANAGER_ACTIVITY`, so no `moe.shizuku.privileged.api` is left in Mika's
+                          Kotlin. Without the manager the stock text is written back (two-way, like part 15; the switch is part of the stamp).
 Checks at the end (exit 1 with ::error:: when something is off): manifest parses, no application attributes / launcher filter left, `open class MikaApp`,
 no un-prefixed clashing resource left, no Latin "Mika" left in the UI text (except URL / github tokens).
 Not done here (later parts): persona / prompts (core resources still say Mika, part 14), notification icon.
@@ -498,6 +508,84 @@ def patch_drawer_anchors():
     return write_if_changed(DRAWER_FILE, s.replace(DRAWER_OLD, DRAWER_NEW, 1), s)
 
 
+# ---------------------------------------------------------------- 15. Shizuku queries (Shizuku step 7A-1.1)
+SHIZUKU_BUILTIN = os.environ.get("MIKA_SHIZUKU_BUILTIN", "0").strip() == "1"     # the manager of :shizuku is part of the build
+SHIZUKU_STOCK_PKG = "moe.shizuku.privileged.api"                                 # package of the EXTERNAL Shizuku app (upstream's entry)
+SHIZUKU_HOST_PKG = "${applicationId}"                                            # the host package; resolved by the manifest merger
+RX_QUERY_PKG = re.compile(r'(<package\s+android:name=")(%s|%s)("\s*/>)' % (re.escape(SHIZUKU_STOCK_PKG), re.escape(SHIZUKU_HOST_PKG)))
+
+
+def patch_shizuku_queries():
+    """Writes the host package (manager built in) or the stock package (no manager) into the one <queries><package> entry of the external Shizuku app.
+    Both spellings are accepted as input, so the result depends only on the switch and a second run changes nothing."""
+    s = read(MANIFEST)
+    o = s
+    want = SHIZUKU_HOST_PKG if SHIZUKU_BUILTIN else SHIZUKU_STOCK_PKG
+    found = RX_QUERY_PKG.findall(s)
+    if len(found) != 1:
+        err("expected exactly one <queries><package> entry for the Shizuku app in AndroidManifest.xml, found %d (upstream layout changed, review patch_shizuku_queries)" % len(found))
+    s = RX_QUERY_PKG.sub(lambda m: m.group(1) + want + m.group(3), s, count=1)
+    return write_if_changed(MANIFEST, s, o)
+
+
+def check_shizuku_queries():
+    root = ET.fromstring(read(MANIFEST).encode("utf-8"))
+    ANDROID = "{http://schemas.android.com/apk/res/android}"
+    names = [p.get(ANDROID + "name") for q in root.findall("queries") for p in q.findall("package")]
+    want = SHIZUKU_HOST_PKG if SHIZUKU_BUILTIN else SHIZUKU_STOCK_PKG
+    other = SHIZUKU_STOCK_PKG if SHIZUKU_BUILTIN else SHIZUKU_HOST_PKG
+    if names.count(want) != 1 or names.count(other) != 0:
+        err("<queries> must hold exactly one Shizuku package entry %r (manager %s), found %s" % (want, "built in" if SHIZUKU_BUILTIN else "not built in", names))
+    if SHIZUKU_BUILTIN and SHIZUKU_STOCK_PKG in read(MANIFEST):
+        err("the stale package %s is still in the Mika manifest although the manager is built in" % SHIZUKU_STOCK_PKG)
+
+
+# ---------------------------------------------------------------- 16. Shizuku package (Shizuku step 7A-2.1)
+SHIZUKU_CTRL = os.path.join(JAVA, "com", "wangzan101", "mika", "cap", "phone", "setup", "ShizukuController.kt")
+SHIZUKU_MANAGER_ACTIVITY = "moe.shizuku.manager.MainActivity"                    # start screen of the built-in manager (same name as ShizukuLauncher.MANAGER_ACTIVITY in :app)
+# (stock text, built-in text) of the three places; the patch writes the one the switch asks for and accepts either as input
+SHIZUKU_CONST = ('        const val SHIZUKU_PACKAGE = "%s"\n' % SHIZUKU_STOCK_PKG,
+                 '        const val SHIZUKU_MANAGER_ACTIVITY = "%s"\n' % SHIZUKU_MANAGER_ACTIVITY)
+SHIZUKU_INTENT = ('            val intent = ctx.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE) ?: return false\n',
+                  '            val intent = Intent().setClassName(ctx.packageName, SHIZUKU_MANAGER_ACTIVITY)\n')
+SHIZUKU_INFO = ("SHIZUKU_PACKAGE", "app.packageName")                               # the first argument of the two getPackageInfo() calls
+RX_PKG_INFO = re.compile(r"(app\.packageManager\.getPackageInfo\()(%s|%s)(, )" % tuple(re.escape(x) for x in SHIZUKU_INFO))
+
+
+def patch_shizuku_package():
+    """Writes the built-in spelling (manager built in) or the stock spelling (no manager) into ShizukuController.kt; both spellings are accepted as input, so the
+    result depends only on the switch and a second run changes nothing. Strict: every place must be found exactly once (twice for getPackageInfo)."""
+    s = read(SHIZUKU_CTRL)
+    o = s
+    i = 1 if SHIZUKU_BUILTIN else 0
+    for what, pair in (("the SHIZUKU_PACKAGE constant", SHIZUKU_CONST), ("the launch intent of openShizukuApp()", SHIZUKU_INTENT)):
+        n = s.count(pair[0]) + s.count(pair[1])
+        if n != 1:
+            err("ShizukuController.kt: %s not found exactly once (found %d; upstream layout changed, review patch_shizuku_package)" % (what, n))
+        s = s.replace(pair[1 - i], pair[i], 1) if pair[1 - i] in s else s
+    found = RX_PKG_INFO.findall(s)
+    if len(found) != 2:
+        err("ShizukuController.kt: expected 2 getPackageInfo(<package>, ...) calls of the Shizuku app, found %d (upstream layout changed, review patch_shizuku_package)" % len(found))
+    s = RX_PKG_INFO.sub(lambda m: m.group(1) + SHIZUKU_INFO[i] + m.group(3), s)
+    return write_if_changed(SHIZUKU_CTRL, s, o)
+
+
+def check_shizuku_package():
+    s = read(SHIZUKU_CTRL)
+    i = 1 if SHIZUKU_BUILTIN else 0
+    for what, pair in (("constant", SHIZUKU_CONST), ("launch intent", SHIZUKU_INTENT)):
+        if s.count(pair[i]) != 1 or s.count(pair[1 - i]) != 0:
+            err("ShizukuController.kt: the %s is not in the %s spelling (manager %s)" % (what, "built-in" if SHIZUKU_BUILTIN else "stock", "built in" if SHIZUKU_BUILTIN else "not built in"))
+    args = [m.group(2) for m in RX_PKG_INFO.finditer(s)]
+    if args != [SHIZUKU_INFO[i]] * 2:
+        err("ShizukuController.kt: getPackageInfo() must ask for %s twice, found %s" % (SHIZUKU_INFO[i], args))
+    if SHIZUKU_BUILTIN:
+        if SHIZUKU_STOCK_PKG in s or re.search(r"\bSHIZUKU_PACKAGE\b", s):
+            err("the stale package %s / SHIZUKU_PACKAGE is still in ShizukuController.kt although the manager is built in" % SHIZUKU_STOCK_PKG)
+    elif "SHIZUKU_MANAGER_ACTIVITY" in s or "app.packageName, " in s.split("isPackageInstalled", 1)[1][:400]:
+        err("the built-in spelling is still in ShizukuController.kt although the manager is not built in")
+
+
 # ---------------------------------------------------------------- checks
 def check():
     s = read(MANIFEST)
@@ -528,6 +616,8 @@ def check():
     lost = [p for p in KEEP_PERMISSIONS if p not in have]
     if lost:
         err("permission(s) missing from the Mika manifest (Mika keeps all of them): " + ", ".join(lost))
+    check_shizuku_queries()
+    check_shizuku_package()
     acts = {e.get(ANDROID + "name"): e for e in root.iter("activity")}
     for name, own_task in UI_ACTIVITIES.items():
         e = acts.get(name)
@@ -593,6 +683,7 @@ def main():
     if os.path.isdir(OWN_LIC):                       # part 11: the notice text is part of the result, so it is part of the stamp
         for fn in sorted(os.listdir(OWN_LIC)):
             me.update(fn.encode() + open(os.path.join(OWN_LIC, fn), "rb").read())
+    me.update(b"shizuku-builtin=" + (b"1" if SHIZUKU_BUILTIN else b"0"))       # step 7A-1.1: the switch is part of the result, so part of the stamp
     stamp = me.hexdigest()
     if os.path.exists(MARKER) and read(MARKER).strip() == stamp and not os.environ.get("MIKA_FORCE_PATCH"):
         print("patch-upstream: already patched (same script), nothing to do")
@@ -612,6 +703,8 @@ def main():
         "MainActivity start": patch_main_activity(),
         "licence assets": patch_license_assets(),
         "drawer anchors": patch_drawer_anchors(),
+        "shizuku queries (%s)" % ("host" if SHIZUKU_BUILTIN else "stock"): patch_shizuku_queries(),
+        "shizuku package (%s)" % ("host" if SHIZUKU_BUILTIN else "stock"): patch_shizuku_package(),
     }
     check()
     with open(MARKER, "w", encoding="utf-8") as f:

@@ -60,3 +60,39 @@ allprojects {
         }
     }
 }
+
+// Shizuku, step 3F (see shizuku/README.md, "3F"). Only when the Shizuku projects are part of the build (includeShizuku, on by default since 8F, settings.gradle.kts): the check is
+// "does the project exist", the same signal :app uses, so the property is read in one place only (settings.gradle.kts).
+//
+// :mika (Rizwan assistant) asks for the Maven artifacts dev.rikka.shizuku:api and :provider (13.1.5, mika/build.gradle.kts; that file keeps the two lines on purpose: the
+// "without" workflow and mika/tools/check-manifest.py read them). Our :shizuku-api / :shizuku-provider are the SAME classes in the SAME namespaces (rikka.shizuku.api,
+// rikka.shizuku.provider), built from the pinned API commit (API 13.1.5, shizuku/UPSTREAM_API_COMMIT) and patched (ShizukuProvider: host package). Both on one class path
+// = "Duplicate class rikka.shizuku.*" in D8 (and AGP refuses two modules with one namespace). So every request for the four Maven artifacts is answered by the local project
+// instead, in EVERY module and every configuration (also when a third-party library asks for one of them). Any version number is matched (module() without a version).
+// aidl and shared are in the list although :mika does not ask for them directly: the Maven api POM brings them in, and :shizuku-api exposes the local ones with api(...).
+// Not done in mika/build.gradle.kts (an `if` around the two lines): that would need a second place that knows the switch, and the checks of Mika read those two lines.
+// With the switch off (-PincludeShizuku=false) nothing here runs and the build is exactly as before.
+val shizukuSubstitutions: Map<String, String> =
+    if (findProject(":shizuku-api") != null) {
+        mapOf(
+            "dev.rikka.shizuku:aidl" to ":shizuku-aidl",
+            "dev.rikka.shizuku:shared" to ":shizuku-shared",
+            "dev.rikka.shizuku:api" to ":shizuku-api",
+            "dev.rikka.shizuku:provider" to ":shizuku-provider",
+        )
+    } else {
+        emptyMap()
+    }
+if (shizukuSubstitutions.isNotEmpty()) {
+    allprojects {
+        configurations.configureEach {
+            resolutionStrategy.dependencySubstitution {
+                for ((artifact, localPath) in shizukuSubstitutions) {
+                    substitute(module(artifact))
+                        .using(project(localPath))
+                        .because("the Shizuku API classes are built in this project (patched copy of the same API version); the Maven artifact would be a duplicate")
+                }
+            }
+        }
+    }
+}

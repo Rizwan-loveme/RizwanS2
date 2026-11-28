@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- :shizuku-shell (Shizuku step 3C): an application module only because it must produce a classes.dex (see build.gradle.kts). Nothing here is ever installed:
+     no activity, no service, no permission. The namespace (rikka.shizuku.shell) comes from the build file. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="Shizuku shell (dex only)" />
+
+</manifest>
