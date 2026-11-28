@@ -5,10 +5,7 @@ Run by the three workflows after the build (the merged manifest is under app/bui
 check-manifest.py (step 7) checks the SOURCE manifests before the build; this one checks what the Android manifest merger really produced:
 
   1. every one of Mika's 30 permissions (patch-upstream.py KEEP_PERMISSIONS) is in the merged manifest (the owner's rule: none is removed)
-  2. every component (activity / service / receiver / provider) that Mika's library manifest declares is in the merged manifest. ONE exception (Shizuku step 4B-3): with the built-in
-     Shizuku manager in the build, Mika's rikka.shizuku.ShizukuProvider is removed on purpose (app/src/shizuku/AndroidManifest.xml, tools:node="remove"); it may then be missing,
-     but only if moe.shizuku.manager.ShizukuManagerProvider is a provider of the merged manifest with an authority ending in .shizuku (the one it replaces). Without the manager
-     the provider must still be there (it is the only receiver of the binder from an external Shizuku app)
+  2. every component (activity / service / receiver / provider) that Mika's library manifest declares is in the merged manifest
   3. no component of Mika is a launcher: no MAIN + LAUNCHER filter, no HOME category (:app's MainActivity stays the only HOME activity)
   4. every component of Mika with an intent filter, and every provider, has an explicit android:exported (the merger needs it at targetSdk 31+)
   5. no placeholder (${applicationId}) is left unresolved in a Mika component (authorities, task affinity)
@@ -32,9 +29,6 @@ MAIN_ACTIVITY = MIKA_NS + ".ui.MainActivity"
 HOME = "android.intent.category.HOME"
 LAUNCHER = "android.intent.category.LAUNCHER"
 KINDS = ("activity", "activity-alias", "service", "receiver", "provider")
-# Shizuku step 4B-3: the one component of Mika that may be replaced by a component of the built-in Shizuku manager (same authority ${applicationId}.shizuku)
-SHIZUKU_PROVIDER = "rikka.shizuku.ShizukuProvider"
-SHIZUKU_MANAGER_PROVIDER = "moe.shizuku.manager.ShizukuManagerProvider"
 
 
 def fq(name):
@@ -83,17 +77,8 @@ def main(merged_path):
     # 2. components
     lib_comps = components(lib.find("application"), fq)
     merged_comps = components(m_app, lambda n: n)
-    replaced = []
     for name, (kind, _e) in sorted(lib_comps.items()):
         if name not in merged_comps:
-            if name == SHIZUKU_PROVIDER and SHIZUKU_MANAGER_PROVIDER in merged_comps:
-                mk, me = merged_comps[SHIZUKU_MANAGER_PROVIDER]
-                auths = [a.strip() for a in (me.get(A + "authorities") or "").split(";") if a.strip()]
-                if mk == "provider" and any(a.endswith(".shizuku") for a in auths):
-                    replaced.append(name)          # removed on purpose, the manager's provider took over its authority
-                    continue
-                errors.append("provider %s is gone and %s is not a provider with an authority ending in .shizuku (found %s)" % (name, SHIZUKU_MANAGER_PROVIDER, auths or mk))
-                continue
             errors.append("%s %s is in Mika's manifest but not in the merged manifest" % (kind, name))
 
     # 3 + 4 + 5. no launcher, explicit exported, no open placeholder
@@ -156,9 +141,8 @@ def main(merged_path):
     kinds = {}
     for _n, (k, _e) in lib_comps.items():
         kinds[k] = kinds.get(k, 0) + 1
-    print("Mika: %d permissions and %d components (%s) are in the merged manifest%s; no launcher filter; the only HOME activity is %s"
-          % (len(patch.KEEP_PERMISSIONS), len(lib_comps) - len(replaced), ", ".join("%d %s" % (v - (1 if k == "provider" and replaced else 0), k) for k, v in sorted(kinds.items())),
-             " (+ %s replaced by %s on purpose, Shizuku built in)" % (replaced[0], SHIZUKU_MANAGER_PROVIDER) if replaced else "", homes[0]))
+    print("Mika: %d permissions and %d components (%s) are in the merged manifest; no launcher filter; the only HOME activity is %s"
+          % (len(patch.KEEP_PERMISSIONS), len(lib_comps), ", ".join("%d %s" % (v, k) for k, v in sorted(kinds.items())), homes[0]))
     return 0
 
 

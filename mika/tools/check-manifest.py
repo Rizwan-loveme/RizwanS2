@@ -17,13 +17,6 @@ AGP merges the library manifest into the app at build time and we cannot run it 
  11. (part 8) the hook MikaLauncher.kt starts a class that the Mika manifest declares (an explicit intent to a missing activity only fails at run time)
  12. (part 11) the licence assets that go into the APK are in the patched checkout (assets/licenses: Apache-2.0, GPL-2.0, GPL-3.0, LGPL-3.0, THIRD_PARTY_NOTICES.md, MIKA-NOTICE.txt,
      RIZWAN-NOTICE.md, gpl-source/ with the PRoot patches and source locks): the licences of what the APK ships (PRoot, talloc, the Alpine root file system) must travel with it
- 13. (Shizuku step 7A-1.1) the one `<queries><package>` entry of the external Shizuku app: with MIKA_SHIZUKU_BUILTIN=1 it must be the host package (`${applicationId}`), with
-     MIKA_SHIZUKU_BUILTIN=0 the stock `moe.shizuku.privileged.api`; with the variable unset either spelling passes (exactly one entry, never both)
-
- 14. (Shizuku step 7A-2.2) the Kotlin side of the same package: ShizukuController.kt in the patched checkout. With MIKA_SHIZUKU_BUILTIN=1 it asks for the host package
-     (`getPackageInfo(app.packageName, ...)` twice), opens the manager with `Intent().setClassName(ctx.packageName, SHIZUKU_MANAGER_ACTIVITY)`, has the constant
-     `SHIZUKU_MANAGER_ACTIVITY = "moe.shizuku.manager.MainActivity"` and no `moe.shizuku.privileged.api` /
-     `SHIZUKU_PACKAGE` anywhere in the file; with MIKA_SHIZUKU_BUILTIN=0 the stock text; with the variable unset either one (never a mixture). Read-only, it does not call the patch.
 
 CI (part 9) runs it right after the fetch + patch, so a changed upstream layout stops the run before the long build. What AGP really merged is checked after the build by
 mika/tools/check-merged-manifest.py (permissions, components, no launcher filter, exported, placeholders, own task, authorities).
@@ -272,37 +265,6 @@ def main():
         err("assets/licenses/gpl-source/patches has %d patches, expected at least %d" % (n_patches, patch.LICENSE_PATCHES_MIN))
     if "libproot.so" in "".join(os.listdir(os.path.join(MAIN, "jniLibs", "arm64-v8a"))) and not os.path.isfile(os.path.join(lic_dir, "GPL-2.0.txt")):
         err("the APK ships libproot.so (GPL-2.0) but assets/licenses/GPL-2.0.txt is missing")
-
-    # 13. Shizuku queries entry (Shizuku step 7A-1.1)
-    sw = os.environ.get("MIKA_SHIZUKU_BUILTIN")
-    q_names = [p.get(A + "name") for q in mika.findall("queries") for p in q.findall("package")]
-    stock, hostp = patch.SHIZUKU_STOCK_PKG, patch.SHIZUKU_HOST_PKG
-    ours = [n for n in q_names if n in (stock, hostp)]
-    want = {"1": [hostp], "0": [stock]}.get(sw.strip() if sw is not None else "", [stock, hostp])
-    if len(ours) != 1 or ours[0] not in want:
-        err("<queries> must hold exactly one Shizuku package entry (%s), found %s" % (" or ".join(want), q_names))
-    if sw == "1" and stock in read(mf):
-        err("the stale package %s is still in the Mika manifest although the manager is built in" % stock)
-
-    # 14. Shizuku package in ShizukuController.kt (Shizuku step 7A-2.2); read-only, the text pairs are the ones of patch-upstream.py part 16
-    ctrl = patch.SHIZUKU_CTRL
-    if not os.path.isfile(ctrl):
-        err("ShizukuController.kt not found (%s): upstream layout changed" % os.path.relpath(ctrl, UP))
-    else:
-        kt = read(ctrl)
-        spellings = {"0": 0, "1": 1}
-        def state(i):
-            return (kt.count(patch.SHIZUKU_CONST[i]) == 1 and kt.count(patch.SHIZUKU_INTENT[i]) == 1
-                    and [m.group(2) for m in patch.RX_PKG_INFO.finditer(kt)] == [patch.SHIZUKU_INFO[i]] * 2
-                    and kt.count(patch.SHIZUKU_CONST[1 - i]) == 0 and kt.count(patch.SHIZUKU_INTENT[1 - i]) == 0)
-        ok_stock, ok_host = state(0), state(1)
-        wanted = spellings.get(sw.strip() if sw is not None else "")
-        okay = (ok_host if wanted == 1 else ok_stock if wanted == 0 else (ok_stock or ok_host))
-        if not okay:
-            err("ShizukuController.kt is not in the %s spelling (a mixture, or upstream changed): constant, launch intent and the two getPackageInfo() calls must all be the same spelling" %
-                ("built-in" if wanted == 1 else "stock" if wanted == 0 else "stock or built-in"))
-        if ok_host and (patch.SHIZUKU_STOCK_PKG in kt or re.search(r"\bSHIZUKU_PACKAGE\b", kt)):
-            err("the stale package %s / SHIZUKU_PACKAGE is still in ShizukuController.kt although it is in the built-in spelling" % patch.SHIZUKU_STOCK_PKG)
 
     # 8. report
     new = sorted(mika_perms - host_perms)

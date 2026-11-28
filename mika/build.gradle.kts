@@ -152,10 +152,6 @@ val patchMikaUpstream = tasks.register<Exec>("patchMikaUpstream") {
     dependsOn(fetchMikaUpstream)
     workingDir = projectDir
     commandLine("bash", "tools/patch-upstream.sh")
-    // Shizuku step 7A-1.1: with the manager built in (settings.gradle.kts included :shizuku, i.e. -PincludeShizuku=true) the `<queries>` entry of the external Shizuku app
-    // becomes the host package; without it the stock name stays. The project test, not the property, is the signal (same as app/build.gradle.kts). The switch is part of
-    // the script's stamp, so a checkout patched the other way is patched again.
-    environment("MIKA_SHIZUKU_BUILTIN", if (rootProject.findProject(":shizuku") != null) "1" else "0")
 }
 // Everything that reads the checkout waits for fetch + patch: preBuild (the umbrella of all variant tasks) and, to be explicit, the tasks that read the source sets
 // directly (resources, assets, jniLibs, manifest, AIDL). :mika-core's tasks wait only for the fetch (see ../mika-core/build.gradle.kts): the patch changes the app side only.

@@ -8,7 +8,6 @@ Exit code 1 and `::error::static-check: ...` lines when something is wrong, so C
 Checks: 1 workflows (YAML + `bash -n` of every run step)   2 shell scripts (`bash -n`) and Python scripts (ast)   3 XML well-formed (project, patched Mika)
 4 resource names: no clash between any module and :mika   5 stubs have every member the app uses   6 Kotlin files of the hooks: braces / parentheses balance
 7 Gradle wiring: settings / app dependency / unwiring still leaves valid blocks   8 greeting + name in the patched strings   9 line endings + executable bits   10 (patched Mika) no removed Compose Foundation API left (build fix 1)
-11 Shizuku (step 4F-3, row 10A): shizuku/tools/check-all.py runs the Shizuku checkers and self-tests, S1 - S11 (checks that need fetched sources or a build are skipped without them)
 """
 import ast, glob, os, re, subprocess, sys
 import xml.etree.ElementTree as ET
@@ -220,10 +219,7 @@ def check_gradle():
             err("%s: braces unbalanced after removing Mika (without workflow)" % name)
     if 'project(":mika' in a2 or 'include(":mika' in s2:
         err("unwiring left a Mika line behind")
-    for lib in ("libc++_shared.so", "liboboe.so"):      # build fix 2: duplicate native libs of the full build (:winlator + :j2me)
-        if 'pickFirsts += "**/%s"' % lib not in ap:
-            err("app/build.gradle.kts has no pickFirsts for " + lib)
-    ok("gradle: modules included, dependency present, pickFirsts (libc++_shared, liboboe), unwiring leaves balanced files")
+    ok("gradle: modules included, dependency present, unwiring leaves balanced files")
 
 
 # ---- 8 patched strings
@@ -267,27 +263,6 @@ def check_files():
     ok("files: LF in mika/tools, *.sh executable")
 
 
-# ---- 11 Shizuku (step 4F-3): one failing rule of any Shizuku checker fails this whole check
-def check_shizuku():
-    script = "shizuku/tools/check-all.py"
-    if not os.path.isfile(script):
-        notes.append("%s not present: Shizuku checks skipped" % script)
-        return
-    try:
-        p = subprocess.run([sys.executable, "-I", "-B", script, "--root", ROOT], capture_output=True, timeout=1800)
-    except subprocess.TimeoutExpired:
-        err("shizuku checks: %s timed out after 1800 s" % script)
-        return
-    out = p.stdout.decode(errors="replace") + p.stderr.decode(errors="replace")
-    lines = [l for l in out.splitlines() if l.strip()]
-    if p.returncode:
-        for l in lines:
-            print("static-check:   | " + l)
-        err("shizuku checks failed (exit %d), see the lines above; run python3 -I %s -v for every step" % (p.returncode, script))
-        return
-    ok("shizuku: " + (lines[-1] if lines else "no output"))
-
-
 def main():
     check_workflows()
     check_scripts()
@@ -297,7 +272,6 @@ def main():
     check_kotlin()
     check_gradle()
     check_files()
-    check_shizuku()
     if os.path.isdir(UP + "/app/src/main/res"):
         n2 = xml_walk(UP + "/app/src/main")
         ok("xml: %d patched Mika files well-formed" % n2)

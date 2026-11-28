@@ -27,15 +27,6 @@ The upstream sources are not stored in this project. `mika/tools/fetch-upstream.
 Every changed file is listed in `mika/README.md`. The name "Mika" and its logo are not used as this app's own brand (Apache-2.0 section 6 gives no
 trademark rights).
 
-## Shizuku hook-up (only when the built-in Shizuku manager is in the build; step 7)
-
-With the Shizuku manager in the build (`includeShizuku`, the default since step 8F; `-PincludeShizuku=false` leaves it out) it is built into Win11 (`NOTICE-Shizuku.md`) and Mika uses it instead of an external Shizuku app. Mika's own code is changed in two places by the build-time patch (`mika/tools/patch-upstream.py`, part 16); everything else is done on the Win11 side. With the switch off nothing below applies and Mika is as described above.
-
-- **Changed in Mika's sources (part 16, build checkout only):** the `<queries>` entry of the external Shizuku app in Mika's manifest names the host package instead of `moe.shizuku.privileged.api`; in `ShizukuController.kt` the package constant `SHIZUKU_PACKAGE` is replaced by the host package (two package-manager lookups) and by the manager's activity class (`SHIZUKU_MANAGER_ACTIVITY`, used to open the manager). The patch is two-way: without the manager the stock text is written back. `mika/tools/check-manifest.py` (checks 13 and 14) reads the result.
-- **Not changed in Mika's sources, done on the Win11 side:** Mika's `rikka.shizuku.ShizukuProvider` entry is removed from the merged manifest by an overlay in `:app` (`app/src/shizuku/AndroidManifest.xml`), so one provider (the manager's, a subclass of that class) owns the authority `${applicationId}.shizuku`; the Maven artifacts `dev.rikka.shizuku:api` / `provider` are replaced by the local modules; Mika's 30 permissions are kept and none of them is a Shizuku permission.
-- **Notes from the check rows (read in the project files, not run on a device):** the host does not request `moe.shizuku.manager.permission.API_V23` (it is the manager; the server is believed to treat the manager's app id as always allowed); `ShizukuShellUserService` is expected to bind through the manager's provider (`sendUserService`) because `BuildConfig.APPLICATION_ID` is the host package, the class is in the one APK and `:app` release does no code shrinking. Details and what each statement rests on: `shizuku/README.md`, sections 7A-1.1 to 7D, and `docs/CHANGES-shizuku-part7.md`.
-- **Licence:** Shizuku and Shizuku-API are Apache-2.0 / MIT as listed in `NOTICE-Shizuku.md`; nothing here changes the licence of Mika.
-
 ## Third-party parts that come with Mika
 
 Upstream's own notices are in its `licenses/THIRD_PARTY_NOTICES.md` (calls feature from FlashPhone, Apache-2.0; scrcpy, Apache-2.0; the libraries; and the parts below).

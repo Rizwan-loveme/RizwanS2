@@ -18,7 +18,7 @@ import ohi.andre.consolelauncher.TuiHost
 //  * Built-in apps (the entries of AppRepository.builtInApps() that make sense as a command): name, label and key below. The keys MUST stay equal to the
 //    BUILTIN_CLS_* constants of StartApps.kt; the label is the name shown in the Start menu. Notifications is left out (a settings screen, no deep link).
 //  * Opening one: Gallery, Video, YouTube, Camera, Calculator and Parallel are separate activities: started directly from the terminal screen (the terminal stays
-//    under them, Back returns). Files, Browser, Messages, Winlator, J2ME, PPSSPP, MAME, RetroArch, the Downloader, Rizwan and Shizuku are screens / launchers of MainActivity, so
+//    under them, Back returns). Files, Browser, Messages, Winlator, J2ME, PPSSPP, MAME, RetroArch, the Downloader and Rizwan are screens / launchers of MainActivity, so
 //    they go through its deep link (rizwans2://<name>, an explicit start of MainActivity, which is never forwarded back to the terminal): in the TERMINAL theme
 //    MainActivity is created on top of the terminal (Back returns to it; a Home press shows the terminal again, step 9); in the Win11 theme MainActivity is already
 //    there (singleTask), so Android brings it to the front and closes the terminal above it (it can be opened again with the Terminal card / rizwans2://terminal).
@@ -60,8 +60,6 @@ object TerminalShare : TuiHost.Share {
         add(BuiltIn("retroarch", "RetroArch", "builtin.retroarch"))
         // like the Start menu: Rizwan only on the phones that can run it (Android 10+, 64-bit ARM)
         if (MikaLauncher.isSupported()) add(BuiltIn(MikaLauncher.SECTION, MikaLauncher.NAME, "builtin.rizwan"))
-        // like the Start menu: Shizuku only when :shizuku is in the build (opens rizwans2://shizuku, hook 6D)
-        if (ShizukuLauncher.isAvailable(app)) add(BuiltIn(ShizukuLauncher.SECTION, ShizukuLauncher.NAME, "builtin.shizuku"))
     }
 
     // ── lists (the Start menu's preferences) ─────────────────────────
