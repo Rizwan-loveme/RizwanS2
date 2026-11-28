@@ -1,0 +1,19 @@
+# Shizuku — row 5C (binder extras, `ShizukuReceiver`, the `MANAGER` check)
+
+Request: 5C, keep all details, update the full flat zip. Based on `RizwanS2-main-shizuku-step5b2.zip` (5A, 5B-1 and 5B-2 done there). The pasted summary of the request was older than the zip; the zip's state was used (next row was 5C).
+
+Finding 15: the binder extra key `moe.shizuku.privileged.api.intent.extra.BINDER` (4 of the 9 uses of the old manager name: `ShizukuService`, `ServiceStarter`, `ShizukuManagerProvider`, API `ShizukuProvider`) is a protocol name, not a package: the server hands the binder to a provider under it and every Shizuku client reads exactly it. Part A of the patch script had replaced it by the host package like the real package-name uses. Inside the app that still works (server, starter, manager and Mika's patched provider agree), but no outside Shizuku client would ever receive the binder, silently. `BinderSender` and `ShizukuReceiver` hold no old name and need nothing; the `MANAGER` permission names stay and the checks of 4C-3 / 4E-3 already cover them.
+
+Changed:
+- `shizuku/tools/patch-upstream.py`: new `BINDER_EXTRA`, `BINDER_EXTRA_KEPT` (the four files, one key each), `OLD_NAME_RE` / `BINDER_EXTRA_RE`; `patch_package()` asserts per file the number of old names and of kept keys and replaces the old name except as the start of the key (so part A writes the host package in **5 places in 5 files**, not 9 in 7); new `host_places()`; new self-check rule `check_binder_protocol()` (key only in the four files, never spelled with the host package, host places per file, no old name outside the key); the old-name test of `check()` uses `OLD_NAME_RE`; header and success line updated. Nothing else the script writes changed.
+- `shizuku/tools/sweep-package-strings.py`: expected host places 7 in 7 files (5 + the 2 `BuildConfig` ones), the old name allowed only as the kept key, the key counted per file (exactly the four), report line for it; `--self-test` 30 -> 37 cases.
+- `shizuku/tools/check-gradle.py`: new item 11 (`5C binder keys`, `5C binder patch`, `5C binder check`); `--self-test` 44 -> 47 cases; header text updated.
+- `shizuku/tools/test-patch-host-package.py`: 22 new cases (38 -> 60).
+- `shizuku/tools/check-all.py`: docstring says 47 cases for S2 (no behaviour change).
+- Docs: `shizuku/README.md` (plan row 5, row 5C done with details, new section "5C", finding 15 in the 4A table, notes in rows 5A / 5D / 10A, hand-over bullet, live-checks table with the two tools that are not wired, open list of 4G-2: update on S6 and one device check, update note in the step 2 section), `README.md` (plan row 5 and a state paragraph), `NOTICE-Shizuku.md` (two lines: the key stays, the host package is written in 5 places), this file. Earlier sections keep the numbers they measured then (9 places in 7 files, 11 in 9, 44 and 33 cases).
+
+Run: `test-patch-host-package.py` 60 of 60 (two throw-away mutations made 8 and 6 of the new cases fail, so they can fail); `sweep-package-strings.py --self-test` 37 of 37; `check-gradle.py --self-test` 47 of 47; `check-gradle.py` (also `--no-run`) ok; `check-all.py` (S1 - S4 ok, S5 - S7 skipped, exit 0), its `--self-test` 64 checks; `test-check-merged-manifest.py --no-real` 122 cases; `mika/tools/static-check.py` all checks passed.
+
+Not run / not read: the real v13.6.0 sources and the patch script on them (no network): the key spelling, the four files and the per-file numbers come from the step 1 / 2 records, the first CI run (S6, sweep) confirms them; the check before it is `grep -rn "intent.extra.BINDER" shizuku/upstream`. Device behaviour: an outside Shizuku client gets the binder from the built-in server (new item in the open list of 4G-2). No workflow, manifest, Gradle build logic, Kotlin / Java file or resource of the project touched; `includeShizuku` is still off by default.
+
+Flat zip: `RizwanS2-main-shizuku-step5c.zip`. Next: 5D (intent actions, same principle), then 5E - 5G.

@@ -5,6 +5,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Shizuku (step 3F, shizuku/README.md "3F"): true only when settings.gradle.kts included the Shizuku projects (includeShizuku, on by default since 8F). The project test, not the property, is the signal
+// (the property is read in one place, settings.gradle.kts, so the two can never disagree). With it false nothing below changes: the build is exactly as before.
+val shizukuIncluded: Boolean = rootProject.findProject(":shizuku") != null
+
 android {
     namespace = "com.srizwan.win11"
     compileSdk = 37
@@ -37,6 +41,14 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    // Shizuku (step 4B-2, shizuku/README.md "4B-2"): Mika's library manifest and the built-in manager both declare a provider with the authority ${applicationId}.shizuku
+    // (INSTALL_FAILED_CONFLICTING_PROVIDER). src/shizuku/AndroidManifest.xml removes Mika's rikka.shizuku.ShizukuProvider (tools:node="remove"); a build-type manifest outranks
+    // src/main and the libraries. Wired for both build types (`debug` is implicit, `release` is declared above) and ONLY when :shizuku is in the build: with it false nothing is
+    // wired and Mika keeps its provider (the only receiver of the binder from an external Shizuku app).
+    if (shizukuIncluded) {
+        sourceSets.getByName("debug").manifest.srcFile("src/shizuku/AndroidManifest.xml")
+        sourceSets.getByName("release").manifest.srcFile("src/shizuku/AndroidManifest.xml")
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -50,10 +62,20 @@ android {
             useLegacyPackaging = true
             // :winlator and :j2me (ndk-build, c++_shared) / ffmpeg-kit / oboe each bring a libc++_shared.so
             pickFirsts += "**/libc++_shared.so"
+            // Build fix 2: a build WITH :winlator and :j2me failed in :app:mergeReleaseNativeLibs ("2 files found with path 'lib/arm64-v8a/liboboe.so'"):
+            // :winlator ships a prebuilt Oboe 1.9.0 (jniLibs, used by its fluidsynth / MIDI audio), :j2me gets Oboe 1.11.0 from the Prefab package. One copy is kept
+            // for the whole app (same risk as libc++_shared.so above: audio of the other user of Oboe could misbehave if the versions differ, see docs/CHANGES-mika-fix2.md).
+            pickFirsts += "**/liboboe.so"
         }
         // :seal (Seal's libraries ship duplicate licence files; upstream excludes the same two)
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Shizuku (3F): the manager's BouncyCastle 1.70 (bcprov / bcpkix / bcutil, ADB pairing keys) ships the same multi-release files in each jar
+            // (META-INF/versions/9/OSGI-INF/MANIFEST.MF, module-info.class): the known "2 files found with path" error of mergeReleaseJavaResource. Android does not read
+            // META-INF/versions, so they are not packed. Precaution written without a Gradle run (see shizuku/README.md "Not verified in 3F"); only with Shizuku in the build.
+            if (shizukuIncluded) {
+                excludes += "/META-INF/versions/**"
+            }
         }
     }
     
@@ -116,6 +138,14 @@ dependencies {
     if ((findProperty("includeMika") as String?) != "false") {
         implementation(project(":mika"))
     }
+    // Shizuku: built-in Shizuku manager (package moe.shizuku.manager, Apache-2.0; Shizuku-API MIT). Step 3F: the module is wired in (settings.gradle.kts, -PincludeShizuku; on by default since step 8F).
+    // It brings the server / starter / rish / API modules and both native libraries (libshizuku.so, libadb.so, librish.so) with it. Step 4B (provider clash) is done: both :mika and
+    // :shizuku declare a provider with the authority ${applicationId}.shizuku, and the build-type overlay src/shizuku/AndroidManifest.xml (see the sourceSets block in android { }) removes
+    // Mika's rikka.shizuku.ShizukuProvider, so the two modules no longer clash at install time. The other manifest rows (4C - 4E: permissions, components, the merged-manifest checker) are done too.
+    // NOT yet done: the hooks and the init call (step 6), the CI work (step 8); the hooks (6), the init call (6E) and the CI checks (8D) are done and the default is on since 8F. See shizuku/README.md "4B-2", "4B-4" and "4F-2".
+    if (shizukuIncluded) {
+        implementation(project(":shizuku"))
+    }
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 	implementation("androidx.webkit:webkit:1.11.0")
@@ -128,4 +158,14 @@ dependencies {
     implementation("org.jsoup:jsoup:1.17.2")
     // Desugaring for :youtube
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+}
+
+// The Rikka AppCompat fork must not reach the APK (step 3F, decision 1 in shizuku/README.md). Upstream's Shizuku manager uses dev.rikka.rikkax.appcompat:appcompat, a modified copy of
+// AndroidX AppCompat with the SAME class names, and removes androidx.appcompat from its build; both in one APK = duplicate classes (and the fork would change AppCompat for every
+// module of Win11). :shizuku excludes it itself and uses the stock androidx.appcompat; this is the same exclusion for the final class path of the app, because a rikkax library
+// (material, preference ...) may still list the fork in its POM. Every configuration, so compile, runtime and the packaging tasks agree. Only with Shizuku in the build.
+if (shizukuIncluded) {
+    configurations.configureEach {
+        exclude(group = "dev.rikka.rikkax.appcompat", module = "appcompat")
+    }
 }

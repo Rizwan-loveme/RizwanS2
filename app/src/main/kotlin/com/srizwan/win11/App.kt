@@ -35,6 +35,9 @@ import java.io.File
  * casts), so App extends [AppBase], which extends MikaApp. MikaApp.onCreate is patched so that it starts nothing by itself: the Win11 processes listed above (all but the
  * launcher's) never run any Mika code, and in the launcher process Mika is started at the very end of onCreate, after BlackBox, logging and Seal, by startMikaIfUsed()
  * (only when Rizwan was opened before on this phone; the first start comes from the hooks of step 8 through startMikaNow()). A failure only gets logged.
+ *
+ * The built-in Shizuku manager (:shizuku, step 6E, shizuku/README.md): it runs in the launcher's own process too. Its one init call, ShizukuLauncher.initApplication(this), sits in onCreate
+ * (launcher process only) after the "process start" log line and before the Seal block; it does nothing when :shizuku is not in the build.
  */
 class App : AppBase() {
 
@@ -82,6 +85,13 @@ class App : AppBase() {
         try { TerminalShare.register(this) } catch (e: Throwable) { AppLog.e("App", "terminal share failed", e) }
         WinlatorLauncher.installLogBridge()
         AppLog.i("App", "process start | ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+        // Shizuku (:shizuku, step 6E): upstream's Application.onCreate work (application, ShizukuSettings, locale). Launcher process only, before any receiver / screen of this process
+        // (the boot receiver needs it, finding 13), so it sits here, before Seal. Does nothing when :shizuku is not in the build. A failure only gets logged.
+        try {
+            ShizukuLauncher.initApplication(this)
+        } catch (e: Throwable) {
+            AppLog.e("App", "Shizuku init failed", e)
+        }
         // Seal (:seal, part 4): MMKV, Koin, download folders, notification channels; the yt-dlp engine unpacks in the background.
         // A failure here must never stop the launcher, so it is only logged.
         try {

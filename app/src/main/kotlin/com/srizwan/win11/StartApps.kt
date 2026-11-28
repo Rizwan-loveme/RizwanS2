@@ -111,6 +111,10 @@ class AppRepository(private val ctx: Context) {
         private const val BUILTIN_CLS_RETROARCH = "builtin.retroarch"
         private const val BUILTIN_CLS_SEAL = "builtin.seal"
         private const val BUILTIN_CLS_RIZWAN = "builtin.rizwan"
+        private const val BUILTIN_CLS_SHIZUKU = "builtin.shizuku"
+        /** Shield with a hollow check mark (even-odd fill): the built-in Shizuku manager (:shizuku module, package moe.shizuku.manager; shown as "Shizuku"). */
+        private const val SHIZUKU_PATH =
+            "M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1ZM10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"
         /** Large four-point sparkle with a small one (assistant): the built-in Rizwan app (:mika module = Mika, package com.wangzan101.mika; shown as "Rizwan"). */
         private const val RIZWAN_PATH =
             "M12,3L14.5,9.5L21,12L14.5,14.5L12,21L9.5,14.5L3,12L9.5,9.5ZM19,2L19.9,4.1L22,5L19.9,5.9L19,8L18.1,5.9L16,5L18.1,4.1Z"
@@ -346,6 +350,18 @@ class AppRepository(private val ctx: Context) {
                 MikaLauncher.NAME, ctx.packageName, BUILTIN_CLS_RIZWAN,
                 BuiltInIconDrawable(RIZWAN_PATH, Color.parseColor("#B185FF")),
                 section = MikaLauncher.SECTION
+            )
+        ) else emptyList()
+    ) + (
+        // Built-in Shizuku manager (:shizuku module, moe.shizuku.manager.MainActivity), vector icon only (Shizuku's own logo is not used). Shown only when :shizuku is in
+        // this build (-PincludeShizuku=true, default off until step 8F) and its activity is in the installed manifest (ShizukuLauncher.isAvailable()): otherwise no entry.
+        // It takes its normal A - Z place in "All apps" (so the numbers rizwans2://N of every app after "Shizuku" move by +1, only where it is shown; not auto-pinned).
+        // Opened through ShizukuLauncher.open() (MainActivity's taskbar callback, section "shizuku").
+        if (ShizukuLauncher.isAvailable(ctx)) listOf(
+            AppEntry(
+                ShizukuLauncher.NAME, ctx.packageName, BUILTIN_CLS_SHIZUKU,
+                BuiltInIconDrawable(SHIZUKU_PATH, Color.parseColor("#5C7CFA"), evenOdd = true),
+                section = ShizukuLauncher.SECTION
             )
         ) else emptyList()
     )

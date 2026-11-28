@@ -97,6 +97,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         const val RETROARCH = "retroarch"
         const val SEAL = "seal"
         const val RIZWAN = "rizwan"
+        const val SHIZUKU = "shizuku"
 
         private fun data(type: String): String? = when (type) {
             FILES -> "M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z"
@@ -123,6 +124,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             RETROARCH -> "M7,7H17C19.76,7 22,9.24 22,12V13C22,15.21 20.21,17 18,17C16.9,17 16,16.1 15,15H9C8,16.1 7.1,17 6,17C3.79,17 2,15.21 2,13V12C2,9.24 4.24,7 7,7ZM6.4,9.6H7.6V11.4H9.4V12.6H7.6V14.4H6.4V12.6H4.6V11.4H6.4ZM14.4,12.8a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0ZM16.9,11a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0Z"
             SEAL -> "M19.35,10.04C18.67,6.59 15.64,4 12,4 9.11,4 6.6,5.64 5.35,8.04 2.34,8.36 0,10.91 0,14c0,3.31 2.69,6 6,6h13c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96zM17,13l-5,5 -5,-5h3V9h4v4h3z"
             RIZWAN -> "M12,3L14.5,9.5L21,12L14.5,14.5L12,21L9.5,14.5L3,12L9.5,9.5ZM19,2L19.9,4.1L22,5L19.9,5.9L19,8L18.1,5.9L16,5L18.1,4.1Z"
+            SHIZUKU -> "M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1ZM10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z"
             MAME -> "M5.5,6a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0ZM8,9.5H10V14H8ZM3,14H21V20C21,20.55 20.55,21 20,21H4C3.45,21 3,20.55 3,20ZM14.7,17.5a1.8,1.8 0 1,0 3.6,0a1.8,1.8 0 1,0 -3.6,0Z"
             else -> null
         }
@@ -144,6 +146,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
             RETROARCH -> Color.parseColor("#2EC4B6")
             SEAL -> Color.parseColor("#B8E35A")
             RIZWAN -> Color.parseColor("#B185FF")
+            SHIZUKU -> Color.parseColor("#5C7CFA")
             START -> Color.parseColor("#4CC2FF")
             else -> Color.WHITE
         }
@@ -156,6 +159,7 @@ class VectorIconView(context: Context, private val type: String) : View(context)
         if (type == PPSSPP) path?.fillType = Path.FillType.EVEN_ODD // hollow screen of the handheld
         if (type == MAME) path?.fillType = Path.FillType.EVEN_ODD // hollow button of the arcade joystick
         if (type == RETROARCH) path?.fillType = Path.FillType.EVEN_ODD // hollow d-pad and buttons of the game pad
+        if (type == SHIZUKU) path?.fillType = Path.FillType.EVEN_ODD // hollow check mark of the shield
     }
 
     fun setIconColor(c: Int) {
@@ -1552,6 +1556,8 @@ class Win11Shell(
         if (isRetroarchSupported(ctx)) column.addView(desktopIcon(VectorIconView.RETROARCH, "RetroArch", "retroarch"))
         // Home screen icon of the built-in Rizwan assistant (:mika module = Mika; shown as "Rizwan"); Android 10+ on a 64-bit ARM phone only (part 8)
         if (MikaLauncher.isSupported()) column.addView(desktopIcon(VectorIconView.RIZWAN, MikaLauncher.NAME, MikaLauncher.SECTION))
+        // Home screen icon of the built-in Shizuku manager (:shizuku module); only when :shizuku is in this build and its activity is in the installed manifest (6C)
+        if (ShizukuLauncher.isAvailable(ctx)) column.addView(desktopIcon(VectorIconView.SHIZUKU, ShizukuLauncher.NAME, ShizukuLauncher.SECTION))
         if (WinlatorLauncher.isSupported()) column.addView(desktopIcon(VectorIconView.WINLATOR, "Winlator", WinlatorLauncher.SECTION))
         // Seven icons no longer always fit under each other on a short screen (landscape, split screen): the column scrolls.
         desktop.addView(android.widget.ScrollView(ctx).apply {

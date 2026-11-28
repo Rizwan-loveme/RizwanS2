@@ -101,11 +101,18 @@
         <!-- Mika ("Rizwan" AI assistant, :mika library, package com.wangzan101.mika): its 7 activities (MainActivity with the Quick Settings tile-preferences and share filters,
              FileViewerActivity, TerminalActivity, WebTakeoverActivity, SelfNotificationActivity, TakeoverActivity, SelfCheckTargetActivity), 11 services (its own accessibility
              service, notification listener (disabled until used), in-call service, Quick Settings tile (disabled), 7 foreground services), 6 providers (4 file providers, the helper
-             hand-off, Shizuku), 7 receivers, <queries>, <uses-feature> and ALL 30 of its permissions come from the library manifest and are merged here automatically; nothing is
+             hand-off, Shizuku; with :shizuku built in Mika's Shizuku provider is removed by src/shizuku/AndroidManifest.xml, so the merged manifest has 5 of them, see shizuku/README.md "4B-2"), 7 receivers, <queries>, <uses-feature> and ALL 30 of its permissions come from the library manifest and are merged here automatically; nothing is
              repeated in this file (13 of the permissions are new to the app: coarse / fine location, calendar read / write, exact alarms, alarm clock, install packages, media images, promoted
              notifications, call companion, ongoing calls, special-use foreground services). It has no LAUNCHER filter: Rizwan opens from the Start menu, the Home screen and rizwans2://rizwan
              (MikaLauncher.kt, step 8). Its screens carry the label "Rizwan" and run in their own task (taskAffinity .rizwan), in the launcher process; App.kt starts Mika only there and only
              after Rizwan was opened once. Mika's own self-update is cut out. See mika/README.md step 7 and `python3 mika/tools/check-manifest.py`. -->
+
+        <!-- Shizuku permissions (only with :shizuku built in, -PincludeShizuku=true; nothing here is declared in :app itself, on purpose): the library :shizuku is the ONE owner of
+             moe.shizuku.manager.permission.MANAGER (signature) and ...API_V23 (dangerous, group moe.shizuku.manager.permission-group.API); the names stay because every Shizuku client and the
+             server use them. The app asks for MANAGER (the server then sends it the binder) and does NOT ask for API_V23: it is the manager, and its library manifest keeps a uses-permission
+             of API_V23 with tools:node="remove" as a guard. :mika declares neither (none of its 30 permissions is a Shizuku one) and the Maven api / provider artifacts that used to bring the
+             API_V23 request are replaced by local modules whose manifests are not merged. Checked by the self-check of shizuku/tools/patch-upstream.py and, on the merged manifest, by
+             shizuku/tools/check-merged-manifest.py (step 4E-3). See shizuku/README.md "4C-3". -->
 
         <!-- On-device debug log viewer (also opened from Quick Settings and the crash dialog) -->
         <activity
@@ -141,7 +148,7 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, ppsspp, terminal, theme/terminal and theme/win11 (switch the saved launcher theme; rizwans2://theme alone shows it), seal (also rizwans2://seal?url=https://... = the Downloader app with its download sheet for that link; alias downloader), mame, retroarch, rizwan (alias assistant: the Rizwan assistant, MikaLauncher.kt), chooser, start, quick).
+            <!-- Deep link: rizwans2://open (also rizwans2://files, browser, dialer, sms, winlator, youtube, video, gallery, camera (also rizwans2://camera?mode=video), j2me, ppsspp, terminal, theme/terminal and theme/win11 (switch the saved launcher theme; rizwans2://theme alone shows it), seal (also rizwans2://seal?url=https://... = the Downloader app with its download sheet for that link; alias downloader), mame, retroarch, rizwan (alias assistant: the Rizwan assistant, MikaLauncher.kt), shizuku (the built-in Shizuku manager, ShizukuLauncher.kt), chooser, start, quick).
                  By number: rizwans2://1, rizwans2://#1 or rizwans2://app/1 opens app number 1 of the Start menu's "All apps" list. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

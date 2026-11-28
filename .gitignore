@@ -20,6 +20,9 @@ retroarch/upstream/
 # Mika (Rizwan) sources are fetched at build time (mika/tools/fetch-upstream.sh, step 3)
 mika/upstream/
 
+# Shizuku (manager + server + starter + API) is fetched at build time (shizuku/tools/fetch-upstream.sh, step 1)
+shizuku/upstream/
+
 # Python byte-code caches that the tool scripts leave next to themselves (mika/tools/*.py, seal/tools/*.py, ...) (step 10).
 # Deliberately only under a tools/ folder: winlator's virglrenderer source has two .pyc files of its own that stay as they are.
 **/tools/__pycache__/
