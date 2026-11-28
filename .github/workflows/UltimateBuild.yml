@@ -430,6 +430,19 @@ jobs:
           ls -lh release.jks
           file release.jks
 
+      # Release build #10 ran out of Java heap in :app:packageRelease (gradle.properties now gives the Gradle daemon 8g). A 6 GB swap file keeps the
+      # runner from killing the build if the box has little RAM. Best effort: a failure here never stops the build.
+      - name: Add swap space (packaging needs a big heap)
+        run: |
+          free -h || true
+          if ! swapon --show | grep -q '/swapfile'; then
+            sudo fallocate -l 6G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=6144
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+          fi || true
+          free -h || true
+
       - name: Build Unsigned Release APK
         shell: bash
         run: |
